@@ -30,7 +30,7 @@ function App() {
           id,
           title: `Mc ${mcNo} siap doffing`,
           body: `Estimasi waktu doffing Mc ${mcNo} tercapai (${shiftAbsKeJamStr(estAbsMin)})`,
-          schedule: { at: new Date(fireTime) },
+          schedule: { at: new Date(fireTime), allowWhileIdle: true },
         },
       ],
     })
