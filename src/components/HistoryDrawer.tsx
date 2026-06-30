@@ -190,7 +190,7 @@ export function HistoryDrawer({ open, onClose, onEditAkt }: Props) {
         </div>
 
         {/* Footer buttons */}
-        <div className="flex-shrink-0 flex gap-3 px-4 pt-3 pb-6 border-t border-zinc-800">
+        <div className="flex-shrink-0 flex gap-3 px-4 pt-3 pb-safe-floor border-t border-zinc-800">
           <button
             className="flex-1 py-3 rounded-2xl border border-zinc-700 text-zinc-300 text-sm font-medium active:bg-zinc-800"
             onClick={handleShare}
