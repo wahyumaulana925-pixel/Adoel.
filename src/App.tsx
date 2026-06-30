@@ -20,7 +20,7 @@ function App() {
   }
 
   const scheduleNotif = async (mcNo: string, estAbsMin: number) => {
-    const fireTime = estAbsMin * 60000
+    const fireTime = estAbsMin * 60000 - 5 * 60000
     const delay = fireTime - Date.now()
     if (delay <= 0) return
     const id = parseInt(mcNo, 10)
