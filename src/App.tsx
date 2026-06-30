@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { LocalNotifications } from '@capacitor/local-notifications'
 import { useDoffStore, jamSekarangAbs, shiftAbsKeJamStr } from './store/useDoffStore'
+import DaftarMesin from './components/DaftarMesin'
 
 function App() {
   const { db, estimasi, prosesBarisKondisiMesin, hapusEstimasi } = useDoffStore()
   const [input, setInput] = useState('')
   const [log, setLog] = useState<string[]>([])
   const [permGranted, setPermGranted] = useState(false)
+  const [tab, setTab] = useState<'estimasi' | 'mesin'>('estimasi')
 
   useEffect(() => {
     LocalNotifications.checkPermissions().then((r) => {
@@ -59,82 +61,115 @@ function App() {
   const daftarEstimasi = Object.values(estimasi).sort((a, b) => a.estAbsMin - b.estAbsMin)
 
   return (
-    <div style={{ padding: 16, fontFamily: 'sans-serif', maxWidth: 480, margin: '0 auto' }}>
-      <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Adoel V5</h1>
-      <p style={{ fontSize: 13, color: '#666', marginBottom: 12 }}>
-        {db && Object.keys(db).length} mesin terdaftar
-      </p>
-
-      {!permGranted && (
+    <div>
+      <div style={{ display: 'flex', borderBottom: '1px solid #eee', maxWidth: 480, margin: '0 auto' }}>
         <button
-          onClick={mintaIzin}
-          style={{ width: '100%', padding: 10, marginBottom: 12, background: '#222', color: '#fff', borderRadius: 8 }}
+          onClick={() => setTab('estimasi')}
+          style={{
+            flex: 1,
+            padding: 12,
+            background: tab === 'estimasi' ? '#0066ff' : '#fff',
+            color: tab === 'estimasi' ? '#fff' : '#333',
+            fontWeight: 600,
+          }}
         >
-          Aktifkan Izin Notifikasi
+          Estimasi
         </button>
-      )}
+        <button
+          onClick={() => setTab('mesin')}
+          style={{
+            flex: 1,
+            padding: 12,
+            background: tab === 'mesin' ? '#0066ff' : '#fff',
+            color: tab === 'mesin' ? '#fff' : '#333',
+            fontWeight: 600,
+          }}
+        >
+          Daftar Mesin
+        </button>
+      </div>
 
-      <textarea
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        placeholder={'Contoh:\n12 1.30\n65 250y\n80 c 14.20'}
-        rows={5}
-        style={{ width: '100%', padding: 10, border: '1px solid #ccc', borderRadius: 8, fontFamily: 'monospace' }}
-      />
-      <button
-        onClick={prosesInput}
-        style={{ width: '100%', padding: 10, marginTop: 8, background: '#0066ff', color: '#fff', borderRadius: 8 }}
-      >
-        Proses Baris
-      </button>
+      {tab === 'mesin' && <DaftarMesin />}
 
-      {log.length > 0 && (
-        <div style={{ marginTop: 12, fontSize: 13, background: '#f5f5f5', padding: 10, borderRadius: 8 }}>
-          {log.map((l, i) => (
-            <div key={i}>{l}</div>
-          ))}
+      {tab === 'estimasi' && (
+        <div style={{ padding: 16, fontFamily: 'sans-serif', maxWidth: 480, margin: '0 auto' }}>
+          <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Adoel V5</h1>
+          <p style={{ fontSize: 13, color: '#666', marginBottom: 12 }}>
+            {db && Object.keys(db).length} mesin terdaftar
+          </p>
+
+          {!permGranted && (
+            <button
+              onClick={mintaIzin}
+              style={{ width: '100%', padding: 10, marginBottom: 12, background: '#222', color: '#fff', borderRadius: 8 }}
+            >
+              Aktifkan Izin Notifikasi
+            </button>
+          )}
+
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder={'Contoh:\n12 1.30\n65 250y\n80 c 14.20'}
+            rows={5}
+            style={{ width: '100%', padding: 10, border: '1px solid #ccc', borderRadius: 8, fontFamily: 'monospace' }}
+          />
+          <button
+            onClick={prosesInput}
+            style={{ width: '100%', padding: 10, marginTop: 8, background: '#0066ff', color: '#fff', borderRadius: 8 }}
+          >
+            Proses Baris
+          </button>
+
+          {log.length > 0 && (
+            <div style={{ marginTop: 12, fontSize: 13, background: '#f5f5f5', padding: 10, borderRadius: 8 }}>
+              {log.map((l, i) => (
+                <div key={i}>{l}</div>
+              ))}
+            </div>
+          )}
+
+          <h2 style={{ fontSize: 16, fontWeight: 600, marginTop: 20, marginBottom: 8 }}>
+            Estimasi Aktif ({daftarEstimasi.length})
+          </h2>
+          {daftarEstimasi.length === 0 && (
+            <p style={{ fontSize: 13, color: '#999' }}>Belum ada estimasi.</p>
+          )}
+          {daftarEstimasi.map((e) => {
+            const mesin = db[e.mcNo]
+            return (
+              <div
+                key={e.mcNo}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '10px 12px',
+                  border: '1px solid #eee',
+                  borderRadius: 8,
+                  marginBottom: 6,
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 600 }}>Mc {e.mcNo}</div>
+                  <div style={{ fontSize: 12, color: '#666' }}>
+                    {mesin?.tipe} · corak {mesin?.corak}
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontWeight: 600 }}>{shiftAbsKeJamStr(e.estAbsMin)}</div>
+                  <button
+                    onClick={() => batalEstimasi(e.mcNo)}
+                    style={{ fontSize: 11, color: '#cc0000', marginTop: 4 }}
+                  >
+                    Batalkan
+                  </button>
+                </div>
+              </div>
+            )
+          })}
         </div>
       )}
-
-      <h2 style={{ fontSize: 16, fontWeight: 600, marginTop: 20, marginBottom: 8 }}>
-        Estimasi Aktif ({daftarEstimasi.length})
-      </h2>
-      {daftarEstimasi.length === 0 && (
-        <p style={{ fontSize: 13, color: '#999' }}>Belum ada estimasi.</p>
-      )}
-      {daftarEstimasi.map((e) => {
-        const mesin = db[e.mcNo]
-        return (
-          <div
-            key={e.mcNo}
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '10px 12px',
-              border: '1px solid #eee',
-              borderRadius: 8,
-              marginBottom: 6,
-            }}
-          >
-            <div>
-              <div style={{ fontWeight: 600 }}>Mc {e.mcNo}</div>
-              <div style={{ fontSize: 12, color: '#666' }}>
-                {mesin?.tipe} · corak {mesin?.corak}
-              </div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontWeight: 600 }}>{shiftAbsKeJamStr(e.estAbsMin)}</div>
-              <button
-                onClick={() => batalEstimasi(e.mcNo)}
-                style={{ fontSize: 11, color: '#cc0000', marginTop: 4 }}
-              >
-                Batalkan
-              </button>
-            </div>
-          </div>
-        )
-      })}
     </div>
   )
 }
