@@ -87,6 +87,8 @@ export interface ProsesResult {
   type: 'ok' | 'err'
   msg: string
   mcNo?: string
+  estAbs?: number      // returned by prosesBarisKondisiMesin for notification scheduling
+  prevEst?: Estimasi   // returned by prosesBarisUmum so caller can reschedule on undo
   undoFn?: () => void
 }
 
@@ -186,6 +188,7 @@ export const useDoffStore = create<DoffStore>()(
           type: 'ok',
           msg: `Mc ${mcNo} → ${shiftAbsKeJamStr(estAbs)}`,
           mcNo,
+          estAbs: Math.round(estAbs),
         }
       },
 
@@ -207,7 +210,8 @@ export const useDoffStore = create<DoffStore>()(
 
         for (let i = 1; i < parts.length; i++) {
           const token = parts[i]
-          const ydMatch = token.match(/^(\+?)([\d.,]+)[yY]$/)
+          // y suffix is optional — matches PWA original: /^(\+?)([\d.,]+)y?$/i
+          const ydMatch = token.match(/^(\+?)([\d.,]+)y?$/i)
           if (ydMatch) {
             const y = parseFloat(ydMatch[2].replace(',', '.'))
             if (!isNaN(y)) { customYard = y; continue }
@@ -245,6 +249,7 @@ export const useDoffStore = create<DoffStore>()(
           type: 'ok',
           msg: `Mc ${mcNo} ✓`,
           mcNo,
+          prevEst: prevEst ?? undefined,
           undoFn: () => {
             get().hapusAktualById(entryId)
             if (prevEst) get().restoreEstimasi(prevEst)

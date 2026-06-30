@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useDoffStore, jamSekarangAbs, shiftAbsKeJamStr, standarisasiKeterangan } from '../store/useDoffStore'
 import { useUIStore } from '../store/useUIStore'
+import { scheduleNotif, cancelNotif } from '../lib/notifications'
 
 interface Props {
   mcNo: string | null
@@ -28,11 +29,13 @@ export function EditEstSheet({ mcNo, onClose, nowAbs }: Props) {
 
   if (!mcNo || !est || !mesin) return null
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const raw = val.trim().toUpperCase()
+    let newEstAbs: number | undefined
     if (raw) {
       const result = store.prosesBarisKondisiMesin(`${mcNo} ${raw}`, jamSekarangAbs())
       if (result.type === 'err') { showToast(`⚠ ${result.msg}`); return }
+      newEstAbs = result.estAbs
     }
     const corak = standarisasiKeterangan(corakVal.trim())
     if (corak && corak !== (mesin.corak)) {
@@ -40,14 +43,22 @@ export function EditEstSheet({ mcNo, onClose, nowAbs }: Props) {
     } else {
       store.updateEstimasi(mcNo, { corakOverride: undefined })
     }
+    // Reschedule notification with updated time
+    const finalEst = store.estimasi[mcNo]
+    const finalAbsMin = newEstAbs ?? finalEst?.estAbsMin
+    if (finalAbsMin) await scheduleNotif(mcNo, finalAbsMin)
     showToast(`Mc ${mcNo} diperbarui`)
     onClose()
   }
 
-  const handleHapus = () => {
+  const handleHapus = async () => {
     const prevEst = est
     store.hapusEstimasi(mcNo)
-    showToast(`Mc ${mcNo} dihapus`, () => store.restoreEstimasi(prevEst))
+    await cancelNotif(mcNo)
+    showToast(`Mc ${mcNo} dihapus`, async () => {
+      store.restoreEstimasi(prevEst)
+      await scheduleNotif(prevEst.mcNo, prevEst.estAbsMin)
+    })
     onClose()
   }
 

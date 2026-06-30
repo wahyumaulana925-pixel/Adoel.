@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useDoffStore, jamSekarangAbs, jamSekarangLabel } from './store/useDoffStore'
 import { useUIStore } from './store/useUIStore'
+import { scheduleNotif, cancelNotif, checkPermission, ensurePermission } from './lib/notifications'
 import { RadarCard } from './components/RadarCard'
 import { HistoryDrawer } from './components/HistoryDrawer'
 import { SettingsDrawer } from './components/SettingsDrawer'
@@ -30,6 +31,18 @@ function HistoryIcon() {
   )
 }
 
+function BellOffIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+      <path d="M18.63 13A17.9 17.9 0 0 1 18 8" />
+      <path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14" />
+      <path d="M18 8a6 6 0 0 0-9.33-5" />
+      <line x1="1" y1="1" x2="23" y2="23" />
+    </svg>
+  )
+}
+
 export default function App() {
   const store = useDoffStore()
   const { showToast } = useUIStore()
@@ -38,6 +51,7 @@ export default function App() {
   const [input, setInput] = useState('')
   const [clock, setClock] = useState(jamSekarangLabel())
   const [nowAbs, setNowAbs] = useState(jamSekarangAbs())
+  const [notifGranted, setNotifGranted] = useState(true) // optimistic until checked
 
   const [historyOpen, setHistoryOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -46,6 +60,12 @@ export default function App() {
 
   const inputRef = useRef<HTMLInputElement>(null)
 
+  // Check notification permission on mount
+  useEffect(() => {
+    checkPermission().then(setNotifGranted)
+  }, [])
+
+  // Clock tick every 5s (fast enough for display, cheap)
   useEffect(() => {
     const id = setInterval(() => {
       setClock(jamSekarangLabel())
@@ -54,7 +74,13 @@ export default function App() {
     return () => clearInterval(id)
   }, [])
 
-  // Shift progress: unique machines doffed + in estimasi
+  const handleRequestNotifPermission = async () => {
+    const granted = await ensurePermission()
+    setNotifGranted(granted)
+    if (!granted) showToast('⚠ Izin notifikasi ditolak')
+  }
+
+  // Shift progress: unique machines in estimasi + aktual
   const allTouched = useMemo(() => {
     const s = new Set<string>()
     Object.keys(store.estimasi).forEach((k) => s.add(k))
@@ -67,39 +93,65 @@ export default function App() {
     [store.estimasi]
   )
 
-  const handleCommand = () => {
+  const handleCommand = async () => {
     const cmd = input.trim().toUpperCase()
     if (!cmd) return
 
-    let result
     if (mode === 'estimasi') {
-      result = store.prosesBarisKondisiMesin(cmd, jamSekarangAbs())
+      const result = store.prosesBarisKondisiMesin(cmd, jamSekarangAbs())
+      if (result.type === 'ok') {
+        showToast(result.msg)
+        setInput('')
+        // Schedule notification 5 min before estimated time
+        if (result.mcNo && result.estAbs) {
+          await scheduleNotif(result.mcNo, result.estAbs)
+        }
+      } else {
+        showToast(`⚠ ${result.msg}`)
+      }
     } else {
-      result = store.prosesBarisUmum(cmd)
-    }
-
-    if (result.type === 'ok') {
-      showToast(result.msg, result.undoFn)
-      setInput('')
-    } else {
-      showToast(`⚠ ${result.msg}`)
+      const result = store.prosesBarisUmum(cmd)
+      if (result.type === 'ok') {
+        const { mcNo, prevEst } = result
+        // Cancel notification for this machine — it's been doffed
+        if (mcNo) await cancelNotif(mcNo)
+        showToast(result.msg, async () => {
+          // Undo: restore estimasi and reschedule notification
+          result.undoFn!()
+          if (prevEst) await scheduleNotif(prevEst.mcNo, prevEst.estAbsMin)
+        })
+        setInput('')
+      } else {
+        showToast(`⚠ ${result.msg}`)
+      }
     }
     inputRef.current?.focus()
   }
 
-  const handleDoff = (mcNo: string) => {
+  const handleDoff = async (mcNo: string) => {
     const result = store.prosesBarisUmum(mcNo)
     if (result.type === 'ok') {
-      showToast(result.msg, result.undoFn)
+      const { prevEst } = result
+      await cancelNotif(mcNo)
+      showToast(result.msg, async () => {
+        result.undoFn!()
+        if (prevEst) await scheduleNotif(prevEst.mcNo, prevEst.estAbsMin)
+      })
     } else {
       showToast(`⚠ ${result.msg}`)
     }
   }
 
-  const handleHapusEst = (mcNo: string) => {
+  const handleHapusEst = async (mcNo: string) => {
     const prevEst = store.estimasi[mcNo]
     store.hapusEstimasi(mcNo)
-    showToast(`Mc ${mcNo} dihapus`, () => { if (prevEst) store.restoreEstimasi(prevEst) })
+    await cancelNotif(mcNo)
+    showToast(`Mc ${mcNo} dihapus`, async () => {
+      if (prevEst) {
+        store.restoreEstimasi(prevEst)
+        await scheduleNotif(prevEst.mcNo, prevEst.estAbsMin)
+      }
+    })
   }
 
   return (
@@ -124,6 +176,17 @@ export default function App() {
           </button>
         </div>
       </header>
+
+      {/* Notification permission banner */}
+      {!notifGranted && (
+        <button
+          className="flex-shrink-0 flex items-center justify-center gap-2 bg-amber-900/40 border-b border-amber-800/50 text-amber-400 text-xs py-2 px-4 w-full"
+          onClick={handleRequestNotifPermission}
+        >
+          <BellOffIcon />
+          <span>Notifikasi nonaktif — ketuk untuk izinkan</span>
+        </button>
+      )}
 
       {/* Main: radar cards */}
       <main className="flex-1 overflow-y-auto hide-scroll py-2 px-3">
@@ -152,7 +215,6 @@ export default function App() {
 
       {/* Footer: mode toggle + input */}
       <footer className="flex-shrink-0 px-3 pt-2 pb-4 border-t border-zinc-800/80 bg-zinc-950">
-        {/* Mode toggle */}
         <div className="flex mb-2 bg-zinc-900 rounded-xl p-0.5 gap-0.5">
           <button
             className={`flex-1 py-1.5 text-xs rounded-xl font-semibold transition-colors ${
@@ -176,7 +238,6 @@ export default function App() {
           </button>
         </div>
 
-        {/* Input row */}
         <div className="flex gap-2">
           <input
             ref={inputRef}

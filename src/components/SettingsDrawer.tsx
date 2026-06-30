@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { useDoffStore } from '../store/useDoffStore'
 import { useUIStore } from '../store/useUIStore'
+import { cancelAllNotifs } from '../lib/notifications'
 import type { MesinData, MesinTipe } from '../types'
 
 interface Props {
@@ -264,7 +265,9 @@ function DataTab() {
   }
 
   const handleReset = () => {
-    showConfirm('Reset semua data ke default? Estimasi & riwayat akan hilang.', () => {
+    showConfirm('Reset semua data ke default? Estimasi & riwayat akan hilang.', async () => {
+      // Cancel all pending notifications before wiping estimasi
+      await cancelAllNotifs(Object.keys(store.estimasi))
       store.resetDb()
       showToast('Data direset ke default')
     })
