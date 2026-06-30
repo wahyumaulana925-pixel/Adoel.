@@ -51,6 +51,10 @@ export function jamSekarangAbs() {
   return Math.floor(Date.now() / 60000)
 }
 
+export function jamSekarangLabel() {
+  return shiftAbsKeJamStr(jamSekarangAbs())
+}
+
 export function jamKeShiftAbs(jamMin: number) {
   const now = new Date()
   const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
@@ -92,9 +96,12 @@ interface DoffStore {
   setMesin: (mcNo: string, data: MesinData_) => void
   resetDb: () => void
   prosesBarisKondisiMesin: (ln: string, jamKelilingAbs: number) => ProsesResult
+  prosesBarisUmum: (ln: string) => ProsesResult
   hapusEstimasi: (mcNo: string) => void
   tambahAktual: (entry: AktualEntry) => void
   hapusAktual: (index: number) => void
+  prefillDoffing: { mcNo: string; corak: string } | null
+  setPrefillDoffing: (v: { mcNo: string; corak: string } | null) => void
 }
 
 type MesinData_ = MesinDb[string]
@@ -105,11 +112,14 @@ export const useDoffStore = create<DoffStore>()(
       db: buildDefaultDb(),
       estimasi: {},
       aktual: [],
+      prefillDoffing: null,
 
       setMesin: (mcNo, data) =>
         set((state) => ({ db: { ...state.db, [mcNo]: data } })),
 
       resetDb: () => set({ db: buildDefaultDb(), estimasi: {}, aktual: [] }),
+
+      setPrefillDoffing: (v) => set({ prefillDoffing: v }),
 
       prosesBarisKondisiMesin: (ln, jamKelilingAbs) => {
         const parts = ln.trim().split(/\s+/)
@@ -161,6 +171,53 @@ export const useDoffStore = create<DoffStore>()(
           mcNo,
           estAbs,
         }
+      },
+
+      prosesBarisUmum: (ln) => {
+        const parts = ln.trim().split(/\s+/)
+        if (parts.length < 1) return { type: 'err', msg: 'Kosong' }
+        const mcNo = parts[0]
+        if (!/^\d{1,3}$/.test(mcNo)) return { type: 'err', msg: 'Nomor mesin tidak valid' }
+        const mesin = get().db[mcNo]
+        if (!mesin) return { type: 'err', msg: `Mc ${mcNo} tidak ditemukan` }
+
+        if (mesin.tipe === 'D408' && parts[1] && parts[1].toLowerCase() === 'c') {
+          return get().prosesBarisKondisiMesin(ln, jamSekarangAbs())
+        }
+
+        const jamLabel = jamSekarangLabel()
+        const ketTokens: string[] = []
+
+        for (let i = 1; i < parts.length; i++) {
+          const token = parts[i]
+          const ydMatch = token.match(/^(\+?)([\d.,]+)y?$/i)
+          if (ydMatch && !isNaN(parseFloat(ydMatch[2].replace(',', '.')))) {
+            continue
+          }
+          ketTokens.push(token)
+        }
+
+        const extra = standarisasiKeterangan(ketTokens.join(' ').trim())
+
+        set((state) => {
+          const nextEst = { ...state.estimasi }
+          delete nextEst[mcNo]
+          return {
+            estimasi: nextEst,
+            aktual: [
+              {
+                mcNo,
+                corak: mesin.corak,
+                keterangan: extra || '-',
+                jamLabel,
+                timestamp: Date.now(),
+              },
+              ...state.aktual,
+            ],
+          }
+        })
+
+        return { type: 'ok', msg: `Mc ${mcNo} Doffed`, mcNo }
       },
 
       hapusEstimasi: (mcNo) =>
