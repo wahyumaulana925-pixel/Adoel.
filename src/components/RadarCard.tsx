@@ -11,39 +11,67 @@ interface Props {
   onLongPress: () => void
 }
 
-// Pixels revealed on full swipe — DOFF takes most, HAPUS is a narrow strip
-const REVEAL_W = 152
+// Width revealed on full left-swipe
+const REVEAL_W = 156
 
 function urgency(remaining: number) {
-  if (remaining > 30) return { border: 'border-teal-500',   text: 'text-teal-400',   bar: 'bg-teal-500',   label: 'text-teal-700',  pulse: false }
-  if (remaining > 10) return { border: 'border-amber-400',  text: 'text-amber-400',  bar: 'bg-amber-400',  label: 'text-amber-700', pulse: false }
-  if (remaining > 0)  return { border: 'border-orange-500', text: 'text-orange-400', bar: 'bg-orange-500', label: 'text-orange-700',pulse: false }
-  return               { border: 'border-red-500',     text: 'text-red-400',    bar: 'bg-red-500',    label: 'text-red-700',   pulse: true  }
+  if (remaining > 30) return {
+    border: 'border-teal-500',
+    text:   'text-teal-400',
+    bar:    'bg-teal-500',
+    label:  'text-teal-600',
+    cardBg: '',
+    pulse:  false,
+  }
+  if (remaining > 10) return {
+    border: 'border-amber-400',
+    text:   'text-amber-400',
+    bar:    'bg-amber-400',
+    label:  'text-amber-600',
+    cardBg: '',
+    pulse:  false,
+  }
+  if (remaining > 0) return {
+    border: 'border-orange-500',
+    text:   'text-orange-400',
+    bar:    'bg-orange-500',
+    label:  'text-orange-600',
+    cardBg: '',
+    pulse:  false,
+  }
+  return {
+    border: 'border-red-500',
+    text:   'text-red-400',
+    bar:    'bg-red-500',
+    label:  'text-red-600',
+    cardBg: 'bg-red-950/20',
+    pulse:  true,
+  }
 }
 
 export function RadarCard({ est, mesin, nowAbs, onDoff, onHapus, onLongPress }: Props) {
   const remaining = est.estAbsMin - nowAbs
-  const clr = urgency(remaining)
-  const totalDur = est.estAbsMin - est.startAbsMin
-  const elapsed = nowAbs - est.startAbsMin
-  const progress = totalDur > 0 ? Math.min(1, Math.max(0, elapsed / totalDur)) : 0
-  const remStr = remaining >= 0 ? `+${remaining}m` : `−${Math.abs(remaining)}m`
-  const corak = est.corakOverride ?? mesin?.corak ?? '—'
-  const tipe = mesin?.tipe ?? '?'
+  const clr       = urgency(remaining)
+  const totalDur  = est.estAbsMin - est.startAbsMin
+  const elapsed   = nowAbs - est.startAbsMin
+  const progress  = totalDur > 0 ? Math.min(1, Math.max(0, elapsed / totalDur)) : 0
+  const remStr    = remaining >= 0 ? `+${remaining}m` : `−${Math.abs(remaining)}m`
+  const corak     = est.corakOverride ?? mesin?.corak ?? '—'
+  const tipe      = mesin?.tipe ?? '?'
 
-  // --- Swipe gesture state (refs to avoid re-renders during drag) ---
-  const innerRef = useRef<HTMLDivElement>(null)
+  // Swipe gesture refs — mutations, not state, so no re-renders during drag
+  const innerRef  = useRef<HTMLDivElement>(null)
   const startXRef = useRef(0)
-  const dragging = useRef(false)
-  const revealed = useRef(false)
+  const dragging  = useRef(false)
+  const revealed  = useRef(false)
   const curOffset = useRef(0)
-  const moved = useRef(false)
+  const moved     = useRef(false)
   const longTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const setTranslate = (x: number, animate: boolean) => {
     if (!innerRef.current) return
-    innerRef.current.style.transition = animate ? 'transform 0.22s ease' : 'none'
-    innerRef.current.style.transform = `translateX(-${x}px)`
+    innerRef.current.style.transition = animate ? 'transform 0.22s cubic-bezier(0.32,0.72,0,1)' : 'none'
+    innerRef.current.style.transform  = `translateX(-${x}px)`
     curOffset.current = x
   }
   const snap = (open: boolean) => { revealed.current = open; setTranslate(open ? REVEAL_W : 0, true) }
@@ -66,8 +94,8 @@ export function RadarCard({ est, mesin, nowAbs, onDoff, onHapus, onLongPress }: 
   }
   const startGesture = (clientX: number) => {
     startXRef.current = clientX
-    dragging.current = true
-    moved.current = false
+    dragging.current  = true
+    moved.current     = false
     longTimer.current = setTimeout(() => {
       longTimer.current = null
       if (!moved.current) {
@@ -91,62 +119,67 @@ export function RadarCard({ est, mesin, nowAbs, onDoff, onHapus, onLongPress }: 
 
   return (
     <div className="relative rounded-2xl overflow-hidden">
-      {/* Action buttons — revealed on left-swipe */}
+      {/* Action strip — revealed on left-swipe */}
       <div className="absolute inset-y-0 right-0 flex" style={{ width: REVEAL_W }}>
         <button
-          className="flex-1 flex flex-col items-center justify-center gap-0.5 bg-teal-600 active:bg-teal-500 text-white"
+          className="flex-1 flex items-center justify-center bg-teal-600 active:bg-teal-500 text-white"
           onClick={() => { snap(false); onDoff() }}
         >
-          <span className="text-base font-black tracking-wide">DOFF</span>
+          <span className="text-sm font-black tracking-widest">DOFF</span>
         </button>
-        <div className="w-px bg-zinc-950/30" />
+        <div className="w-px bg-black/25" />
         <button
-          className="w-14 flex flex-col items-center justify-center gap-0.5 bg-zinc-700 active:bg-zinc-600 text-zinc-300"
+          className="w-14 flex items-center justify-center bg-zinc-700 active:bg-zinc-600 text-zinc-300"
           onClick={() => { snap(false); onHapus() }}
         >
-          <span className="text-[11px] font-bold tracking-wide">HAPUS</span>
+          <span className="text-[10px] font-bold tracking-widest">HAPUS</span>
         </button>
       </div>
 
-      {/* Card face */}
+      {/* Card face — transition-colors lets urgency tier shifts animate smoothly */}
       <div
         ref={innerRef}
-        className={`relative bg-zinc-900 border-l-[3px] ${clr.border} rounded-2xl select-none ${clr.pulse ? 'animate-pulse-soft' : ''}`}
+        className={[
+          'relative rounded-2xl border-l-[3px] select-none bg-zinc-900 transition-colors duration-700',
+          clr.border,
+          clr.cardBg,
+          clr.pulse ? 'animate-pulse-soft' : '',
+        ].filter(Boolean).join(' ')}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
         onMouseDown={onMouseDown}
       >
-        <div className="px-4 pt-3 pb-2.5">
-          {/* Top row: machine number + tipe badge | estimated time + remaining */}
+        <div className="px-4 pt-3.5 pb-3">
+          {/* Row 1: machine number + tipe   |   est. time + delta */}
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="flex items-baseline gap-2">
                 <span className="text-2xl font-black text-zinc-100 leading-none tabular-nums">
                   {est.mcNo}
                 </span>
-                <span className={`text-[10px] font-bold uppercase tracking-widest ${clr.label}`}>
+                <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors duration-700 ${clr.label}`}>
                   {tipe}
                 </span>
               </div>
-              <div className="mt-0.5 text-sm text-zinc-500 truncate leading-tight">{corak}</div>
+              <div className="mt-1 text-xs text-zinc-500 truncate leading-tight">{corak}</div>
             </div>
 
             <div className="text-right shrink-0">
-              <div className={`text-xl font-black tabular-nums leading-none ${clr.text}`}>
+              <div className={`text-[22px] font-black tabular-nums leading-none transition-colors duration-700 ${clr.text}`}>
                 {shiftAbsKeJamStr(est.estAbsMin)}
               </div>
-              <div className={`text-xs tabular-nums mt-0.5 font-medium ${remaining < 0 ? 'text-red-400' : 'text-zinc-600'}`}>
+              <div className={`text-xs tabular-nums mt-1 font-semibold transition-colors duration-700 ${remaining < 0 ? 'text-red-400' : 'text-zinc-600'}`}>
                 {remStr}
               </div>
             </div>
           </div>
 
           {/* Progress bar */}
-          <div className="mt-3 h-[3px] bg-zinc-800 rounded-full overflow-hidden">
+          <div className="mt-3.5 h-1 bg-zinc-800 rounded-full overflow-hidden">
             <div
-              className={`h-full rounded-full ${clr.bar}`}
-              style={{ width: `${Math.round(progress * 100)}%`, transition: 'width 4s linear' }}
+              className={`h-full rounded-full transition-colors duration-700 ${clr.bar}`}
+              style={{ width: `${Math.round(progress * 100)}%`, transition: 'width 4s linear, background-color 0.7s ease' }}
             />
           </div>
         </div>
