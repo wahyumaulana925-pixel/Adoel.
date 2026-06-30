@@ -129,10 +129,10 @@ export function RadarCard({ est, mesin, nowAbs, onDoff, onHapus, onLongPress }: 
         </button>
         <div className="w-px bg-black/25" />
         <button
-          className="w-14 flex items-center justify-center bg-zinc-700 active:bg-zinc-600 text-zinc-300"
+          className="w-16 flex items-center justify-center bg-zinc-700 active:bg-zinc-600 text-zinc-300"
           onClick={() => { snap(false); onHapus() }}
         >
-          <span className="text-[10px] font-bold tracking-widest">HAPUS</span>
+          <span className="text-[11px] font-bold tracking-wide">HAPUS</span>
         </button>
       </div>
 

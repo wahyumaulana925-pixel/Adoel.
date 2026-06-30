@@ -97,7 +97,7 @@ function HistoryRow({
       {/* Row face */}
       <div
         ref={innerRef}
-        className="relative bg-zinc-800/50 rounded-xl flex items-center gap-3 px-3 py-3 select-none"
+        className="relative bg-zinc-800 rounded-xl flex items-center gap-3 px-3 py-3 select-none"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
