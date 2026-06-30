@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react'
 import { LocalNotifications } from '@capacitor/local-notifications'
 import { useDoffStore, jamSekarangAbs, shiftAbsKeJamStr } from './store/useDoffStore'
 import DaftarMesin from './components/DaftarMesin'
+import Aktual from './components/Aktual'
 
 function App() {
   const { db, estimasi, prosesBarisKondisiMesin, hapusEstimasi } = useDoffStore()
   const [input, setInput] = useState('')
   const [log, setLog] = useState<string[]>([])
   const [permGranted, setPermGranted] = useState(false)
-  const [tab, setTab] = useState<'estimasi' | 'mesin'>('estimasi')
+  const [tab, setTab] = useState<'estimasi' | 'mesin' | 'aktual'>('estimasi')
 
   useEffect(() => {
     LocalNotifications.checkPermissions().then((r) => {
@@ -76,6 +77,18 @@ function App() {
           Estimasi
         </button>
         <button
+          onClick={() => setTab('aktual')}
+          style={{
+            flex: 1,
+            padding: 12,
+            background: tab === 'aktual' ? '#0066ff' : '#fff',
+            color: tab === 'aktual' ? '#fff' : '#333',
+            fontWeight: 600,
+          }}
+        >
+          Aktual
+        </button>
+        <button
           onClick={() => setTab('mesin')}
           style={{
             flex: 1,
@@ -85,11 +98,12 @@ function App() {
             fontWeight: 600,
           }}
         >
-          Daftar Mesin
+          Mesin
         </button>
       </div>
 
       {tab === 'mesin' && <DaftarMesin />}
+      {tab === 'aktual' && <Aktual />}
 
       {tab === 'estimasi' && (
         <div style={{ padding: 16, fontFamily: 'sans-serif', maxWidth: 480, margin: '0 auto' }}>
