@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
+import { StatusBar, Style } from '@capacitor/status-bar'
 import { useDoffStore, jamSekarangAbs, jamSekarangLabel } from './store/useDoffStore'
 import { useUIStore } from './store/useUIStore'
 import { scheduleNotif, cancelNotif, checkPermission, ensurePermission } from './lib/notifications'
@@ -59,6 +60,12 @@ export default function App() {
   const [editAktId, setEditAktId] = useState<number | null>(null)
 
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // StatusBar: keep icons white (light) on dark background, overlay stays true
+  // so our CSS safe-area padding controls spacing instead of the OS
+  useEffect(() => {
+    StatusBar.setStyle({ style: Style.Dark }).catch(() => {})
+  }, [])
 
   // Check notification permission on mount
   useEffect(() => {
@@ -156,24 +163,27 @@ export default function App() {
 
   return (
     <div className="h-screen flex flex-col bg-zinc-950 text-zinc-100 overflow-hidden">
-      {/* Header */}
-      <header className="flex-shrink-0 flex items-center gap-3 px-4 h-12 border-b border-zinc-800/80">
-        <span className="font-black text-base text-zinc-100 tracking-tight">
-          Adoel<span className="text-teal-400">.</span>
-        </span>
-        <span className="flex-1 text-center text-sm font-semibold text-zinc-300 tabular-nums">{clock}</span>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-zinc-500 tabular-nums">
-            <span className="text-zinc-300 font-semibold">{store.aktual.length}</span>
-            <span className="text-zinc-700">/</span>
-            <span>{allTouched.size}</span>
+      {/* Header — pt-safe pushes content below the status bar;
+          bg-zinc-950 fills the status bar area with the app's background color */}
+      <header className="flex-shrink-0 bg-zinc-950 border-b border-zinc-800/80 pt-safe">
+        <div className="flex items-center gap-3 px-4 h-12">
+          <span className="font-black text-base text-zinc-100 tracking-tight">
+            Adoel<span className="text-teal-400">.</span>
           </span>
-          <button
-            className="w-8 h-8 flex items-center justify-center text-zinc-500 active:text-zinc-200"
-            onClick={() => setSettingsOpen(true)}
-          >
-            <GearIcon />
-          </button>
+          <span className="flex-1 text-center text-sm font-semibold text-zinc-300 tabular-nums">{clock}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-zinc-500 tabular-nums">
+              <span className="text-zinc-300 font-semibold">{store.aktual.length}</span>
+              <span className="text-zinc-700">/</span>
+              <span>{allTouched.size}</span>
+            </span>
+            <button
+              className="w-9 h-9 flex items-center justify-center text-zinc-500 active:text-zinc-200 rounded-xl active:bg-zinc-800"
+              onClick={() => setSettingsOpen(true)}
+            >
+              <GearIcon />
+            </button>
+          </div>
         </div>
       </header>
 
@@ -213,8 +223,9 @@ export default function App() {
         )}
       </main>
 
-      {/* Footer: mode toggle + input */}
-      <footer className="flex-shrink-0 px-3 pt-2 pb-4 border-t border-zinc-800/80 bg-zinc-950">
+      {/* Footer: mode toggle + input; pb-safe-floor ensures content clears
+          the Android gesture navigation bar */}
+      <footer className="flex-shrink-0 px-3 pt-2 pb-safe-floor border-t border-zinc-800/80 bg-zinc-950">
         <div className="flex mb-2 bg-zinc-900 rounded-xl p-0.5 gap-0.5">
           <button
             className={`flex-1 py-1.5 text-xs rounded-xl font-semibold transition-colors ${

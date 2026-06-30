@@ -46,7 +46,7 @@ export function EditAktSheet({ aktualId, onClose }: Props) {
   return (
     <>
       <div className="fixed inset-0 bg-black/60 z-40" onClick={onClose} />
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-zinc-900 border-t border-zinc-700 rounded-t-3xl px-5 pt-5 pb-8">
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-zinc-900 border-t border-zinc-700 rounded-t-3xl px-5 pt-5 pb-safe-floor">
         <div className="w-10 h-1 bg-zinc-700 rounded-full mx-auto mb-5" />
 
         <div className="flex items-center gap-3 mb-4">

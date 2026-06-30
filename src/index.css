@@ -8,24 +8,28 @@
   .hide-scroll::-webkit-scrollbar {
     display: none;
   }
+
+  /* Safe-area helpers for edge-to-edge Android */
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  /* Footer: safe area OR a minimum floor, whichever is larger */
+  .pb-safe-floor {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+  }
 }
 
 @keyframes pulse-soft {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.65; }
-}
-
-@keyframes blink-urgent {
-  0%, 100% { border-color: rgb(239 68 68); }
-  50% { border-color: rgb(153 27 27); }
+  50% { opacity: 0.6; }
 }
 
 @layer utilities {
   .animate-pulse-soft {
     animation: pulse-soft 2s ease-in-out infinite;
-  }
-  .animate-blink-border {
-    animation: blink-urgent 1.2s ease-in-out infinite;
   }
 }
 
