@@ -7,11 +7,11 @@ export function ConfirmModal() {
 
   return (
     <div
-      className="fixed inset-0 bg-black/70 z-50 flex items-end sm:items-center justify-center animate-fade-in"
+      className="fixed inset-0 bg-black/80 z-50 flex items-end sm:items-center justify-center animate-fade-in"
       onPointerDown={dismissConfirm}
     >
       <div
-        className="w-full sm:max-w-sm bg-zinc-900 border border-zinc-800 rounded-t-3xl sm:rounded-3xl px-5 pt-6 pb-safe-floor sm:pb-6 animate-slide-up"
+        className="w-full sm:max-w-sm bg-zinc-800 border border-zinc-700 rounded-t-3xl sm:rounded-3xl px-5 pt-6 pb-safe-floor sm:pb-6 animate-slide-up shadow-2xl shadow-black/60"
         onPointerDown={(e) => e.stopPropagation()}
       >
         {/* Handle */}
