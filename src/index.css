@@ -1,1 +1,39 @@
 @import "tailwindcss";
+
+@layer utilities {
+  .hide-scroll {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .hide-scroll::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.65; }
+}
+
+@keyframes blink-urgent {
+  0%, 100% { border-color: rgb(239 68 68); }
+  50% { border-color: rgb(153 27 27); }
+}
+
+@layer utilities {
+  .animate-pulse-soft {
+    animation: pulse-soft 2s ease-in-out infinite;
+  }
+  .animate-blink-border {
+    animation: blink-urgent 1.2s ease-in-out infinite;
+  }
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+input, textarea, button {
+  -webkit-appearance: none;
+}

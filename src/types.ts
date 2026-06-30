@@ -14,12 +14,15 @@ export interface Estimasi {
   mcNo: string
   estAbsMin: number
   startAbsMin: number
+  corakOverride?: string
+  yardOverride?: number
 }
 
 export interface AktualEntry {
+  id: number
   mcNo: string
-  corak: string
-  keterangan: string
-  jamLabel: string
-  timestamp: number
+  jam: string
+  ket: string
+  corakOverride?: string
+  customYard?: number
 }

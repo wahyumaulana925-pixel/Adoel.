@@ -1,294 +1,280 @@
-import { useEffect, useRef, useState } from 'react'
-import { LocalNotifications } from '@capacitor/local-notifications'
-import { useDoffStore, jamSekarangAbs, shiftAbsKeJamStr } from './store/useDoffStore'
-import DaftarMesin from './components/DaftarMesin'
-import Aktual from './components/Aktual'
+import { useState, useEffect, useRef, useMemo } from 'react'
+import { useDoffStore, jamSekarangAbs, jamSekarangLabel } from './store/useDoffStore'
+import { useUIStore } from './store/useUIStore'
+import { scheduleNotif, cancelNotif, checkPermission, ensurePermission } from './lib/notifications'
+import { RadarCard } from './components/RadarCard'
+import { HistoryDrawer } from './components/HistoryDrawer'
+import { SettingsDrawer } from './components/SettingsDrawer'
+import { EditEstSheet } from './components/EditEstSheet'
+import { EditAktSheet } from './components/EditAktSheet'
+import { Toast } from './components/Toast'
+import { ConfirmModal } from './components/ConfirmModal'
 
-type Mode = 'aktual' | 'estimasi'
+type Mode = 'estimasi' | 'aktual'
 
-function App() {
-  const { db, estimasi, prosesBarisKondisiMesin, prosesBarisUmum, hapusEstimasi } = useDoffStore()
-  const [cmd, setCmd] = useState('')
+function GearIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  )
+}
+
+function HistoryIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <line x1="3" y1="6" x2="21" y2="6" />
+      <line x1="3" y1="12" x2="21" y2="12" />
+      <line x1="3" y1="18" x2="21" y2="18" />
+    </svg>
+  )
+}
+
+function BellOffIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+      <path d="M18.63 13A17.9 17.9 0 0 1 18 8" />
+      <path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14" />
+      <path d="M18 8a6 6 0 0 0-9.33-5" />
+      <line x1="1" y1="1" x2="23" y2="23" />
+    </svg>
+  )
+}
+
+export default function App() {
+  const store = useDoffStore()
+  const { showToast } = useUIStore()
+
   const [mode, setMode] = useState<Mode>('aktual')
-  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
-  const [tab, setTab] = useState<'utama' | 'riwayat' | 'mesin'>('utama')
-  const [permGranted, setPermGranted] = useState(false)
+  const [input, setInput] = useState('')
+  const [clock, setClock] = useState(jamSekarangLabel())
+  const [nowAbs, setNowAbs] = useState(jamSekarangAbs())
+  const [notifGranted, setNotifGranted] = useState(true) // optimistic until checked
+
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [editEstMc, setEditEstMc] = useState<string | null>(null)
+  const [editAktId, setEditAktId] = useState<number | null>(null)
+
   const inputRef = useRef<HTMLInputElement>(null)
 
+  // Check notification permission on mount
   useEffect(() => {
-    LocalNotifications.checkPermissions().then((r) => setPermGranted(r.display === 'granted'))
+    checkPermission().then(setNotifGranted)
   }, [])
 
+  // Clock tick every 5s (fast enough for display, cheap)
   useEffect(() => {
-    if (!toast) return
-    const t = setTimeout(() => setToast(null), 1800)
-    return () => clearTimeout(t)
-  }, [toast])
+    const id = setInterval(() => {
+      setClock(jamSekarangLabel())
+      setNowAbs(jamSekarangAbs())
+    }, 5000)
+    return () => clearInterval(id)
+  }, [])
 
-  const mintaIzin = async () => {
-    const r = await LocalNotifications.requestPermissions()
-    setPermGranted(r.display === 'granted')
+  const handleRequestNotifPermission = async () => {
+    const granted = await ensurePermission()
+    setNotifGranted(granted)
+    if (!granted) showToast('⚠ Izin notifikasi ditolak')
   }
 
-  const scheduleNotif = async (mcNo: string, estAbsMin: number) => {
-    const fireTime = estAbsMin * 60000 - 5 * 60000
-    if (fireTime - Date.now() <= 0) return
-    await LocalNotifications.schedule({
-      notifications: [
-        {
-          id: parseInt(mcNo, 10),
-          title: `Mc ${mcNo} siap doffing`,
-          body: `Estimasi waktu doffing Mc ${mcNo} tercapai (${shiftAbsKeJamStr(estAbsMin)})`,
-          schedule: { at: new Date(fireTime), allowWhileIdle: true },
-        },
-      ],
-    })
-  }
+  // Shift progress: unique machines in estimasi + aktual
+  const allTouched = useMemo(() => {
+    const s = new Set<string>()
+    Object.keys(store.estimasi).forEach((k) => s.add(k))
+    store.aktual.forEach((a) => s.add(a.mcNo))
+    return s
+  }, [store.estimasi, store.aktual])
 
-  const kirimCmd = async () => {
-    const ln = cmd.trim()
-    if (!ln) return
-    const mcMatch = ln.match(/^(\d{1,3})\s*(.*)$/)
-    if (!mcMatch) {
-      setToast({ msg: 'Format tidak valid (Mc: angka)', ok: false })
-      return
-    }
-    const mcNo = mcMatch[1]
-    const rest = mcMatch[2]
+  const radarList = useMemo(
+    () => Object.values(store.estimasi).sort((a, b) => a.estAbsMin - b.estAbsMin),
+    [store.estimasi]
+  )
+
+  const handleCommand = async () => {
+    const cmd = input.trim().toUpperCase()
+    if (!cmd) return
 
     if (mode === 'estimasi') {
-      if (!rest) {
-        setToast({ msg: 'Masukkan nilai estimasi', ok: false })
-        return
-      }
-      const res = prosesBarisKondisiMesin(ln, jamSekarangAbs())
-      if (res.type === 'ok' && res.mcNo && res.estAbs) {
-        await scheduleNotif(res.mcNo, Math.round(res.estAbs))
-        setToast({ msg: `Est Mc ${mcNo} disimpan -> ${shiftAbsKeJamStr(res.estAbs)}`, ok: true })
-        setCmd('')
-      } else {
-        const looksLikeEstVal = /y$|m$|^c$/i.test(rest.split(/\s+/)[0] || '')
-        if (looksLikeEstVal) {
-          setToast({ msg: res.msg, ok: false })
-        } else {
-          const resAkt = prosesBarisUmum(ln)
-          if (resAkt.type === 'ok' && resAkt.mcNo) {
-            await LocalNotifications.cancel({ notifications: [{ id: parseInt(resAkt.mcNo, 10) }] })
-            setToast({ msg: `Mc ${mcNo} Doffed!`, ok: true })
-            setCmd('')
-          } else {
-            setToast({ msg: resAkt.msg || 'Gagal', ok: false })
-          }
+      const result = store.prosesBarisKondisiMesin(cmd, jamSekarangAbs())
+      if (result.type === 'ok') {
+        showToast(result.msg)
+        setInput('')
+        // Schedule notification 5 min before estimated time
+        if (result.mcNo && result.estAbs) {
+          await scheduleNotif(result.mcNo, result.estAbs)
         }
+      } else {
+        showToast(`⚠ ${result.msg}`)
       }
     } else {
-      const res = prosesBarisUmum(ln)
-      if (res.type === 'ok' && res.mcNo) {
-        await LocalNotifications.cancel({ notifications: [{ id: parseInt(res.mcNo, 10) }] })
-        setToast({ msg: `Mc ${mcNo} Doffed!`, ok: true })
-        setCmd('')
+      const result = store.prosesBarisUmum(cmd)
+      if (result.type === 'ok') {
+        const { mcNo, prevEst } = result
+        // Cancel notification for this machine — it's been doffed
+        if (mcNo) await cancelNotif(mcNo)
+        showToast(result.msg, async () => {
+          // Undo: restore estimasi and reschedule notification
+          result.undoFn!()
+          if (prevEst) await scheduleNotif(prevEst.mcNo, prevEst.estAbsMin)
+        })
+        setInput('')
       } else {
-        setToast({ msg: res.msg || 'Gagal', ok: false })
+        showToast(`⚠ ${result.msg}`)
       }
     }
     inputRef.current?.focus()
   }
 
-  const batalEstimasi = async (mcNo: string) => {
-    hapusEstimasi(mcNo)
-    await LocalNotifications.cancel({ notifications: [{ id: parseInt(mcNo, 10) }] })
+  const handleDoff = async (mcNo: string) => {
+    const result = store.prosesBarisUmum(mcNo)
+    if (result.type === 'ok') {
+      const { prevEst } = result
+      await cancelNotif(mcNo)
+      showToast(result.msg, async () => {
+        result.undoFn!()
+        if (prevEst) await scheduleNotif(prevEst.mcNo, prevEst.estAbsMin)
+      })
+    } else {
+      showToast(`⚠ ${result.msg}`)
+    }
   }
 
-  const mulaiDoffing = (mcNo: string) => {
-    setMode('aktual')
-    setCmd(mcNo + ' ')
-    setTab('utama')
-    setTimeout(() => inputRef.current?.focus(), 50)
+  const handleHapusEst = async (mcNo: string) => {
+    const prevEst = store.estimasi[mcNo]
+    store.hapusEstimasi(mcNo)
+    await cancelNotif(mcNo)
+    showToast(`Mc ${mcNo} dihapus`, async () => {
+      if (prevEst) {
+        store.restoreEstimasi(prevEst)
+        await scheduleNotif(prevEst.mcNo, prevEst.estAbsMin)
+      }
+    })
   }
-
-  const daftarEstimasi = Object.values(estimasi).sort((a, b) => a.estAbsMin - b.estAbsMin)
 
   return (
-    <div style={{ fontFamily: 'sans-serif' }}>
-      <div style={{ display: 'flex', borderBottom: '1px solid #eee', maxWidth: 480, margin: '0 auto' }}>
-        {(['utama', 'riwayat', 'mesin'] as const).map((t) => (
+    <div className="h-screen flex flex-col bg-zinc-950 text-zinc-100 overflow-hidden">
+      {/* Header */}
+      <header className="flex-shrink-0 flex items-center gap-3 px-4 h-12 border-b border-zinc-800/80">
+        <span className="font-black text-base text-zinc-100 tracking-tight">
+          Adoel<span className="text-teal-400">.</span>
+        </span>
+        <span className="flex-1 text-center text-sm font-semibold text-zinc-300 tabular-nums">{clock}</span>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-zinc-500 tabular-nums">
+            <span className="text-zinc-300 font-semibold">{store.aktual.length}</span>
+            <span className="text-zinc-700">/</span>
+            <span>{allTouched.size}</span>
+          </span>
           <button
-            key={t}
-            onClick={() => setTab(t)}
-            style={{
-              flex: 1,
-              padding: 12,
-              background: tab === t ? '#0066ff' : '#fff',
-              color: tab === t ? '#fff' : '#333',
-              fontWeight: 600,
-              textTransform: 'capitalize',
-            }}
+            className="w-8 h-8 flex items-center justify-center text-zinc-500 active:text-zinc-200"
+            onClick={() => setSettingsOpen(true)}
           >
-            {t}
+            <GearIcon />
           </button>
-        ))}
-      </div>
-
-      {tab === 'mesin' && <DaftarMesin />}
-      {tab === 'riwayat' && <Aktual />}
-
-      {tab === 'utama' && (
-        <div style={{ padding: 16, maxWidth: 480, margin: '0 auto' }}>
-          <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Adoel V5</h1>
-          <p style={{ fontSize: 13, color: '#666', marginBottom: 12 }}>
-            {db && Object.keys(db).length} mesin terdaftar
-          </p>
-
-          {!permGranted && (
-            <button
-              onClick={mintaIzin}
-              style={{ width: '100%', padding: 10, marginBottom: 12, background: '#222', color: '#fff', borderRadius: 8 }}
-            >
-              Aktifkan Izin Notifikasi
-            </button>
-          )}
-
-          {/* Mode toggle pill */}
-          <div
-            style={{
-              position: 'relative',
-              display: 'flex',
-              background: '#eee',
-              borderRadius: 10,
-              padding: 4,
-              marginBottom: 8,
-            }}
-          >
-            <button
-              onClick={() => setMode('aktual')}
-              style={{
-                flex: 1,
-                padding: 10,
-                borderRadius: 8,
-                fontWeight: 700,
-                background: mode === 'aktual' ? '#06b6d4' : 'transparent',
-                color: mode === 'aktual' ? '#fff' : '#666',
-                transition: 'all .2s',
-              }}
-            >
-              Aktual
-            </button>
-            <button
-              onClick={() => setMode('estimasi')}
-              style={{
-                flex: 1,
-                padding: 10,
-                borderRadius: 8,
-                fontWeight: 700,
-                background: mode === 'estimasi' ? '#f59e0b' : 'transparent',
-                color: mode === 'estimasi' ? '#fff' : '#666',
-                transition: 'all .2s',
-              }}
-            >
-              Estimasi
-            </button>
-          </div>
-
-          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-            <input
-              ref={inputRef}
-              value={cmd}
-              onChange={(e) => setCmd(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && kirimCmd()}
-              placeholder={mode === 'aktual' ? 'Ketik aktual (31 hb)...' : 'Ketik estimasi (61 150y)...'}
-              style={{
-                flex: 1,
-                padding: 12,
-                border: '1px solid #ccc',
-                borderRadius: 8,
-                fontFamily: 'monospace',
-              }}
-            />
-            <button
-              onClick={kirimCmd}
-              style={{
-                padding: '0 18px',
-                background: mode === 'aktual' ? '#06b6d4' : '#f59e0b',
-                color: '#fff',
-                borderRadius: 8,
-                fontWeight: 700,
-              }}
-            >
-              Kirim
-            </button>
-          </div>
-
-          {toast && (
-            <div
-              style={{
-                padding: 10,
-                marginBottom: 12,
-                borderRadius: 8,
-                fontSize: 13,
-                background: toast.ok ? '#dcfce7' : '#fee2e2',
-                color: toast.ok ? '#166534' : '#991b1b',
-              }}
-            >
-              {toast.msg}
-            </div>
-          )}
-
-          <h2 style={{ fontSize: 16, fontWeight: 600, marginTop: 8, marginBottom: 8 }}>
-            Estimasi Aktif ({daftarEstimasi.length})
-          </h2>
-          {daftarEstimasi.length === 0 && (
-            <p style={{ fontSize: 13, color: '#999' }}>Belum ada estimasi.</p>
-          )}
-          {daftarEstimasi.map((e) => {
-            const mesin = db[e.mcNo]
-            const sisaMin = e.estAbsMin - jamSekarangAbs()
-            const urgent = sisaMin <= 10
-            return (
-              <div
-                key={e.mcNo}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '10px 12px',
-                  border: urgent ? '1px solid #fca5a5' : '1px solid #eee',
-                  background: urgent ? '#fef2f2' : '#fff',
-                  borderRadius: 8,
-                  marginBottom: 6,
-                }}
-              >
-                <div>
-                  <div style={{ fontWeight: 600 }}>Mc {e.mcNo}</div>
-                  <div style={{ fontSize: 12, color: '#666' }}>
-                    {mesin?.tipe} · corak {mesin?.corak}
-                  </div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontWeight: 600, color: urgent ? '#dc2626' : '#111' }}>
-                    {shiftAbsKeJamStr(e.estAbsMin)}
-                  </div>
-                  <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-                    <button
-                      onClick={() => mulaiDoffing(e.mcNo)}
-                      style={{ fontSize: 11, color: '#06b6d4', fontWeight: 700 }}
-                    >
-                      Doffing
-                    </button>
-                    <button
-                      onClick={() => batalEstimasi(e.mcNo)}
-                      style={{ fontSize: 11, color: '#cc0000' }}
-                    >
-                      Batal
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
         </div>
+      </header>
+
+      {/* Notification permission banner */}
+      {!notifGranted && (
+        <button
+          className="flex-shrink-0 flex items-center justify-center gap-2 bg-amber-900/40 border-b border-amber-800/50 text-amber-400 text-xs py-2 px-4 w-full"
+          onClick={handleRequestNotifPermission}
+        >
+          <BellOffIcon />
+          <span>Notifikasi nonaktif — ketuk untuk izinkan</span>
+        </button>
       )}
+
+      {/* Main: radar cards */}
+      <main className="flex-1 overflow-y-auto hide-scroll py-2 px-3">
+        {radarList.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full gap-2 text-zinc-700 pb-8">
+            <span className="text-5xl font-black text-zinc-800">○</span>
+            <span className="text-sm">Belum ada estimasi aktif</span>
+            <span className="text-xs text-zinc-800">Mode Estimasi → masukkan data mesin</span>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {radarList.map((est) => (
+              <RadarCard
+                key={est.mcNo}
+                est={est}
+                mesin={store.db[est.mcNo]}
+                nowAbs={nowAbs}
+                onDoff={() => handleDoff(est.mcNo)}
+                onHapus={() => handleHapusEst(est.mcNo)}
+                onLongPress={() => setEditEstMc(est.mcNo)}
+              />
+            ))}
+          </div>
+        )}
+      </main>
+
+      {/* Footer: mode toggle + input */}
+      <footer className="flex-shrink-0 px-3 pt-2 pb-4 border-t border-zinc-800/80 bg-zinc-950">
+        <div className="flex mb-2 bg-zinc-900 rounded-xl p-0.5 gap-0.5">
+          <button
+            className={`flex-1 py-1.5 text-xs rounded-xl font-semibold transition-colors ${
+              mode === 'estimasi'
+                ? 'bg-teal-500 text-white shadow-sm'
+                : 'text-zinc-500 active:text-zinc-300'
+            }`}
+            onClick={() => setMode('estimasi')}
+          >
+            Estimasi
+          </button>
+          <button
+            className={`flex-1 py-1.5 text-xs rounded-xl font-semibold transition-colors ${
+              mode === 'aktual'
+                ? 'bg-teal-500 text-white shadow-sm'
+                : 'text-zinc-500 active:text-zinc-300'
+            }`}
+            onClick={() => setMode('aktual')}
+          >
+            Doff
+          </button>
+        </div>
+
+        <div className="flex gap-2">
+          <input
+            ref={inputRef}
+            type="text"
+            inputMode="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value.toUpperCase())}
+            onKeyDown={(e) => e.key === 'Enter' && handleCommand()}
+            placeholder={mode === 'estimasi' ? 'cth: 31 45' : 'cth: 31 HB'}
+            className="flex-1 min-w-0 bg-zinc-800 text-zinc-100 placeholder-zinc-600 text-sm px-4 py-2.5 rounded-2xl border border-zinc-700/60 focus:border-teal-500 outline-none"
+          />
+          <button
+            className="w-11 h-11 bg-teal-500 active:bg-teal-600 rounded-2xl flex items-center justify-center text-white font-black text-lg shrink-0"
+            onClick={handleCommand}
+          >
+            ↑
+          </button>
+          <button
+            className="w-11 h-11 bg-zinc-800 active:bg-zinc-700 rounded-2xl flex items-center justify-center text-zinc-400 shrink-0"
+            onClick={() => setHistoryOpen(true)}
+          >
+            <HistoryIcon />
+          </button>
+        </div>
+      </footer>
+
+      {/* Overlays */}
+      <HistoryDrawer
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        onEditAkt={(id) => { setHistoryOpen(false); setEditAktId(id) }}
+      />
+      <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <EditEstSheet mcNo={editEstMc} onClose={() => setEditEstMc(null)} nowAbs={nowAbs} />
+      <EditAktSheet aktualId={editAktId} onClose={() => setEditAktId(null)} />
+      <Toast />
+      <ConfirmModal />
     </div>
   )
 }
-
-export default App
