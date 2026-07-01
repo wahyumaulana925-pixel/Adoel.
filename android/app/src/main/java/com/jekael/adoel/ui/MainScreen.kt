@@ -41,6 +41,9 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jekael.adoel.data.*
 import com.jekael.adoel.notification.NotificationHelper
@@ -92,11 +95,16 @@ fun MainScreen(
         if (!granted) uiVm.showToast("⚠ Izin notifikasi ditolak")
     }
 
-    LaunchedEffect(Unit) {
-        if (Build.VERSION.SDK_INT >= 33) {
-            val pm = context.getSystemService(android.app.NotificationManager::class.java)
-            notifGranted = pm.areNotificationsEnabled()
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME && Build.VERSION.SDK_INT >= 33) {
+                val pm = context.getSystemService(android.app.NotificationManager::class.java)
+                notifGranted = pm.areNotificationsEnabled()
+            }
         }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     LaunchedEffect(Unit) {
