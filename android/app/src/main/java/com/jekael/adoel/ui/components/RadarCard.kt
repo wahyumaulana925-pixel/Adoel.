@@ -64,6 +64,7 @@ fun RadarCard(
     val corak = est.corakOverride ?: mesin?.corak ?: "—"
     val tipe = mesin?.tipe?.name ?: "?"
     val showDot = remaining <= 5
+    val colors = LocalAppColors.current
 
     val criticalPulse = rememberInfiniteTransition(label = "criticalPulse")
     val pulseFraction by criticalPulse.animateFloat(
@@ -72,7 +73,7 @@ fun RadarCard(
         animationSpec = infiniteRepeatable(tween(800, easing = LinearEasing), RepeatMode.Reverse),
         label = "pulseFraction",
     )
-    val faceBg = if (clr.pulse) lerp(Zinc900, Color(0xFF3A1414), pulseFraction) else Zinc900
+    val faceBg = if (clr.pulse) lerp(colors.bgElevated, colors.criticalPulseTarget, pulseFraction) else colors.bgElevated
 
     // Celebrate completion — card slides out + checkmark pops before the state is actually mutated
     var completing by remember(est.mcNo) { mutableStateOf(false) }
@@ -146,7 +147,7 @@ fun RadarCard(
                                 fontSize = 40.sp,
                                 fontWeight = FontWeight.Black,
                                 letterSpacing = (-2).sp,
-                                color = Zinc100,
+                                color = colors.textPrimary,
                             ),
                         )
                         Text(
@@ -174,7 +175,7 @@ fun RadarCard(
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp,
-                            color = Zinc500,
+                            color = colors.textMuted,
                         ),
                         maxLines = 1,
                     )
@@ -225,8 +226,8 @@ fun RadarCard(
                     enabled = !completing,
                     modifier = Modifier.weight(1f).height(40.dp),
                     shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Zinc400),
-                    border = BorderStroke(1.dp, Zinc700),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
+                    border = BorderStroke(1.dp, colors.border),
                     contentPadding = PaddingValues(0.dp),
                 ) {
                     TrashIcon()

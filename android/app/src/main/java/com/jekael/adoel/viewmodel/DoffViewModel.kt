@@ -176,4 +176,8 @@ class DoffViewModel(app: Application) : AndroidViewModel(app) {
     fun finishShift() = updateState { s ->
         s.copy(aktual = emptyList())
     }
+
+    fun setThemeMode(mode: String) = updateState { s ->
+        s.copy(themeMode = mode)
+    }
 }

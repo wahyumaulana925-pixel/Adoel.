@@ -39,14 +39,16 @@ fun SettingsDrawer(
     onSetMesin: (String, MesinData) -> Unit,
     onResetMesin: (String) -> Unit,
     onResetDb: () -> Unit,
+    onSetThemeMode: (ThemeMode) -> Unit,
     showToast: (String) -> Unit,
     showConfirm: (String, () -> Unit) -> Unit,
 ) {
     var tab by remember { mutableStateOf(SettingsTab.EDIT) }
+    val colors = LocalAppColors.current
 
     ModalBottomSheet(
         onDismissRequest = onClose,
-        containerColor = Zinc950,
+        containerColor = colors.bg,
         sheetMaxWidth = 560.dp,
         dragHandle = {
             Box(
@@ -55,7 +57,7 @@ fun SettingsDrawer(
                     .width(40.dp)
                     .height(4.dp)
                     .clip(CircleShape)
-                    .background(Zinc700),
+                    .background(colors.border),
             )
         },
     ) {
@@ -66,9 +68,9 @@ fun SettingsDrawer(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Pengaturan", style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Zinc100))
+                Text("Pengaturan", style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary))
                 IconButton(onClick = onClose) {
-                    Text("✕", style = TextStyle(fontSize = 16.sp, color = Zinc500))
+                    Text("✕", style = TextStyle(fontSize = 16.sp, color = colors.textMuted))
                 }
             }
 
@@ -77,7 +79,7 @@ fun SettingsDrawer(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp, vertical = 8.dp)
-                    .background(Zinc900, RoundedCornerShape(12.dp))
+                    .background(colors.bgElevated2, RoundedCornerShape(12.dp))
                     .padding(4.dp),
             ) {
                 listOf(SettingsTab.EDIT to "Edit Mesin", SettingsTab.LIST to "Daftar", SettingsTab.DATA to "Data")
@@ -97,7 +99,7 @@ fun SettingsDrawer(
                                 style = TextStyle(
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = if (selected) Zinc950 else Zinc400,
+                                    color = if (selected) Zinc950 else colors.textSecondary,
                                 ),
                             )
                         }
@@ -114,7 +116,7 @@ fun SettingsDrawer(
                 when (tab) {
                     SettingsTab.EDIT -> EditMesinTab(state, onSetMesin, onResetMesin, showToast)
                     SettingsTab.LIST -> DaftarMesinTab(state)
-                    SettingsTab.DATA -> DataTab(state, onResetDb, showToast, showConfirm)
+                    SettingsTab.DATA -> DataTab(state, onResetDb, onSetThemeMode, showToast, showConfirm)
                 }
             }
         }
@@ -128,6 +130,7 @@ private fun EditMesinTab(
     onResetMesin: (String) -> Unit,
     showToast: (String) -> Unit,
 ) {
+    val colors = LocalAppColors.current
     var mcNoInput by remember { mutableStateOf("") }
     var form by remember { mutableStateOf<MesinData?>(null) }
     var loaded by remember { mutableStateOf(false) }
@@ -147,10 +150,10 @@ private fun EditMesinTab(
                 value = mcNoInput,
                 onValueChange = { mcNoInput = it; loaded = false },
                 modifier = Modifier.weight(1f),
-                placeholder = { Text("Nomor mesin", color = Zinc600) },
+                placeholder = { Text("Nomor mesin", color = colors.textFaint) },
                 colors = outlinedFieldColors(),
                 shape = RoundedCornerShape(12.dp),
-                textStyle = TextStyle(color = Zinc100, fontSize = 14.sp),
+                textStyle = TextStyle(color = colors.textPrimary, fontSize = 14.sp),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { doLoad() }),
                 singleLine = true,
@@ -189,7 +192,7 @@ private fun EditMesinTab(
                 modifier = Modifier.fillMaxWidth(),
                 colors = outlinedFieldColors(),
                 shape = RoundedCornerShape(12.dp),
-                textStyle = TextStyle(color = Zinc100, fontSize = 14.sp),
+                textStyle = TextStyle(color = colors.textPrimary, fontSize = 14.sp),
                 singleLine = true,
             )
 
@@ -198,10 +201,10 @@ private fun EditMesinTab(
                 value = f.targetYard?.toString() ?: "",
                 onValueChange = { form = f.copy(targetYard = it.toDoubleOrNull()) },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("opsional", color = Zinc600) },
+                placeholder = { Text("opsional", color = colors.textFaint) },
                 colors = outlinedFieldColors(),
                 shape = RoundedCornerShape(12.dp),
-                textStyle = TextStyle(color = Zinc100, fontSize = 14.sp),
+                textStyle = TextStyle(color = colors.textPrimary, fontSize = 14.sp),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 singleLine = true,
             )
@@ -212,10 +215,10 @@ private fun EditMesinTab(
                     value = f.speed?.toString() ?: "",
                     onValueChange = { form = f.copy(speed = it.toDoubleOrNull()) },
                     modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("cth: 0.158", color = Zinc600) },
+                    placeholder = { Text("cth: 0.158", color = colors.textFaint) },
                     colors = outlinedFieldColors(),
                     shape = RoundedCornerShape(12.dp),
-                    textStyle = TextStyle(color = Zinc100, fontSize = 14.sp),
+                    textStyle = TextStyle(color = colors.textPrimary, fontSize = 14.sp),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                 )
@@ -227,10 +230,10 @@ private fun EditMesinTab(
                     value = f.koreksi?.toString() ?: "",
                     onValueChange = { form = f.copy(koreksi = it.toDoubleOrNull()) },
                     modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("cth: 18", color = Zinc600) },
+                    placeholder = { Text("cth: 18", color = colors.textFaint) },
                     colors = outlinedFieldColors(),
                     shape = RoundedCornerShape(12.dp),
-                    textStyle = TextStyle(color = Zinc100, fontSize = 14.sp),
+                    textStyle = TextStyle(color = colors.textPrimary, fontSize = 14.sp),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                 )
@@ -244,8 +247,8 @@ private fun EditMesinTab(
                         loaded = false; form = null
                     },
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Zinc400),
-                    border = BorderStroke(1.dp, Zinc700),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
+                    border = BorderStroke(1.dp, colors.border),
                 ) { Text("Reset") }
                 Button(
                     onClick = {
@@ -267,12 +270,13 @@ private fun EditMesinTab(
 
 @Composable
 private fun ChipBtn(label: String, selected: Boolean, onClick: () -> Unit) {
+    val colors = LocalAppColors.current
     val shape = RoundedCornerShape(12.dp)
     Box(
         modifier = Modifier
             .clip(shape)
             .background(if (selected) Teal600 else Color.Transparent)
-            .border(1.dp, if (selected) Teal500 else Zinc700, shape)
+            .border(1.dp, if (selected) Teal500 else colors.border, shape)
             .clickable { onClick() }
             .padding(horizontal = 12.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center,
@@ -282,7 +286,7 @@ private fun ChipBtn(label: String, selected: Boolean, onClick: () -> Unit) {
             style = TextStyle(
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (selected) Zinc100 else Zinc400,
+                color = if (selected) Zinc100 else colors.textSecondary,
             ),
         )
     }
@@ -290,6 +294,7 @@ private fun ChipBtn(label: String, selected: Boolean, onClick: () -> Unit) {
 
 @Composable
 private fun DaftarMesinTab(state: DoffState) {
+    val colors = LocalAppColors.current
     var search by remember { mutableStateOf("") }
     var filter by remember { mutableStateOf<MesinTipe?>(null) }
 
@@ -308,10 +313,10 @@ private fun DaftarMesinTab(state: DoffState) {
             value = search,
             onValueChange = { search = it },
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Cari nomor / corak...", color = Zinc600) },
+            placeholder = { Text("Cari nomor / corak...", color = colors.textFaint) },
             colors = outlinedFieldColors(),
             shape = RoundedCornerShape(12.dp),
-            textStyle = TextStyle(color = Zinc100, fontSize = 14.sp),
+            textStyle = TextStyle(color = colors.textPrimary, fontSize = 14.sp),
             singleLine = true,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -328,21 +333,21 @@ private fun DaftarMesinTab(state: DoffState) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Zinc800.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                        .background(colors.bgElevated2.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
                         .padding(horizontal = 12.dp, vertical = 10.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(k, style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Zinc100), modifier = Modifier.width(32.dp))
-                    Text(v.tipe.name, style = TextStyle(fontSize = 11.sp, letterSpacing = 1.sp, color = Zinc500), modifier = Modifier.width(56.dp))
-                    Text(v.corak, style = TextStyle(fontSize = 14.sp, color = Zinc300), modifier = Modifier.weight(1f), maxLines = 1)
-                    if (v.targetYard != null) Text("${v.targetYard}y", style = TextStyle(fontSize = 11.sp, color = Zinc600))
+                    Text(k, style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary), modifier = Modifier.width(32.dp))
+                    Text(v.tipe.name, style = TextStyle(fontSize = 11.sp, letterSpacing = 1.sp, color = colors.textMuted), modifier = Modifier.width(56.dp))
+                    Text(v.corak, style = TextStyle(fontSize = 14.sp, color = colors.textPrimary), modifier = Modifier.weight(1f), maxLines = 1)
+                    if (v.targetYard != null) Text("${v.targetYard}y", style = TextStyle(fontSize = 11.sp, color = colors.textFaint))
                 }
             }
             if (entries.isEmpty()) {
                 item {
                     Box(Modifier.fillMaxWidth().height(80.dp), contentAlignment = Alignment.Center) {
-                        Text("Tidak ditemukan", color = Zinc600, style = TextStyle(fontSize = 14.sp))
+                        Text("Tidak ditemukan", color = colors.textFaint, style = TextStyle(fontSize = 14.sp))
                     }
                 }
             }
@@ -355,12 +360,28 @@ private fun DaftarMesinTab(state: DoffState) {
 private fun DataTab(
     state: DoffState,
     onResetDb: () -> Unit,
+    onSetThemeMode: (ThemeMode) -> Unit,
     showToast: (String) -> Unit,
     showConfirm: (String, () -> Unit) -> Unit,
 ) {
     val context = LocalContext.current
+    val colors = LocalAppColors.current
+    val currentTheme = remember(state.themeMode) {
+        runCatching { ThemeMode.valueOf(state.themeMode) }.getOrDefault(ThemeMode.SYSTEM)
+    }
 
     Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        FieldLabel("Tema Aplikasi")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ChipBtn("Sistem", currentTheme == ThemeMode.SYSTEM) { onSetThemeMode(ThemeMode.SYSTEM) }
+            ChipBtn("Gelap", currentTheme == ThemeMode.DARK) { onSetThemeMode(ThemeMode.DARK) }
+            ChipBtn("Terang", currentTheme == ThemeMode.LIGHT) { onSetThemeMode(ThemeMode.LIGHT) }
+        }
+
+        Spacer(Modifier.height(4.dp))
+        HorizontalDivider(color = colors.border)
+        Spacer(Modifier.height(4.dp))
+
         OutlinedButton(
             onClick = {
                 val gson = GsonBuilder().create()
@@ -379,12 +400,12 @@ private fun DataTab(
             },
             modifier = Modifier.fillMaxWidth().height(52.dp),
             shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = Zinc300),
-            border = BorderStroke(1.dp, Zinc700),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textPrimary),
+            border = BorderStroke(1.dp, colors.border),
         ) { Text("Export / Bagikan Data") }
 
         Spacer(Modifier.height(4.dp))
-        HorizontalDivider(color = Zinc800)
+        HorizontalDivider(color = colors.border)
         Spacer(Modifier.height(4.dp))
 
         OutlinedButton(

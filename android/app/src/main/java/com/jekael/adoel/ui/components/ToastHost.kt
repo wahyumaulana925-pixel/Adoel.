@@ -22,6 +22,7 @@ fun ToastHost(
     toast: ToastState?,
     onDismiss: () -> Unit,
 ) {
+    val colors = LocalAppColors.current
     LaunchedEffect(toast?.key) {
         if (toast != null) {
             delay(3500)
@@ -43,7 +44,7 @@ fun ToastHost(
             ) {
                 Row(
                     modifier = Modifier
-                        .background(Zinc800, RoundedCornerShape(24.dp))
+                        .background(colors.bgElevated2, RoundedCornerShape(24.dp))
                         .padding(horizontal = 20.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -53,7 +54,7 @@ fun ToastHost(
                         style = TextStyle(
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = Zinc100,
+                            color = colors.textPrimary,
                         ),
                         modifier = Modifier.weight(1f),
                     )

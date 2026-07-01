@@ -18,21 +18,22 @@ fun ConfirmDialog(
     onDismiss: () -> Unit,
 ) {
     if (confirm == null) return
+    val colors = LocalAppColors.current
     AlertDialog(
         onDismissRequest = { confirm.onCancel?.invoke(); onDismiss() },
-        containerColor = Zinc900,
-        titleContentColor = Zinc100,
-        textContentColor = Zinc400,
+        containerColor = colors.bgElevated,
+        titleContentColor = colors.textPrimary,
+        textContentColor = colors.textSecondary,
         title = {
             Text(
                 text = "Konfirmasi",
-                style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Zinc100),
+                style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary),
             )
         },
         text = {
             Text(
                 text = confirm.msg,
-                style = TextStyle(fontSize = 14.sp, color = Zinc400),
+                style = TextStyle(fontSize = 14.sp, color = colors.textSecondary),
             )
         },
         confirmButton = {
@@ -47,7 +48,7 @@ fun ConfirmDialog(
         dismissButton = {
             TextButton(
                 onClick = { confirm.onCancel?.invoke(); onDismiss() },
-                colors = ButtonDefaults.textButtonColors(contentColor = Zinc400),
+                colors = ButtonDefaults.textButtonColors(contentColor = colors.textSecondary),
             ) {
                 Text("Batal")
             }

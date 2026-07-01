@@ -32,9 +32,10 @@ fun HistoryDrawer(
     onShare: () -> Unit,
     onFinishShift: () -> Unit,
 ) {
+    val colors = LocalAppColors.current
     ModalBottomSheet(
         onDismissRequest = onClose,
-        containerColor = Zinc950,
+        containerColor = colors.bg,
         dragHandle = {
             Box(
                 modifier = Modifier
@@ -42,7 +43,7 @@ fun HistoryDrawer(
                     .width(40.dp)
                     .height(4.dp)
                     .clip(CircleShape)
-                    .background(Zinc700),
+                    .background(colors.border),
             )
         },
     ) {
@@ -59,7 +60,7 @@ fun HistoryDrawer(
         ) {
             Text(
                 text = "Riwayat",
-                style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Zinc100),
+                style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary),
             )
             Text(
                 text = "$total doff",
@@ -79,7 +80,7 @@ fun HistoryDrawer(
             ) {
                 Text(
                     text = "Belum ada doff",
-                    style = TextStyle(fontSize = 14.sp, color = Zinc600),
+                    style = TextStyle(fontSize = 14.sp, color = colors.textFaint),
                 )
             }
         } else {
@@ -103,7 +104,7 @@ fun HistoryDrawer(
         }
 
         // Footer
-        HorizontalDivider(color = Zinc800, modifier = Modifier.padding(top = 12.dp))
+        HorizontalDivider(color = colors.border, modifier = Modifier.padding(top = 12.dp))
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -115,8 +116,8 @@ fun HistoryDrawer(
                 onClick = onShare,
                 modifier = Modifier.weight(1f).height(50.dp),
                 shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Zinc400),
-                border = BorderStroke(1.dp, Zinc700),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
+                border = BorderStroke(1.dp, colors.border),
             ) {
                 Text("Bagikan", style = TextStyle(fontSize = 14.sp))
             }
@@ -140,6 +141,7 @@ private fun HistoryRow(
     mesinDb: Map<String, com.jekael.adoel.data.MesinData>,
     onEdit: () -> Unit,
 ) {
+    val colors = LocalAppColors.current
     val mesin = mesinDb[entry.mcNo]
     val corak = entry.corakOverride ?: mesin?.corak ?: "—"
     val num = total - index
@@ -148,7 +150,7 @@ private fun HistoryRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Zinc900)
+            .background(colors.bgElevated)
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -159,7 +161,7 @@ private fun HistoryRow(
             style = TextStyle(
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Black,
-                color = Zinc500,
+                color = colors.textMuted,
             ),
             modifier = Modifier.width(20.dp),
         )
@@ -169,7 +171,7 @@ private fun HistoryRow(
             com.jekael.adoel.data.MesinTipe.CAM -> Violet500
             com.jekael.adoel.data.MesinTipe.D405 -> Amber500
             com.jekael.adoel.data.MesinTipe.D408 -> Sky500
-            null -> Zinc600
+            null -> colors.textFaint
         }
         Box(
             modifier = Modifier
@@ -195,7 +197,7 @@ private fun HistoryRow(
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp,
-                    color = Zinc500,
+                    color = colors.textMuted,
                 ),
                 maxLines = 1,
             )
@@ -206,7 +208,7 @@ private fun HistoryRow(
             style = TextStyle(
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
-                color = Zinc200,
+                color = colors.textPrimary,
             ),
         )
         // Action button — always visible, no swipe

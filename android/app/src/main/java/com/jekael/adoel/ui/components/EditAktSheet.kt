@@ -36,6 +36,7 @@ fun EditAktSheet(
     val entry = state.aktual.find { it.id == aktualId } ?: return
     val mesin = state.db[entry.mcNo]
     val corakDefault = entry.corakOverride ?: mesin?.corak ?: ""
+    val colors = LocalAppColors.current
 
     var valInput by remember(aktualId) { mutableStateOf(entry.ket) }
     var corakInput by remember(aktualId) { mutableStateOf(corakDefault) }
@@ -65,7 +66,7 @@ fun EditAktSheet(
 
     ModalBottomSheet(
         onDismissRequest = onClose,
-        containerColor = Zinc900,
+        containerColor = colors.bgElevated,
         dragHandle = {
             Box(
                 modifier = Modifier
@@ -73,7 +74,7 @@ fun EditAktSheet(
                     .width(40.dp)
                     .height(4.dp)
                     .clip(CircleShape)
-                    .background(Zinc700),
+                    .background(colors.border),
             )
         },
     ) {
@@ -91,11 +92,11 @@ fun EditAktSheet(
             ) {
                 Text(
                     text = "Mc ${entry.mcNo}",
-                    style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Black, color = Zinc100),
+                    style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Black, color = colors.textPrimary),
                 )
                 Text(
                     text = entry.jam,
-                    style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Zinc500),
+                    style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Medium, color = colors.textMuted),
                 )
             }
 
@@ -108,7 +109,7 @@ fun EditAktSheet(
                 modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
                 colors = outlinedFieldColors(),
                 shape = RoundedCornerShape(12.dp),
-                textStyle = TextStyle(color = Zinc100, fontSize = 14.sp),
+                textStyle = TextStyle(color = colors.textPrimary, fontSize = 14.sp),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                 singleLine = true,
             )
@@ -122,7 +123,7 @@ fun EditAktSheet(
                 modifier = Modifier.fillMaxWidth(),
                 colors = outlinedFieldColors(),
                 shape = RoundedCornerShape(12.dp),
-                textStyle = TextStyle(color = Zinc100, fontSize = 14.sp),
+                textStyle = TextStyle(color = colors.textPrimary, fontSize = 14.sp),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
                 singleLine = true,
             )
@@ -136,7 +137,7 @@ fun EditAktSheet(
                 modifier = Modifier.fillMaxWidth(),
                 colors = outlinedFieldColors(),
                 shape = RoundedCornerShape(12.dp),
-                textStyle = TextStyle(color = Zinc100, fontSize = 14.sp),
+                textStyle = TextStyle(color = colors.textPrimary, fontSize = 14.sp),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { doSave() }),
                 singleLine = true,
@@ -152,8 +153,8 @@ fun EditAktSheet(
                     onClick = onClose,
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Zinc400),
-                    border = BorderStroke(1.dp, Zinc700),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
+                    border = BorderStroke(1.dp, colors.border),
                 ) { Text("Batal") }
                 Button(
                     onClick = { doSave() },

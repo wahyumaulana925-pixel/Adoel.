@@ -60,6 +60,7 @@ fun MainScreen(
 ) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
+    val colors = LocalAppColors.current
     val state by doffVm.state.collectAsStateWithLifecycle()
     val toast by uiVm.toast.collectAsStateWithLifecycle()
     val confirm by uiVm.confirm.collectAsStateWithLifecycle()
@@ -184,7 +185,7 @@ fun MainScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Zinc950)
+            .background(colors.bg)
             .systemBarsPadding(),
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -193,7 +194,7 @@ fun MainScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Zinc950)
+                    .background(colors.bg)
                     .padding(horizontal = 16.dp)
                     .height(48.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -203,7 +204,7 @@ fun MainScreen(
                 Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = "Adoel",
-                        style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Black, color = Zinc100, letterSpacing = (-0.5).sp),
+                        style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Black, color = colors.textPrimary, letterSpacing = (-0.5).sp),
                     )
                     Text(
                         text = ".",
@@ -215,13 +216,13 @@ fun MainScreen(
                     onClick = { settingsOpen = true },
                     modifier = Modifier
                         .size(36.dp)
-                        .background(Zinc900, CircleShape),
+                        .background(colors.bgElevated, CircleShape),
                 ) {
                     GearIcon()
                 }
             }
 
-            HorizontalDivider(color = Zinc800.copy(alpha = 0.6f))
+            HorizontalDivider(color = colors.bgElevated2.copy(alpha = 0.6f))
 
             // Shift progress — persistent framing of how far along the current shift is
             if (totalMc > 0) {
@@ -239,7 +240,7 @@ fun MainScreen(
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             showRemaining = !showRemaining
                         }
-                        .background(Zinc950)
+                        .background(colors.bg)
                         .padding(horizontal = 16.dp, vertical = 10.dp),
                 ) {
                     Row(
@@ -248,7 +249,7 @@ fun MainScreen(
                     ) {
                         Text(
                             text = if (showRemaining) "Sisa doff" else "Progres shift",
-                            style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.5.sp, color = Zinc500),
+                            style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.5.sp, color = colors.textMuted),
                         )
                         Text(
                             text = if (showRemaining) "$remainingMc mesin lagi" else "$doffCount dari $totalMc selesai",
@@ -261,7 +262,7 @@ fun MainScreen(
                             .fillMaxWidth()
                             .height(6.dp)
                             .clip(RoundedCornerShape(3.dp))
-                            .background(Zinc800),
+                            .background(colors.bgElevated2),
                     ) {
                         Box(
                             modifier = Modifier
@@ -272,7 +273,7 @@ fun MainScreen(
                         )
                     }
                 }
-                HorizontalDivider(color = Zinc800.copy(alpha = 0.6f))
+                HorizontalDivider(color = colors.bgElevated2.copy(alpha = 0.6f))
             }
 
             // Notification banner
@@ -286,8 +287,8 @@ fun MainScreen(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(0.dp),
                     colors = ButtonDefaults.textButtonColors(
-                        containerColor = Color(0xFF292007),
-                        contentColor = Amber400,
+                        containerColor = colors.bannerWarnBg,
+                        contentColor = colors.bannerWarnFg,
                     ),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 ) {
@@ -360,7 +361,7 @@ fun MainScreen(
                         item {
                             Text(
                                 text = "Belum ada doff hari ini",
-                                style = TextStyle(fontSize = 13.sp, color = Zinc600),
+                                style = TextStyle(fontSize = 13.sp, color = colors.textFaint),
                                 modifier = Modifier.padding(vertical = 16.dp),
                             )
                         }
@@ -400,7 +401,7 @@ fun MainScreen(
                 .padding(bottom = 12.dp)
                 .shadow(elevation = 16.dp, shape = RoundedCornerShape(28.dp))
                 .clip(RoundedCornerShape(28.dp))
-                .background(Zinc900)
+                .background(colors.bgElevated)
                 .imePadding(),
         ) {
             Column(
@@ -415,7 +416,7 @@ fun MainScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Zinc800, RoundedCornerShape(50.dp))
+                        .background(colors.bgElevated2, RoundedCornerShape(50.dp))
                         .padding(4.dp),
                 ) {
                     Row(modifier = Modifier.fillMaxWidth()) {
@@ -425,7 +426,7 @@ fun MainScreen(
                             shape = RoundedCornerShape(50.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = if (mode == Mode.ESTIMASI) Amber500 else Color.Transparent,
-                                contentColor = if (mode == Mode.ESTIMASI) Zinc950 else Zinc500,
+                                contentColor = if (mode == Mode.ESTIMASI) Zinc950 else colors.textMuted,
                             ),
                             contentPadding = PaddingValues(vertical = 10.dp),
                             elevation = ButtonDefaults.buttonElevation(0.dp),
@@ -438,7 +439,7 @@ fun MainScreen(
                             shape = RoundedCornerShape(50.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = if (mode == Mode.AKTUAL) Cyan600 else Color.Transparent,
-                                contentColor = if (mode == Mode.AKTUAL) Zinc100 else Zinc500,
+                                contentColor = if (mode == Mode.AKTUAL) Zinc100 else colors.textMuted,
                             ),
                             contentPadding = PaddingValues(vertical = 10.dp),
                             elevation = ButtonDefaults.buttonElevation(0.dp),
@@ -462,19 +463,19 @@ fun MainScreen(
                         placeholder = {
                             Text(
                                 if (mode == Mode.ESTIMASI) "cth: 31 45" else "cth: 31 HB",
-                                color = Zinc600,
+                                color = colors.textFaint,
                             )
                         },
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = Cyan500,
-                            unfocusedBorderColor = Zinc700,
+                            unfocusedBorderColor = colors.border,
                             cursorColor = Cyan500,
-                            focusedContainerColor = Zinc800,
-                            unfocusedContainerColor = Zinc800,
+                            focusedContainerColor = colors.bgElevated2,
+                            unfocusedContainerColor = colors.bgElevated2,
                         ),
                         shape = RoundedCornerShape(50.dp),
                         textStyle = TextStyle(
-                            color = Zinc100,
+                            color = colors.textPrimary,
                             fontSize = 17.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = FontFamily.Monospace,
@@ -500,7 +501,7 @@ fun MainScreen(
                         onClick = { historyOpen = true },
                         modifier = Modifier.size(56.dp),
                         shape = CircleShape,
-                        colors = ButtonDefaults.buttonColors(containerColor = Zinc800, contentColor = Zinc400),
+                        colors = ButtonDefaults.buttonColors(containerColor = colors.bgElevated2, contentColor = colors.textSecondary),
                         contentPadding = PaddingValues(0.dp),
                     ) { HistoryIcon() }
                 }
@@ -545,6 +546,7 @@ fun MainScreen(
                 NotificationHelper.cancelAll(context, state.estimasi.keys.toList())
                 doffVm.resetDb()
             },
+            onSetThemeMode = { mode -> doffVm.setThemeMode(mode.name) },
             showToast = { uiVm.showToast(it) },
             showConfirm = { msg, fn -> uiVm.showConfirm(msg, onConfirm = fn) },
         )
@@ -571,6 +573,7 @@ fun MainScreen(
 
 @Composable
 private fun SectionHeader(title: String, count: Int) {
+    val colors = LocalAppColors.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -580,12 +583,12 @@ private fun SectionHeader(title: String, count: Int) {
     ) {
         Text(
             text = title,
-            style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp, color = Zinc300),
+            style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp, color = colors.textPrimary),
         )
         if (count > 0) {
             Text(
                 text = "$count",
-                style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Zinc600),
+                style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = colors.textFaint),
             )
         }
     }
@@ -615,6 +618,7 @@ private fun UrgencyBandHeader(label: String, color: Color) {
 
 @Composable
 private fun HistorySectionHeader(count: Int, expanded: Boolean, onToggle: () -> Unit) {
+    val colors = LocalAppColors.current
     val rotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
         animationSpec = tween(200),
@@ -631,17 +635,17 @@ private fun HistorySectionHeader(count: Int, expanded: Boolean, onToggle: () -> 
     ) {
         Text(
             text = "Riwayat Hari Ini",
-            style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp, color = Zinc300),
+            style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp, color = colors.textPrimary),
         )
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 text = "$count",
-                style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Zinc600),
+                style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = colors.textFaint),
             )
             Icon(
                 Icons.Filled.KeyboardArrowDown,
                 contentDescription = if (expanded) "Sembunyikan" else "Tampilkan",
-                tint = Zinc500,
+                tint = colors.textMuted,
                 modifier = Modifier.size(18.dp).rotate(rotation),
             )
         }
@@ -650,12 +654,13 @@ private fun HistorySectionHeader(count: Int, expanded: Boolean, onToggle: () -> 
 
 @Composable
 private fun HistoryPreviewRow(entry: AktualEntry, mesin: MesinData?, onClick: () -> Unit) {
+    val colors = LocalAppColors.current
     val corak = entry.corakOverride ?: mesin?.corak ?: "—"
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(Zinc900)
+            .background(colors.bgElevated)
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -667,13 +672,13 @@ private fun HistoryPreviewRow(entry: AktualEntry, mesin: MesinData?, onClick: ()
         )
         Text(
             text = corak,
-            style = TextStyle(fontSize = 12.sp, color = Zinc500),
+            style = TextStyle(fontSize = 12.sp, color = colors.textMuted),
             modifier = Modifier.weight(1f),
             maxLines = 1,
         )
         Text(
             text = entry.ket,
-            style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Zinc300),
+            style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = colors.textPrimary),
             maxLines = 1,
         )
     }
@@ -681,25 +686,26 @@ private fun HistoryPreviewRow(entry: AktualEntry, mesin: MesinData?, onClick: ()
 
 @Composable
 private fun EmptyState(modifier: Modifier = Modifier) {
+    val colors = LocalAppColors.current
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.size(96.dp)) {
-            Box(Modifier.size(96.dp).clip(CircleShape).background(Zinc800.copy(alpha = 0.3f)))
-            Box(Modifier.size(72.dp).clip(CircleShape).background(Zinc950))
-            Box(Modifier.size(72.dp).clip(CircleShape).background(Zinc800.copy(alpha = 0.2f)))
-            Box(Modifier.size(48.dp).clip(CircleShape).background(Zinc950))
-            Box(Modifier.size(12.dp).clip(CircleShape).background(Zinc700))
+            Box(Modifier.size(96.dp).clip(CircleShape).background(colors.bgElevated2.copy(alpha = 0.3f)))
+            Box(Modifier.size(72.dp).clip(CircleShape).background(colors.bg))
+            Box(Modifier.size(72.dp).clip(CircleShape).background(colors.bgElevated2.copy(alpha = 0.2f)))
+            Box(Modifier.size(48.dp).clip(CircleShape).background(colors.bg))
+            Box(Modifier.size(12.dp).clip(CircleShape).background(colors.border))
         }
         Text(
             text = "Belum ada mesin yang dipantau",
-            style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Zinc400),
+            style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = colors.textSecondary),
         )
         Text(
             text = "Masukkan nomor mesin + estimasi di kolom bawah untuk mulai",
-            style = TextStyle(fontSize = 12.sp, color = Zinc600, lineHeight = 17.sp),
+            style = TextStyle(fontSize = 12.sp, color = colors.textFaint, lineHeight = 17.sp),
             modifier = Modifier.padding(horizontal = 32.dp),
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
