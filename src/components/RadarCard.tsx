@@ -138,7 +138,7 @@ export function RadarCard({ est, mesin, nowAbs, onDoff, onHapus, onLongPress }: 
       {/* Card face — transition-colors lets urgency tier shifts animate smoothly */}
       <div
         ref={innerRef}
-        className={`relative h-full bg-zinc-900 select-none overflow-hidden ${clr.pulse ? 'animate-pulse-soft' : ''}`}
+        className={`absolute inset-0 bg-zinc-900 select-none overflow-hidden z-10 ${clr.pulse ? 'animate-pulse-soft' : ''}`}
         style={{
           borderLeft: `3px solid ${clr.accent}`,
           boxShadow: `inset 0 0 0 1px ${clr.accent}18`,
