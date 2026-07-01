@@ -71,6 +71,9 @@ fun RadarCard(
     val revealPx = with(density) { revealDp.toPx() }
 
     val animOffset = remember { Animatable(0f) }
+    var isDragging by remember { mutableStateOf(false) }
+    var dragOffset by remember { mutableFloatStateOf(0f) }
+    val currentOffset = if (isDragging) dragOffset else animOffset.value
     val scope = rememberCoroutineScope()
 
     fun snapTo(open: Boolean) = scope.launch {
@@ -133,13 +136,13 @@ fun RadarCard(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    translationX = -animOffset.value
+                    translationX = -currentOffset
                 }
                 .background(faceBg)
                 .pointerInput(Unit) {
                     awaitEachGesture {
                         val down = awaitFirstDown()
-                        var isDragging = false
+                        isDragging = false
                         var longPressJob = scope.launch {
                             delay(480)
                             if (!isDragging) {
@@ -155,8 +158,15 @@ fun RadarCard(
                                 if (!change.pressed) {
                                     longPressJob.cancel()
                                     if (isDragging) {
-                                        val open = animOffset.value > revealPx * SNAP_OPEN_FRACTION
-                                        snapTo(open)
+                                        isDragging = false
+                                        val open = dragOffset > revealPx * SNAP_OPEN_FRACTION
+                                        scope.launch {
+                                            animOffset.snapTo(dragOffset)
+                                            animOffset.animateTo(
+                                                if (open) revealPx else 0f,
+                                                animationSpec = tween(220, easing = FastOutSlowInEasing),
+                                            )
+                                        }
                                     }
                                     break
                                 }
@@ -167,7 +177,7 @@ fun RadarCard(
                                 }
                                 if (isDragging) {
                                     change.consume()
-                                    animOffset.snapTo((startOffset + dx * SWIPE_SENSITIVITY).coerceIn(0f, revealPx))
+                                    dragOffset = (startOffset + dx * SWIPE_SENSITIVITY).coerceIn(0f, revealPx)
                                 }
                             }
                         } finally {

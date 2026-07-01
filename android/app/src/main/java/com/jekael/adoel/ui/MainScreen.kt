@@ -13,7 +13,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rotate
+import androidx.compose.ui.draw.rotate
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -102,6 +102,9 @@ fun MainScreen(
 
     val radarList = remember(state.estimasi) {
         state.estimasi.values.sortedBy { it.estAbsMin }
+    }
+    val recentHistory = remember(state.aktual) {
+        state.aktual.take(5)
     }
 
     fun handleCommand() {
@@ -317,8 +320,7 @@ fun MainScreen(
                     }
 
                     if (historyExpanded) {
-                        val recent = remember(state.aktual) { state.aktual.take(5) }
-                        if (recent.isEmpty()) {
+                        if (recentHistory.isEmpty()) {
                             item {
                                 Text(
                                     text = "Belum ada doff hari ini",
@@ -327,7 +329,7 @@ fun MainScreen(
                                 )
                             }
                         } else {
-                            items(recent, key = { "hist_${it.id}" }) { entry ->
+                            items(recentHistory, key = { "hist_${it.id}" }) { entry ->
                                 HistoryPreviewRow(
                                     entry = entry,
                                     mesin = state.db[entry.mcNo],
