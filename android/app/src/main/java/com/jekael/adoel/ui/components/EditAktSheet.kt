@@ -17,9 +17,9 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.jekael.adoel.data.AktualEntry
 import com.jekael.adoel.data.DoffState
 import com.jekael.adoel.ui.theme.*
 import kotlinx.coroutines.delay
@@ -30,16 +30,33 @@ fun EditAktSheet(
     aktualId: Int?,
     state: DoffState,
     onClose: () -> Unit,
-    onSave: (id: Int, ket: String) -> Unit,
-    onHapus: (entry: AktualEntry) -> Unit,
+    onSave: (id: Int, ket: String, corakOverride: String?, customYard: Double?) -> Unit,
 ) {
     if (aktualId == null) return
     val entry = state.aktual.find { it.id == aktualId } ?: return
     val mesin = state.db[entry.mcNo]
-    val corak = entry.corakOverride ?: mesin?.corak ?: "—"
+    val corakDefault = entry.corakOverride ?: mesin?.corak ?: ""
 
     var valInput by remember(aktualId) { mutableStateOf(entry.ket) }
+    var corakInput by remember(aktualId) { mutableStateOf(corakDefault) }
+    var yardInput by remember(aktualId) {
+        mutableStateOf(
+            entry.customYard?.let { y ->
+                if (y == y.toLong().toDouble()) y.toLong().toString() else y.toString()
+            } ?: "",
+        )
+    }
     val focusRequester = remember { FocusRequester() }
+
+    fun doSave() {
+        val k = valInput.trim()
+        if (k.isEmpty()) return
+        val corakTrim = corakInput.trim()
+        val corakOverride = if (corakTrim.isNotEmpty() && corakTrim != (mesin?.corak ?: "")) corakTrim else null
+        val yardTrim = yardInput.trim().replace(',', '.')
+        val customYard = yardTrim.toDoubleOrNull()
+        onSave(entry.id, k, corakOverride, customYard)
+    }
 
     LaunchedEffect(aktualId) {
         delay(100)
@@ -77,12 +94,6 @@ fun EditAktSheet(
                     style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Black, color = Zinc100),
                 )
                 Text(
-                    text = corak,
-                    style = TextStyle(fontSize = 14.sp, color = Zinc400),
-                    modifier = Modifier.weight(1f),
-                    maxLines = 1,
-                )
-                Text(
                     text = entry.jam,
                     style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Zinc500),
                 )
@@ -90,19 +101,44 @@ fun EditAktSheet(
 
             Spacer(Modifier.height(20.dp))
 
-            FieldLabel("Keterangan")
+            FieldLabel("Corak")
             OutlinedTextField(
-                value = valInput,
-                onValueChange = { valInput = it },
+                value = corakInput,
+                onValueChange = { corakInput = it },
                 modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
                 colors = outlinedFieldColors(),
                 shape = RoundedCornerShape(12.dp),
                 textStyle = TextStyle(color = Zinc100, fontSize = 14.sp),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                singleLine = true,
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            FieldLabel("Panjang / Batas Potong (yard)")
+            OutlinedTextField(
+                value = yardInput,
+                onValueChange = { yardInput = it },
+                modifier = Modifier.fillMaxWidth(),
+                colors = outlinedFieldColors(),
+                shape = RoundedCornerShape(12.dp),
+                textStyle = TextStyle(color = Zinc100, fontSize = 14.sp),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+                singleLine = true,
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            FieldLabel("Keterangan")
+            OutlinedTextField(
+                value = valInput,
+                onValueChange = { valInput = it },
+                modifier = Modifier.fillMaxWidth(),
+                colors = outlinedFieldColors(),
+                shape = RoundedCornerShape(12.dp),
+                textStyle = TextStyle(color = Zinc100, fontSize = 14.sp),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = {
-                    val k = valInput.trim()
-                    if (k.isNotEmpty()) onSave(entry.id, k)
-                }),
+                keyboardActions = KeyboardActions(onDone = { doSave() }),
                 singleLine = true,
             )
 
@@ -113,12 +149,6 @@ fun EditAktSheet(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 OutlinedButton(
-                    onClick = { onHapus(entry) },
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Red400),
-                    border = BorderStroke(1.dp, Zinc700),
-                ) { Text("Hapus") }
-                OutlinedButton(
                     onClick = onClose,
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(16.dp),
@@ -126,10 +156,7 @@ fun EditAktSheet(
                     border = BorderStroke(1.dp, Zinc700),
                 ) { Text("Batal") }
                 Button(
-                    onClick = {
-                        val k = valInput.trim()
-                        if (k.isNotEmpty()) onSave(entry.id, k)
-                    },
+                    onClick = { doSave() },
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Teal500),

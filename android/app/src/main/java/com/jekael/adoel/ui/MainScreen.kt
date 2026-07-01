@@ -498,12 +498,6 @@ fun MainScreen(
             state = state,
             onClose = { historyOpen = false },
             onEditAkt = { id -> historyOpen = false; editAktId = id },
-            onHapus = { entry ->
-                uiVm.showConfirm("Hapus doff Mc ${entry.mcNo}?") {
-                    doffVm.hapusAktualById(entry.id)
-                    uiVm.showToast("Mc ${entry.mcNo} dihapus", undo = { doffVm.restoreAktual(entry) })
-                }
-            },
             onShare = { shareHistory(context, state) },
             onFinishShift = {
                 uiVm.showConfirm("Akhiri shift? Riwayat ${state.aktual.size} doff akan dihapus.") {
@@ -536,17 +530,10 @@ fun MainScreen(
             aktualId = editAktId,
             state = state,
             onClose = { editAktId = null },
-            onSave = { id, ket ->
-                doffVm.updateAktual(id, ket)
+            onSave = { id, ket, corakOverride, customYard ->
+                doffVm.updateAktual(id, ket, corakOverride, customYard)
                 uiVm.showToast("Riwayat diperbarui")
                 editAktId = null
-            },
-            onHapus = { entry ->
-                uiVm.showConfirm("Hapus doff Mc ${entry.mcNo}?") {
-                    doffVm.hapusAktualById(entry.id)
-                    uiVm.showToast("Mc ${entry.mcNo} dihapus", undo = { doffVm.restoreAktual(entry) })
-                    editAktId = null
-                }
             },
         )
     }

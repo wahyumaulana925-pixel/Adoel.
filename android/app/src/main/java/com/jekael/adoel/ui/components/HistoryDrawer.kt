@@ -8,7 +8,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -30,7 +29,6 @@ fun HistoryDrawer(
     state: DoffState,
     onClose: () -> Unit,
     onEditAkt: (Int) -> Unit,
-    onHapus: (AktualEntry) -> Unit,
     onShare: () -> Unit,
     onFinishShift: () -> Unit,
 ) {
@@ -99,7 +97,6 @@ fun HistoryDrawer(
                         total = total,
                         mesinDb = state.db,
                         onEdit = { onEditAkt(entry.id) },
-                        onHapus = { onHapus(entry) },
                     )
                 }
             }
@@ -142,7 +139,6 @@ private fun HistoryRow(
     total: Int,
     mesinDb: Map<String, com.jekael.adoel.data.MesinData>,
     onEdit: () -> Unit,
-    onHapus: () -> Unit,
 ) {
     val mesin = mesinDb[entry.mcNo]
     val corak = entry.corakOverride ?: mesin?.corak ?: "—"
@@ -213,23 +209,12 @@ private fun HistoryRow(
                 color = Zinc200,
             ),
         )
-        // Action buttons — always visible, no swipe
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+        // Action button — always visible, no swipe
+        IconButton(
+            onClick = onEdit,
+            modifier = Modifier.size(32.dp).background(Cyan700, CircleShape),
         ) {
-            IconButton(
-                onClick = onEdit,
-                modifier = Modifier.size(28.dp).background(Cyan700, CircleShape),
-            ) {
-                Icon(Icons.Outlined.Edit, contentDescription = "Edit", tint = Color.White, modifier = Modifier.size(14.dp))
-            }
-            IconButton(
-                onClick = onHapus,
-                modifier = Modifier.size(28.dp).background(Red700, CircleShape),
-            ) {
-                Icon(Icons.Outlined.Delete, contentDescription = "Hapus", tint = Color.White, modifier = Modifier.size(14.dp))
-            }
+            Icon(Icons.Outlined.Edit, contentDescription = "Edit", tint = Color.White, modifier = Modifier.size(16.dp))
         }
     }
 }

@@ -165,15 +165,12 @@ class DoffViewModel(app: Application) : AndroidViewModel(app) {
         s.copy(aktual = s.aktual.filter { it.id != id })
     }
 
-    fun updateAktual(id: Int, ket: String) = updateState { s ->
-        s.copy(aktual = s.aktual.map { if (it.id == id) it.copy(ket = ket) else it })
-    }
-
-    fun restoreAktual(entry: AktualEntry) = updateState { s ->
-        val arr = s.aktual.toMutableList()
-        val pos = arr.indexOfFirst { it.id < entry.id }
-        if (pos == -1) arr.add(entry) else arr.add(pos, entry)
-        s.copy(aktual = arr)
+    fun updateAktual(id: Int, ket: String, corakOverride: String?, customYard: Double?) = updateState { s ->
+        s.copy(
+            aktual = s.aktual.map {
+                if (it.id == id) it.copy(ket = ket, corakOverride = corakOverride, customYard = customYard) else it
+            },
+        )
     }
 
     fun finishShift() = updateState { s ->
