@@ -21,6 +21,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jekael.adoel.data.DoffState
+import com.jekael.adoel.data.formatYard
 import com.jekael.adoel.ui.theme.*
 import kotlinx.coroutines.delay
 
@@ -41,11 +42,7 @@ fun EditAktSheet(
     var valInput by remember(aktualId) { mutableStateOf(entry.ket) }
     var corakInput by remember(aktualId) { mutableStateOf(corakDefault) }
     var yardInput by remember(aktualId) {
-        mutableStateOf(
-            entry.customYard?.let { y ->
-                if (y == y.toLong().toDouble()) y.toLong().toString() else y.toString()
-            } ?: "",
-        )
+        mutableStateOf(entry.customYard?.let { formatYard(it) } ?: "")
     }
     val focusRequester = remember { FocusRequester() }
 
@@ -121,6 +118,12 @@ fun EditAktSheet(
                 value = yardInput,
                 onValueChange = { yardInput = it },
                 modifier = Modifier.fillMaxWidth(),
+                placeholder = {
+                    val standar = mesin?.targetYard
+                    if (standar != null) {
+                        Text("Standar: ${formatYard(standar)}y", color = colors.textFaint)
+                    }
+                },
                 colors = outlinedFieldColors(),
                 shape = RoundedCornerShape(12.dp),
                 textStyle = TextStyle(color = colors.textPrimary, fontSize = 14.sp),

@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jekael.adoel.data.AktualEntry
 import com.jekael.adoel.data.DoffState
+import com.jekael.adoel.data.formatYard
 import com.jekael.adoel.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -190,7 +191,11 @@ private fun HistoryRow(
                     color = Cyan500,
                 ),
             )
-            val sub = if (entry.customYard != null) "$corak · ${entry.customYard}y" else corak
+            val sub = when {
+                entry.customYard != null -> "$corak · ${formatYard(entry.customYard)}y"
+                mesin?.targetYard != null -> "$corak · ${formatYard(mesin.targetYard)}y (standar)"
+                else -> corak
+            }
             Text(
                 text = sub,
                 style = TextStyle(

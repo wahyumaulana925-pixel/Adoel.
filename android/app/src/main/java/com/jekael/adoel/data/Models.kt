@@ -68,6 +68,9 @@ fun formatDeltaMin(deltaMin: Long): String {
     return if (mag >= 60) "$sign${mag / 60}j${mag % 60}m" else "$sign${mag}m"
 }
 
+fun formatYard(y: Double): String =
+    if (y == y.toLong().toDouble()) y.toLong().toString() else y.toString()
+
 fun jamKeShiftAbs(jamMin: Int): Long {
     val startOfDay = Calendar.getInstance().apply {
         set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)

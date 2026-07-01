@@ -793,6 +793,11 @@ private fun HistorySectionHeader(count: Int, expanded: Boolean, onToggle: () -> 
 private fun HistoryPreviewRow(entry: AktualEntry, mesin: MesinData?, onClick: () -> Unit) {
     val colors = LocalAppColors.current
     val corak = entry.corakOverride ?: mesin?.corak ?: "—"
+    val sub = when {
+        entry.customYard != null -> "$corak · ${formatYard(entry.customYard)}y"
+        mesin?.targetYard != null -> "$corak · ${formatYard(mesin.targetYard)}y (standar)"
+        else -> corak
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -808,7 +813,7 @@ private fun HistoryPreviewRow(entry: AktualEntry, mesin: MesinData?, onClick: ()
             style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Black, color = Cyan500, letterSpacing = (-0.5).sp),
         )
         Text(
-            text = corak,
+            text = sub,
             style = TextStyle(fontSize = 12.sp, color = colors.textMuted),
             modifier = Modifier.weight(1f),
             maxLines = 1,
