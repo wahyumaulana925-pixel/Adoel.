@@ -61,6 +61,12 @@ fun nowTimeStr(): String {
     return "%02d.%02d".format(cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE))
 }
 
+fun formatDeltaMin(deltaMin: Long): String {
+    val sign = if (deltaMin >= 0) "+" else "−"
+    val mag = abs(deltaMin)
+    return if (mag >= 60) "$sign${mag / 60}j${mag % 60}m" else "$sign${mag}m"
+}
+
 fun jamKeShiftAbs(jamMin: Int): Long {
     val startOfDay = Calendar.getInstance().apply {
         set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)

@@ -57,7 +57,7 @@ fun RadarCard(
     val totalDur = est.estAbsMin - est.startAbsMin
     val elapsed = nowAbs - est.startAbsMin
     val progress = if (totalDur > 0) (elapsed.toFloat() / totalDur).coerceIn(0f, 1f) else 0f
-    val remStr = if (remaining >= 0) "+${remaining}m" else "−${abs(remaining)}m"
+    val remStr = formatDeltaMin(remaining)
     val corak = est.corakOverride ?: mesin?.corak ?: "—"
     val tipe = mesin?.tipe?.name ?: "?"
     val showDot = remaining <= 5

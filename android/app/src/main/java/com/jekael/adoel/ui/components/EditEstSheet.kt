@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.sp
 import com.jekael.adoel.data.*
 import com.jekael.adoel.ui.theme.*
 import kotlinx.coroutines.delay
-import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,7 +39,7 @@ fun EditEstSheet(
     val mesin = state.db[mcNo] ?: return
 
     val delta = est.estAbsMin - nowAbs
-    val deltaStr = if (delta >= 0) "+${delta}m" else "−${abs(delta)}m"
+    val deltaStr = formatDeltaMin(delta)
 
     var valInput by remember(mcNo) { mutableStateOf("") }
     var corakVal by remember(mcNo) { mutableStateOf(est.corakOverride ?: mesin.corak) }
