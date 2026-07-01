@@ -13,19 +13,18 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.ui.draw.rotate
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -62,7 +61,7 @@ fun MainScreen(
     val toast by uiVm.toast.collectAsStateWithLifecycle()
     val confirm by uiVm.confirm.collectAsStateWithLifecycle()
 
-    // Quick-mode command bar state (only used when state.quickModeEnabled)
+    // Console command bar — the one and only way to record estimasi/doffing
     var mode by remember { mutableStateOf(Mode.AKTUAL) }
     var input by remember { mutableStateOf("") }
 
@@ -74,11 +73,6 @@ fun MainScreen(
     var editEstMc by remember { mutableStateOf<String?>(null) }
     var editAktId by remember { mutableStateOf<Int?>(null) }
     var historyExpanded by remember { mutableStateOf(false) }
-
-    var addSheetOpen by remember { mutableStateOf(false) }
-    var catatEstimasiOpen by remember { mutableStateOf(false) }
-    var catatDoffingOpen by remember { mutableStateOf(false) }
-    var quickDoffMc by remember { mutableStateOf<String?>(null) }
 
     val inputFocus = remember { FocusRequester() }
 
@@ -134,6 +128,7 @@ fun MainScreen(
                 val result = doffVm.prosesBarisUmum(cmd)
                 when (result) {
                     is ProsesResult.Ok -> {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         NotificationHelper.cancelNotif(context, result.mcNo)
                         uiVm.showToast(result.msg, undo = {
                             result.undoFn?.invoke()
@@ -172,39 +167,6 @@ fun MainScreen(
                 NotificationHelper.scheduleNotif(context, prevEst.mcNo, prevEst.estAbsMin)
             }
         })
-    }
-
-    fun handleCatatEstimasiLine(rawLine: String): Boolean {
-        val cmd = rawLine.trim().uppercase()
-        if (cmd.isEmpty()) return false
-        val result = doffVm.prosesBarisKondisiMesin(cmd, nowAbsMin())
-        return when (result) {
-            is ProsesResult.Ok -> {
-                uiVm.showToast(result.msg)
-                result.estAbs?.let { NotificationHelper.scheduleNotif(context, result.mcNo, it) }
-                true
-            }
-            is ProsesResult.Err -> {
-                uiVm.showToast("⚠ ${result.msg}")
-                false
-            }
-        }
-    }
-
-    fun submitDoffing(mcNo: String, keterangan: String, onSuccess: () -> Unit) {
-        val result = doffVm.catatDoffing(mcNo, keterangan)
-        when (result) {
-            is ProsesResult.Ok -> {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                NotificationHelper.cancelNotif(context, result.mcNo)
-                uiVm.showToast(result.msg, undo = {
-                    result.undoFn?.invoke()
-                    result.prevEst?.let { NotificationHelper.scheduleNotif(context, it.mcNo, it.estAbsMin) }
-                })
-                onSuccess()
-            }
-            is ProsesResult.Err -> uiVm.showToast("⚠ ${result.msg}")
-        }
     }
 
     val doffCount = state.aktual.size
@@ -322,227 +284,208 @@ fun MainScreen(
                 HorizontalDivider(color = Amber700.copy(alpha = 0.5f))
             }
 
-            // Main scrollable content + FAB
-            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
+            // Main scrollable content
+            LazyColumn(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                item {
+                    SectionHeader(title = "Mesin Siap", count = radarList.size)
+                    if (radarList.isNotEmpty()) {
+                        Text(
+                            text = "Tahan kartu untuk edit estimasi",
+                            style = TextStyle(fontSize = 11.sp, color = Zinc600),
+                            modifier = Modifier.padding(start = 4.dp, end = 4.dp, bottom = 4.dp),
+                        )
+                    }
+                }
+
+                if (radarList.isEmpty()) {
                     item {
-                        SectionHeader(title = "Mesin Siap", count = radarList.size)
-                        if (radarList.isNotEmpty()) {
-                            Text(
-                                text = "Ketuk kartu untuk catat doffing · tahan untuk edit estimasi",
-                                style = TextStyle(fontSize = 11.sp, color = Zinc600),
-                                modifier = Modifier.padding(start = 4.dp, end = 4.dp, bottom = 4.dp),
+                        EmptyState(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp))
+                    }
+                } else {
+                    if (segeraList.isNotEmpty()) {
+                        item {
+                            UrgencyBandHeader(label = "Segera", color = Red400)
+                        }
+                        items(segeraList, key = { it.mcNo }) { est ->
+                            RadarCard(
+                                est = est,
+                                mesin = state.db[est.mcNo],
+                                nowAbs = nowAbs,
+                                onDoff = { handleDoff(est.mcNo) },
+                                onHapus = { handleHapusEst(est.mcNo) },
+                                onLongPress = { editEstMc = est.mcNo },
+                                modifier = Modifier.animateItem(),
                             )
                         }
                     }
-
-                    if (radarList.isEmpty()) {
+                    if (menungguList.isNotEmpty()) {
                         item {
-                            EmptyState(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp))
+                            UrgencyBandHeader(label = "Menunggu", color = Cyan400)
                         }
-                    } else {
-                        if (segeraList.isNotEmpty()) {
-                            item {
-                                UrgencyBandHeader(label = "Segera", color = Red400)
-                            }
-                            items(segeraList, key = { it.mcNo }) { est ->
-                                RadarCard(
-                                    est = est,
-                                    mesin = state.db[est.mcNo],
-                                    nowAbs = nowAbs,
-                                    onDoff = { handleDoff(est.mcNo) },
-                                    onHapus = { handleHapusEst(est.mcNo) },
-                                    onLongPress = { editEstMc = est.mcNo },
-                                    onTap = { quickDoffMc = est.mcNo },
-                                    modifier = Modifier.animateItem(),
-                                )
-                            }
-                        }
-                        if (menungguList.isNotEmpty()) {
-                            item {
-                                UrgencyBandHeader(label = "Menunggu", color = Cyan400)
-                            }
-                            items(menungguList, key = { it.mcNo }) { est ->
-                                RadarCard(
-                                    est = est,
-                                    mesin = state.db[est.mcNo],
-                                    nowAbs = nowAbs,
-                                    onDoff = { handleDoff(est.mcNo) },
-                                    onHapus = { handleHapusEst(est.mcNo) },
-                                    onLongPress = { editEstMc = est.mcNo },
-                                    onTap = { quickDoffMc = est.mcNo },
-                                    modifier = Modifier.animateItem(),
-                                )
-                            }
+                        items(menungguList, key = { it.mcNo }) { est ->
+                            RadarCard(
+                                est = est,
+                                mesin = state.db[est.mcNo],
+                                nowAbs = nowAbs,
+                                onDoff = { handleDoff(est.mcNo) },
+                                onHapus = { handleHapusEst(est.mcNo) },
+                                onLongPress = { editEstMc = est.mcNo },
+                                modifier = Modifier.animateItem(),
+                            )
                         }
                     }
-
-                    item {
-                        Spacer(Modifier.height(12.dp))
-                        HistorySectionHeader(
-                            count = state.aktual.size,
-                            expanded = historyExpanded,
-                            onToggle = { historyExpanded = !historyExpanded },
-                        )
-                    }
-
-                    if (historyExpanded) {
-                        if (recentHistory.isEmpty()) {
-                            item {
-                                Text(
-                                    text = "Belum ada doff hari ini",
-                                    style = TextStyle(fontSize = 13.sp, color = Zinc600),
-                                    modifier = Modifier.padding(vertical = 16.dp),
-                                )
-                            }
-                        } else {
-                            items(recentHistory, key = { "hist_${it.id}" }) { entry ->
-                                HistoryPreviewRow(
-                                    entry = entry,
-                                    mesin = state.db[entry.mcNo],
-                                    onClick = { editAktId = entry.id },
-                                )
-                            }
-                            item {
-                                TextButton(
-                                    onClick = { historyOpen = true },
-                                    modifier = Modifier.fillMaxWidth(),
-                                ) {
-                                    Text(
-                                        "Lihat semua riwayat →",
-                                        style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Cyan400),
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    item { Spacer(Modifier.height(72.dp)) }
                 }
 
-                // Floating action button — primary way to add estimasi/doffing
-                FloatingActionButton(
-                    onClick = { addSheetOpen = true },
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(16.dp),
-                    containerColor = Cyan600,
-                    contentColor = Zinc100,
-                ) {
-                    Icon(Icons.Filled.Add, contentDescription = "Tambah catatan")
+                item {
+                    Spacer(Modifier.height(12.dp))
+                    HistorySectionHeader(
+                        count = state.aktual.size,
+                        expanded = historyExpanded,
+                        onToggle = { historyExpanded = !historyExpanded },
+                    )
+                }
+
+                if (historyExpanded) {
+                    if (recentHistory.isEmpty()) {
+                        item {
+                            Text(
+                                text = "Belum ada doff hari ini",
+                                style = TextStyle(fontSize = 13.sp, color = Zinc600),
+                                modifier = Modifier.padding(vertical = 16.dp),
+                            )
+                        }
+                    } else {
+                        items(recentHistory, key = { "hist_${it.id}" }) { entry ->
+                            HistoryPreviewRow(
+                                entry = entry,
+                                mesin = state.db[entry.mcNo],
+                                onClick = { editAktId = entry.id },
+                            )
+                        }
+                        item {
+                            TextButton(
+                                onClick = { historyOpen = true },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(
+                                    "Lihat semua riwayat →",
+                                    style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Cyan400),
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
-            // Quick Mode command bar — only shown when explicitly enabled in Settings
-            if (state.quickModeEnabled) {
-                HorizontalDivider(color = Zinc800.copy(alpha = 0.6f))
-                Column(
+            HorizontalDivider(color = Zinc800.copy(alpha = 0.6f))
+
+            // Console command bar — the sole input model for estimasi/doffing
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Zinc950)
+                    .padding(horizontal = 12.dp)
+                    .padding(top = 10.dp)
+                    .imePadding()
+                    .navigationBarsPadding()
+                    .padding(bottom = 4.dp),
+            ) {
+                // Mode toggle
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Zinc950)
-                        .padding(horizontal = 12.dp)
-                        .padding(top = 10.dp)
-                        .imePadding()
-                        .navigationBarsPadding()
-                        .padding(bottom = 4.dp),
+                        .background(Zinc800, RoundedCornerShape(50.dp))
+                        .padding(4.dp),
                 ) {
-                    // Mode toggle
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(Zinc800, RoundedCornerShape(50.dp))
-                            .padding(4.dp),
-                    ) {
-                        Row(modifier = Modifier.fillMaxWidth()) {
-                            Button(
-                                onClick = { mode = Mode.ESTIMASI },
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(50.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (mode == Mode.ESTIMASI) Amber500 else Color.Transparent,
-                                    contentColor = if (mode == Mode.ESTIMASI) Zinc950 else Zinc500,
-                                ),
-                                contentPadding = PaddingValues(vertical = 10.dp),
-                                elevation = ButtonDefaults.buttonElevation(0.dp),
-                            ) {
-                                Text("ESTIMASI", style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold))
-                            }
-                            Button(
-                                onClick = { mode = Mode.AKTUAL },
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(50.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (mode == Mode.AKTUAL) Cyan600 else Color.Transparent,
-                                    contentColor = if (mode == Mode.AKTUAL) Zinc100 else Zinc500,
-                                ),
-                                contentPadding = PaddingValues(vertical = 10.dp),
-                                elevation = ButtonDefaults.buttonElevation(0.dp),
-                            ) {
-                                Text("DOFFING", style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold))
-                            }
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        Button(
+                            onClick = { mode = Mode.ESTIMASI },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(50.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (mode == Mode.ESTIMASI) Amber500 else Color.Transparent,
+                                contentColor = if (mode == Mode.ESTIMASI) Zinc950 else Zinc500,
+                            ),
+                            contentPadding = PaddingValues(vertical = 10.dp),
+                            elevation = ButtonDefaults.buttonElevation(0.dp),
+                        ) {
+                            Text("ESTIMASI", style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold))
+                        }
+                        Button(
+                            onClick = { mode = Mode.AKTUAL },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(50.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (mode == Mode.AKTUAL) Cyan600 else Color.Transparent,
+                                contentColor = if (mode == Mode.AKTUAL) Zinc100 else Zinc500,
+                            ),
+                            contentPadding = PaddingValues(vertical = 10.dp),
+                            elevation = ButtonDefaults.buttonElevation(0.dp),
+                        ) {
+                            Text("DOFFING", style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold))
                         }
                     }
+                }
 
-                    Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(10.dp))
 
-                    // Command row
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        OutlinedTextField(
-                            value = input,
-                            onValueChange = { input = it.uppercase() },
-                            modifier = Modifier.weight(1f).focusRequester(inputFocus),
-                            placeholder = {
-                                Text(
-                                    if (mode == Mode.ESTIMASI) "cth: 31 45" else "cth: 31 HB",
-                                    color = Zinc600,
-                                )
-                            },
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = Cyan500,
-                                unfocusedBorderColor = Zinc700,
-                                cursorColor = Cyan500,
-                                focusedContainerColor = Zinc800,
-                                unfocusedContainerColor = Zinc800,
-                            ),
-                            shape = RoundedCornerShape(50.dp),
-                            textStyle = TextStyle(
-                                color = Zinc100,
-                                fontSize = 17.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = FontFamily.Monospace,
-                                letterSpacing = (-0.5).sp,
-                            ),
-                            keyboardOptions = KeyboardOptions(
-                                capitalization = KeyboardCapitalization.Characters,
-                                imeAction = ImeAction.Send,
-                            ),
-                            keyboardActions = KeyboardActions(onSend = { handleCommand() }),
-                            singleLine = true,
-                        )
-                        // Send button
-                        Button(
-                            onClick = { handleCommand() },
-                            modifier = Modifier.size(56.dp),
-                            shape = CircleShape,
-                            colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
-                            contentPadding = PaddingValues(0.dp),
-                        ) { SendIcon() }
-                        // History button
-                        Button(
-                            onClick = { historyOpen = true },
-                            modifier = Modifier.size(56.dp),
-                            shape = CircleShape,
-                            colors = ButtonDefaults.buttonColors(containerColor = Zinc800, contentColor = Zinc400),
-                            contentPadding = PaddingValues(0.dp),
-                        ) { HistoryIcon() }
-                    }
+                // Command row
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    OutlinedTextField(
+                        value = input,
+                        onValueChange = { input = it.uppercase() },
+                        modifier = Modifier.weight(1f).focusRequester(inputFocus),
+                        placeholder = {
+                            Text(
+                                if (mode == Mode.ESTIMASI) "cth: 31 45" else "cth: 31 HB",
+                                color = Zinc600,
+                            )
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Cyan500,
+                            unfocusedBorderColor = Zinc700,
+                            cursorColor = Cyan500,
+                            focusedContainerColor = Zinc800,
+                            unfocusedContainerColor = Zinc800,
+                        ),
+                        shape = RoundedCornerShape(50.dp),
+                        textStyle = TextStyle(
+                            color = Zinc100,
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = (-0.5).sp,
+                        ),
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.Characters,
+                            imeAction = ImeAction.Send,
+                        ),
+                        keyboardActions = KeyboardActions(onSend = { handleCommand() }),
+                        singleLine = true,
+                    )
+                    // Send button
+                    Button(
+                        onClick = { handleCommand() },
+                        modifier = Modifier.size(56.dp),
+                        shape = CircleShape,
+                        colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
+                        contentPadding = PaddingValues(0.dp),
+                    ) { SendIcon() }
+                    // History button
+                    Button(
+                        onClick = { historyOpen = true },
+                        modifier = Modifier.size(56.dp),
+                        shape = CircleShape,
+                        colors = ButtonDefaults.buttonColors(containerColor = Zinc800, contentColor = Zinc400),
+                        contentPadding = PaddingValues(0.dp),
+                    ) { HistoryIcon() }
                 }
             }
         }
@@ -558,38 +501,6 @@ fun MainScreen(
     }
 
     // Overlays
-    if (addSheetOpen) {
-        AddActionSheet(
-            onClose = { addSheetOpen = false },
-            onCatatEstimasi = { catatEstimasiOpen = true },
-            onCatatDoffing = { catatDoffingOpen = true },
-        )
-    }
-
-    if (catatEstimasiOpen) {
-        CatatEstimasiSheet(
-            onClose = { catatEstimasiOpen = false },
-            onSubmit = { rawLine -> handleCatatEstimasiLine(rawLine) },
-        )
-    }
-
-    if (catatDoffingOpen) {
-        CatatDoffingSheet(
-            state = state,
-            onClose = { catatDoffingOpen = false },
-            onSubmit = { mcNo, keterangan -> submitDoffing(mcNo, keterangan) { catatDoffingOpen = false } },
-        )
-    }
-
-    if (quickDoffMc != null) {
-        QuickDoffSheet(
-            mcNo = quickDoffMc!!,
-            state = state,
-            onClose = { quickDoffMc = null },
-            onSubmit = { keterangan -> submitDoffing(quickDoffMc!!, keterangan) { quickDoffMc = null } },
-        )
-    }
-
     if (historyOpen) {
         HistoryDrawer(
             state = state,
@@ -623,7 +534,6 @@ fun MainScreen(
                 doffVm.resetDb()
             },
             onImportDb = { db -> db.forEach { (k, v) -> doffVm.setMesin(k, v) } },
-            onSetQuickMode = { enabled -> doffVm.setQuickMode(enabled) },
             showToast = { uiVm.showToast(it) },
             showConfirm = { msg, fn -> uiVm.showConfirm(msg, onConfirm = fn) },
         )
@@ -826,7 +736,7 @@ private fun EmptyState(modifier: Modifier = Modifier) {
             style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Zinc400),
         )
         Text(
-            text = "Ketuk tombol ＋ di kanan bawah untuk mulai catat estimasi atau doffing ↘",
+            text = "Masukkan nomor mesin + estimasi di kolom bawah untuk mulai",
             style = TextStyle(fontSize = 12.sp, color = Zinc600, lineHeight = 17.sp),
             modifier = Modifier.padding(horizontal = 32.dp),
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,

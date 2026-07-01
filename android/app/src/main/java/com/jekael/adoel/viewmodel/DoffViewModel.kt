@@ -41,10 +41,6 @@ class DoffViewModel(app: Application) : AndroidViewModel(app) {
         DoffState(db = buildDefaultDb())
     }
 
-    fun setQuickMode(enabled: Boolean) = updateState { s ->
-        s.copy(quickModeEnabled = enabled)
-    }
-
     fun prosesBarisKondisiMesin(ln: String, nowAbsMin: Long): ProsesResult {
         val parts = ln.trim().split(Regex("\\s+"))
         if (parts.size < 2) return ProsesResult.Err("Kurang data")
@@ -125,20 +121,6 @@ class DoffViewModel(app: Application) : AndroidViewModel(app) {
         val extra = standarisasiKeterangan(ketTokens.joinToString(" ").trim())
         val ket = if (extra.isNotEmpty()) "$jam($extra)" else jam
 
-        return commitDoffing(mcNo, jam, ket, customYard)
-    }
-
-    /** Guided-form entry point: mcNo comes from a picker, keterangan is free text with no parsing/standardization. */
-    fun catatDoffing(mcNo: String, keterangan: String): ProsesResult {
-        if (_state.value.db[mcNo] == null) return ProsesResult.Err("Mc $mcNo tidak ditemukan")
-        val jam = nowTimeStr()
-        val clean = keterangan.trim()
-        val ket = if (clean.isNotEmpty()) "$jam($clean)" else jam
-        return commitDoffing(mcNo, jam, ket, customYard = null)
-    }
-
-    private fun commitDoffing(mcNo: String, jam: String, ket: String, customYard: Double?): ProsesResult {
-        val mesin = _state.value.db[mcNo] ?: return ProsesResult.Err("Mc $mcNo tidak ditemukan")
         val prevEst = _state.value.estimasi[mcNo]
         val effectiveCorak = prevEst?.corakOverride ?: mesin.corak
 

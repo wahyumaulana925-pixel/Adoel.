@@ -62,7 +62,6 @@ fun RadarCard(
     onDoff: () -> Unit,
     onHapus: () -> Unit,
     onLongPress: () -> Unit,
-    onTap: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val remaining = est.estAbsMin - nowAbs
@@ -178,12 +177,8 @@ fun RadarCard(
                                                 animationSpec = tween(220, easing = FastOutSlowInEasing),
                                             )
                                         }
-                                    } else if (!longPressTriggered) {
-                                        if (animOffset.value > 1f) {
-                                            snapTo(false)
-                                        } else {
-                                            onTap()
-                                        }
+                                    } else if (!longPressTriggered && animOffset.value > 1f) {
+                                        snapTo(false)
                                     }
                                     break
                                 }

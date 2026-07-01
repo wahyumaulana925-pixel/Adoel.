@@ -20,7 +20,6 @@ private data class SerialState(
     val estimasi: Map<String, SerialEstimasi>,
     val aktual: List<SerialAktual>,
     val nextId: Int,
-    val quickModeEnabled: Boolean,
 )
 
 private data class SerialMesin(
@@ -73,7 +72,6 @@ class DoffRepository(private val context: Context) {
                     AktualEntry(a.id, a.mcNo, a.jam, a.ket, a.corakOverride, a.customYard)
                 },
                 nextId = serial.nextId,
-                quickModeEnabled = serial.quickModeEnabled,
             )
         } catch (e: Exception) {
             DoffState(db = buildDefaultDb())
@@ -92,7 +90,6 @@ class DoffRepository(private val context: Context) {
                 SerialAktual(a.id, a.mcNo, a.jam, a.ket, a.corakOverride, a.customYard)
             },
             nextId = state.nextId,
-            quickModeEnabled = state.quickModeEnabled,
         )
         context.dataStore.edit { prefs ->
             prefs[STATE_KEY] = gson.toJson(serial)
