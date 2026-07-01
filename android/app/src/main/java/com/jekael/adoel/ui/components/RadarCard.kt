@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Warning
@@ -26,6 +27,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jekael.adoel.data.*
 import com.jekael.adoel.ui.theme.*
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private data class UrgencyStyle(
     val accent: Color,
@@ -71,9 +74,36 @@ fun RadarCard(
     )
     val faceBg = if (clr.pulse) lerp(Zinc900, Color(0xFF3A1414), pulseFraction) else Zinc900
 
+    // Celebrate completion — card slides out + checkmark pops before the state is actually mutated
+    var completing by remember(est.mcNo) { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val exitProgress by animateFloatAsState(
+        targetValue = if (completing) 1f else 0f,
+        animationSpec = tween(420, easing = FastOutSlowInEasing),
+        label = "exitProgress",
+    )
+    val checkScale by animateFloatAsState(
+        targetValue = if (completing) 1f else 0f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        label = "checkScale",
+    )
+
+    fun triggerDoff() {
+        if (completing) return
+        completing = true
+        scope.launch {
+            delay(420)
+            onDoff()
+        }
+    }
+
     Box(
         modifier = modifier
             .fillMaxWidth()
+            .graphicsLayer {
+                translationX = exitProgress * size.width
+                alpha = 1f - exitProgress
+            }
             .clip(RoundedCornerShape(16.dp))
             .background(faceBg),
     ) {
@@ -192,6 +222,7 @@ fun RadarCard(
             ) {
                 OutlinedButton(
                     onClick = onHapus,
+                    enabled = !completing,
                     modifier = Modifier.weight(1f).height(40.dp),
                     shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = Zinc400),
@@ -201,7 +232,8 @@ fun RadarCard(
                     TrashIcon()
                 }
                 Button(
-                    onClick = onDoff,
+                    onClick = { triggerDoff() },
+                    enabled = !completing,
                     modifier = Modifier.weight(1f).height(40.dp),
                     shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
@@ -209,6 +241,28 @@ fun RadarCard(
                 ) {
                     CheckIcon()
                 }
+            }
+        }
+
+        // Celebrate completion — checkmark pops in while the card slides/fades out
+        if (checkScale > 0f) {
+            Box(
+                modifier = Modifier.matchParentSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(Emerald500.copy(alpha = 0.14f)),
+                )
+                Icon(
+                    imageVector = Icons.Filled.CheckCircle,
+                    contentDescription = null,
+                    tint = Emerald500,
+                    modifier = Modifier
+                        .size(56.dp)
+                        .graphicsLayer { scaleX = checkScale; scaleY = checkScale },
+                )
             }
         }
     }
