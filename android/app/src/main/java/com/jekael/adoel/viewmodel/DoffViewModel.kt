@@ -174,7 +174,7 @@ class DoffViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun finishShift() = updateState { s ->
-        s.copy(aktual = emptyList())
+        s.copy(estimasi = emptyMap(), aktual = emptyList())
     }
 
     fun setThemeMode(mode: String) = updateState { s ->

@@ -578,7 +578,8 @@ fun MainScreen(
             onEditAkt = { id -> historyOpen = false; editAktId = id },
             onShare = { shareHistory(context, state) },
             onFinishShift = {
-                uiVm.showConfirm("Akhiri shift? Riwayat ${state.aktual.size} doff akan dihapus.") {
+                uiVm.showConfirm("Akhiri shift? Riwayat ${state.aktual.size} doff dan ${state.estimasi.size} estimasi akan dihapus.") {
+                    NotificationHelper.cancelAll(context, state.estimasi.keys.toList())
                     doffVm.finishShift()
                     historyOpen = false
                     uiVm.showToast("Shift selesai ✓")
