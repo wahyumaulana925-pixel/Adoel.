@@ -157,15 +157,17 @@ fun MainScreen(
     }
 
     fun handleHapusEst(mcNo: String) {
-        val prevEst = state.estimasi[mcNo]
-        doffVm.hapusEstimasi(mcNo)
-        NotificationHelper.cancelNotif(context, mcNo)
-        uiVm.showToast("Mc $mcNo dihapus", undo = {
-            if (prevEst != null) {
-                doffVm.restoreEstimasi(prevEst)
-                NotificationHelper.scheduleNotif(context, prevEst.mcNo, prevEst.estAbsMin)
-            }
-        })
+        uiVm.showConfirm("Hapus estimasi Mc $mcNo?") {
+            val prevEst = state.estimasi[mcNo]
+            doffVm.hapusEstimasi(mcNo)
+            NotificationHelper.cancelNotif(context, mcNo)
+            uiVm.showToast("Mc $mcNo dihapus", undo = {
+                if (prevEst != null) {
+                    doffVm.restoreEstimasi(prevEst)
+                    NotificationHelper.scheduleNotif(context, prevEst.mcNo, prevEst.estAbsMin)
+                }
+            })
+        }
     }
 
     val doffCount = state.aktual.size
