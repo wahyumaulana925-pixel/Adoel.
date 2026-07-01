@@ -77,6 +77,8 @@ fun MainScreen(
     var editAktId by remember { mutableStateOf<Int?>(null) }
     var historyExpanded by remember { mutableStateOf(false) }
     var showRemaining by remember { mutableStateOf(false) }
+    var segeraExpanded by remember { mutableStateOf(true) }
+    var menungguExpanded by remember { mutableStateOf(true) }
 
     val inputFocus = remember { FocusRequester() }
     val density = LocalDensity.current
@@ -317,32 +319,70 @@ fun MainScreen(
                 } else {
                     if (segeraList.isNotEmpty()) {
                         item {
-                            UrgencyBandHeader(label = "Segera", color = Red400)
-                        }
-                        items(segeraList, key = { it.mcNo }) { est ->
-                            RadarCard(
-                                est = est,
-                                mesin = state.db[est.mcNo],
-                                nowAbs = nowAbs,
-                                onDoff = { handleDoff(est.mcNo) },
-                                onHapus = { handleHapusEst(est.mcNo) },
-                                modifier = Modifier.animateItem(),
+                            UrgencyBandHeader(
+                                label = "Segera", count = segeraList.size, color = Red400,
+                                expanded = segeraExpanded, onToggle = { segeraExpanded = !segeraExpanded },
                             )
+                        }
+                        if (segeraList.size <= 1 || segeraExpanded) {
+                            items(segeraList, key = { it.mcNo }) { est ->
+                                RadarCard(
+                                    est = est,
+                                    mesin = state.db[est.mcNo],
+                                    nowAbs = nowAbs,
+                                    onDoff = { handleDoff(est.mcNo) },
+                                    onHapus = { handleHapusEst(est.mcNo) },
+                                    modifier = Modifier.animateItem(),
+                                )
+                            }
+                        } else {
+                            item(key = "segera_stack") {
+                                val front = segeraList.first()
+                                RadarStackedPeek(
+                                    front = front,
+                                    mesin = state.db[front.mcNo],
+                                    nowAbs = nowAbs,
+                                    peekCount = segeraList.size - 1,
+                                    accent = Red400,
+                                    onDoff = { handleDoff(front.mcNo) },
+                                    onHapus = { handleHapusEst(front.mcNo) },
+                                    onExpand = { segeraExpanded = true },
+                                )
+                            }
                         }
                     }
                     if (menungguList.isNotEmpty()) {
                         item {
-                            UrgencyBandHeader(label = "Menunggu", color = Cyan400)
-                        }
-                        items(menungguList, key = { it.mcNo }) { est ->
-                            RadarCard(
-                                est = est,
-                                mesin = state.db[est.mcNo],
-                                nowAbs = nowAbs,
-                                onDoff = { handleDoff(est.mcNo) },
-                                onHapus = { handleHapusEst(est.mcNo) },
-                                modifier = Modifier.animateItem(),
+                            UrgencyBandHeader(
+                                label = "Menunggu", count = menungguList.size, color = Cyan400,
+                                expanded = menungguExpanded, onToggle = { menungguExpanded = !menungguExpanded },
                             )
+                        }
+                        if (menungguList.size <= 1 || menungguExpanded) {
+                            items(menungguList, key = { it.mcNo }) { est ->
+                                RadarCard(
+                                    est = est,
+                                    mesin = state.db[est.mcNo],
+                                    nowAbs = nowAbs,
+                                    onDoff = { handleDoff(est.mcNo) },
+                                    onHapus = { handleHapusEst(est.mcNo) },
+                                    modifier = Modifier.animateItem(),
+                                )
+                            }
+                        } else {
+                            item(key = "menunggu_stack") {
+                                val front = menungguList.first()
+                                RadarStackedPeek(
+                                    front = front,
+                                    mesin = state.db[front.mcNo],
+                                    nowAbs = nowAbs,
+                                    peekCount = menungguList.size - 1,
+                                    accent = Cyan400,
+                                    onDoff = { handleDoff(front.mcNo) },
+                                    onHapus = { handleHapusEst(front.mcNo) },
+                                    onExpand = { menungguExpanded = true },
+                                )
+                            }
                         }
                     }
                 }
@@ -356,8 +396,8 @@ fun MainScreen(
                     )
                 }
 
-                if (historyExpanded) {
-                    if (recentHistory.isEmpty()) {
+                if (recentHistory.isEmpty()) {
+                    if (historyExpanded) {
                         item {
                             Text(
                                 text = "Belum ada doff hari ini",
@@ -365,25 +405,36 @@ fun MainScreen(
                                 modifier = Modifier.padding(vertical = 16.dp),
                             )
                         }
-                    } else {
-                        items(recentHistory, key = { "hist_${it.id}" }) { entry ->
-                            HistoryPreviewRow(
-                                entry = entry,
-                                mesin = state.db[entry.mcNo],
-                                onClick = { editAktId = entry.id },
+                    }
+                } else if (historyExpanded) {
+                    items(recentHistory, key = { "hist_${it.id}" }) { entry ->
+                        HistoryPreviewRow(
+                            entry = entry,
+                            mesin = state.db[entry.mcNo],
+                            onClick = { editAktId = entry.id },
+                        )
+                    }
+                    item {
+                        TextButton(
+                            onClick = { historyOpen = true },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(
+                                "Lihat semua riwayat →",
+                                style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Cyan400),
                             )
                         }
-                        item {
-                            TextButton(
-                                onClick = { historyOpen = true },
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                Text(
-                                    "Lihat semua riwayat →",
-                                    style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Cyan400),
-                                )
-                            }
-                        }
+                    }
+                } else {
+                    item(key = "history_stack") {
+                        val front = recentHistory.first()
+                        HistoryStackedPeek(
+                            front = front,
+                            mesin = state.db[front.mcNo],
+                            peekCount = recentHistory.size - 1,
+                            onClick = { editAktId = front.id },
+                            onExpand = { historyExpanded = true },
+                        )
                     }
                 }
             }
@@ -595,24 +646,109 @@ private fun SectionHeader(title: String, count: Int) {
 }
 
 @Composable
-private fun UrgencyBandHeader(label: String, color: Color) {
+private fun UrgencyBandHeader(label: String, count: Int, color: Color, expanded: Boolean, onToggle: () -> Unit) {
+    val rotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = tween(200),
+        label = "urgencyChevron",
+    )
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(enabled = count > 1, onClick = onToggle)
             .padding(horizontal = 4.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Box(
-            modifier = Modifier
-                .size(6.dp)
-                .clip(CircleShape)
-                .background(color),
-        )
-        Text(
-            text = label,
-            style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = color),
-        )
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Box(
+                modifier = Modifier
+                    .size(6.dp)
+                    .clip(CircleShape)
+                    .background(color),
+            )
+            Text(
+                text = label,
+                style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = color),
+            )
+        }
+        if (count > 1) {
+            Icon(
+                Icons.Filled.KeyboardArrowDown,
+                contentDescription = if (expanded) "Ciutkan" else "Perluas",
+                tint = color,
+                modifier = Modifier.size(16.dp).rotate(rotation),
+            )
+        }
+    }
+}
+
+@Composable
+private fun PeekBars(count: Int, accent: Color) {
+    val bars = count.coerceIn(0, 2)
+    if (bars == 0) return
+    Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Spacer(Modifier.height(3.dp))
+        for (i in 1..bars) {
+            val widthFraction = (1f - i * 0.05f).coerceIn(0.7f, 1f)
+            val barAlpha = (0.22f - (i - 1) * 0.10f).coerceAtLeast(0.06f)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(widthFraction)
+                    .height(10.dp)
+                    .clip(RoundedCornerShape(bottomStart = 14.dp, bottomEnd = 14.dp))
+                    .background(accent.copy(alpha = barAlpha)),
+            )
+            if (i != bars) Spacer(Modifier.height(3.dp))
+        }
+    }
+}
+
+@Composable
+private fun RadarStackedPeek(
+    front: Estimasi,
+    mesin: MesinData?,
+    nowAbs: Long,
+    peekCount: Int,
+    accent: Color,
+    onDoff: () -> Unit,
+    onHapus: () -> Unit,
+    onExpand: () -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        RadarCard(est = front, mesin = mesin, nowAbs = nowAbs, onDoff = onDoff, onHapus = onHapus)
+        if (peekCount > 0) {
+            PeekBars(count = peekCount, accent = accent)
+            TextButton(onClick = onExpand, modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    "+$peekCount lainnya",
+                    style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = accent),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HistoryStackedPeek(
+    front: AktualEntry,
+    mesin: MesinData?,
+    peekCount: Int,
+    onClick: () -> Unit,
+    onExpand: () -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        HistoryPreviewRow(entry = front, mesin = mesin, onClick = onClick)
+        if (peekCount > 0) {
+            PeekBars(count = peekCount, accent = Cyan500)
+            TextButton(onClick = onExpand, modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    "+$peekCount lainnya",
+                    style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Cyan500),
+                )
+            }
+        }
     }
 }
 
