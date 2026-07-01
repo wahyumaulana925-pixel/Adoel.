@@ -39,7 +39,6 @@ fun SettingsDrawer(
     onSetMesin: (String, MesinData) -> Unit,
     onResetMesin: (String) -> Unit,
     onResetDb: () -> Unit,
-    onImportDb: (Map<String, MesinData>) -> Unit,
     showToast: (String) -> Unit,
     showConfirm: (String, () -> Unit) -> Unit,
 ) {

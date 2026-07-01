@@ -519,7 +519,6 @@ fun MainScreen(
                 NotificationHelper.cancelAll(context, state.estimasi.keys.toList())
                 doffVm.resetDb()
             },
-            onImportDb = { db -> db.forEach { (k, v) -> doffVm.setMesin(k, v) } },
             showToast = { uiVm.showToast(it) },
             showConfirm = { msg, fn -> uiVm.showConfirm(msg, onConfirm = fn) },
         )
