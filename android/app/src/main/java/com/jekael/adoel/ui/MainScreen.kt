@@ -29,7 +29,9 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -74,6 +76,8 @@ fun MainScreen(
     var historyExpanded by remember { mutableStateOf(false) }
 
     val inputFocus = remember { FocusRequester() }
+    val density = LocalDensity.current
+    var consoleBarHeight by remember { mutableStateOf(0.dp) }
 
     // Request notification permission launcher
     val notifPermLauncher = rememberLauncherForActivityResult(
@@ -384,7 +388,10 @@ fun MainScreen(
                     .padding(top = 10.dp)
                     .imePadding()
                     .navigationBarsPadding()
-                    .padding(bottom = 4.dp),
+                    .padding(bottom = 4.dp)
+                    .onGloballyPositioned { coords ->
+                        consoleBarHeight = with(density) { coords.size.height.toDp() }
+                    },
             ) {
                 // Mode toggle
                 Box(
@@ -482,11 +489,12 @@ fun MainScreen(
             }
         }
 
-        // Toast at bottom
+        // Toast — floats just above the console bar, never covers it
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .align(Alignment.BottomCenter),
+                .align(Alignment.BottomCenter)
+                .padding(bottom = consoleBarHeight),
         ) {
             ToastHost(toast = toast, onDismiss = { uiVm.dismissToast() })
         }
