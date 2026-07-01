@@ -142,6 +142,9 @@ fun HistoryDrawer(
     }
 }
 
+private const val SWIPE_SENSITIVITY = 1.8f
+private const val SNAP_OPEN_FRACTION = 0.32f
+
 @Composable
 private fun HistoryRow(
     entry: AktualEntry,
@@ -219,16 +222,14 @@ private fun HistoryRow(
                             val event = awaitPointerEvent()
                             val change = event.changes.firstOrNull() ?: break
                             if (!change.pressed) {
-                                if (isDragging) snapTo(animOffset.value > revealPx / 2)
+                                if (isDragging) snapTo(animOffset.value > revealPx * SNAP_OPEN_FRACTION)
                                 break
                             }
                             val dx = down.position.x - change.position.x
                             if (!isDragging && abs(dx) > 8f) isDragging = true
                             if (isDragging) {
                                 change.consume()
-                                scope.launch {
-                                    animOffset.snapTo((startOffset + dx).coerceIn(0f, revealPx))
-                                }
+                                animOffset.snapTo((startOffset + dx * SWIPE_SENSITIVITY).coerceIn(0f, revealPx))
                             }
                         }
                     }

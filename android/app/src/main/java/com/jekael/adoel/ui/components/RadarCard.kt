@@ -29,6 +29,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
+private const val SWIPE_SENSITIVITY = 1.8f
+private const val SNAP_OPEN_FRACTION = 0.32f
+
 private data class UrgencyStyle(
     val accent: Color,
     val barColor: Color,
@@ -152,7 +155,7 @@ fun RadarCard(
                                 if (!change.pressed) {
                                     longPressJob.cancel()
                                     if (isDragging) {
-                                        val open = animOffset.value > revealPx / 2
+                                        val open = animOffset.value > revealPx * SNAP_OPEN_FRACTION
                                         snapTo(open)
                                     }
                                     break
@@ -164,9 +167,7 @@ fun RadarCard(
                                 }
                                 if (isDragging) {
                                     change.consume()
-                                    scope.launch {
-                                        animOffset.snapTo((startOffset + dx).coerceIn(0f, revealPx))
-                                    }
+                                    animOffset.snapTo((startOffset + dx * SWIPE_SENSITIVITY).coerceIn(0f, revealPx))
                                 }
                             }
                         } finally {
