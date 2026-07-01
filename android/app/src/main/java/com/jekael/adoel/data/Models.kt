@@ -63,7 +63,7 @@ fun nowTimeStr(): String {
 }
 
 fun formatDeltaMin(deltaMin: Long): String {
-    val sign = if (deltaMin >= 0) "+" else "−"
+    val sign = if (deltaMin < 0) "−" else ""
     val mag = abs(deltaMin)
     return if (mag >= 60) "$sign${mag / 60}j${mag % 60}m" else "$sign${mag}m"
 }
