@@ -59,11 +59,13 @@ function HistoryRow({
     dragging.current = false
     snap(curOffset.current > REVEAL_W / 2)
   }
+  const handleCancel = () => { dragging.current = false; snap(false) }
   const startGesture = (clientX: number) => { startXRef.current = clientX; dragging.current = true; moved.current = false }
 
-  const onTouchStart = (e: React.TouchEvent) => startGesture(e.touches[0].clientX)
-  const onTouchMove  = (e: React.TouchEvent) => handleMoveX(e.touches[0].clientX)
-  const onTouchEnd   = () => handleEnd()
+  const onTouchStart  = (e: React.TouchEvent) => startGesture(e.touches[0].clientX)
+  const onTouchMove   = (e: React.TouchEvent) => handleMoveX(e.touches[0].clientX)
+  const onTouchEnd    = () => handleEnd()
+  const onTouchCancel = () => handleCancel()
   const onMouseDown  = (e: React.MouseEvent) => {
     startGesture(e.clientX)
     const mm = (ev: MouseEvent) => handleMoveX(ev.clientX)
@@ -100,6 +102,7 @@ function HistoryRow({
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
+        onTouchCancel={onTouchCancel}
         onMouseDown={onMouseDown}
       >
         {/* Sequence number */}

@@ -1,10 +1,8 @@
 import { useEffect } from 'react'
 import { useUIStore } from '../store/useUIStore'
-import { useKeyboard } from '../hooks/useKeyboard'
 
-export function Toast() {
+export function Toast({ kbH }: { kbH: number }) {
   const { toast, dismissToast } = useUIStore()
-  const kbH = useKeyboard()
 
   useEffect(() => {
     if (!toast) return

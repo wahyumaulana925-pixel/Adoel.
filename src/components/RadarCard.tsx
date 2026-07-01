@@ -82,6 +82,11 @@ export function RadarCard({ est, mesin, nowAbs, onDoff, onHapus, onLongPress }: 
     dragging.current = false
     snap(curOffset.current > REVEAL_W / 2)
   }
+  const handleCancel = () => {
+    if (longTimer.current) { clearTimeout(longTimer.current); longTimer.current = null }
+    dragging.current = false
+    snap(false)
+  }
   const startGesture = (clientX: number) => {
     startXRef.current = clientX
     dragging.current  = true
@@ -96,9 +101,10 @@ export function RadarCard({ est, mesin, nowAbs, onDoff, onHapus, onLongPress }: 
     }, 480)
   }
 
-  const onTouchStart = (e: React.TouchEvent) => startGesture(e.touches[0].clientX)
-  const onTouchMove  = (e: React.TouchEvent) => handleMoveX(e.touches[0].clientX)
-  const onTouchEnd   = () => handleEnd()
+  const onTouchStart  = (e: React.TouchEvent) => startGesture(e.touches[0].clientX)
+  const onTouchMove   = (e: React.TouchEvent) => handleMoveX(e.touches[0].clientX)
+  const onTouchEnd    = () => handleEnd()
+  const onTouchCancel = () => handleCancel()
   const onMouseDown  = (e: React.MouseEvent) => {
     startGesture(e.clientX)
     const mm = (ev: MouseEvent) => handleMoveX(ev.clientX)
@@ -140,6 +146,7 @@ export function RadarCard({ est, mesin, nowAbs, onDoff, onHapus, onLongPress }: 
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
+        onTouchCancel={onTouchCancel}
         onMouseDown={onMouseDown}
       >
         {/* Progress fill — grows from left as subtle tinted background */}

@@ -221,7 +221,7 @@ export default function App() {
       )}
 
       {/* ── Main radar card list ── */}
-      <main className="flex-1 overflow-y-auto hide-scroll py-2.5 px-3">
+      <main className="flex-1 overflow-y-auto hide-scroll py-2.5 px-3" style={kbH > 0 ? { paddingBottom: kbH } : undefined}>
         {radarList.length === 0 ? (
           <EmptyState />
         ) : (
@@ -323,7 +323,7 @@ export default function App() {
       <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <EditEstSheet mcNo={editEstMc} onClose={() => setEditEstMc(null)} nowAbs={nowAbs} />
       <EditAktSheet aktualId={editAktId} onClose={() => setEditAktId(null)} />
-      <Toast />
+      <Toast kbH={kbH} />
       <ConfirmModal />
     </div>
   )
