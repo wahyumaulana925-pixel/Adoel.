@@ -204,8 +204,6 @@ fun RadarCard(
                     contentPadding = PaddingValues(0.dp),
                 ) {
                     TrashIcon()
-                    Spacer(Modifier.width(6.dp))
-                    Text("HAPUS", style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp))
                 }
                 Button(
                     onClick = onDoff,
@@ -215,8 +213,6 @@ fun RadarCard(
                     contentPadding = PaddingValues(0.dp),
                 ) {
                     CheckIcon()
-                    Spacer(Modifier.width(6.dp))
-                    Text("DOFF", style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp))
                 }
             }
         }
