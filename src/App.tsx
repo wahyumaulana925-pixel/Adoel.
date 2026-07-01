@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { StatusBar, Style } from '@capacitor/status-bar'
-import { useDoffStore, jamSekarangAbs, jamSekarangLabel } from './store/useDoffStore'
+import { useDoffStore, jamSekarangAbs } from './store/useDoffStore'
 import { useUIStore } from './store/useUIStore'
 import { scheduleNotif, cancelNotif, checkPermission, ensurePermission } from './lib/notifications'
 import { RadarCard } from './components/RadarCard'
@@ -61,7 +61,6 @@ export default function App() {
 
   const [mode, setMode] = useState<Mode>('aktual')
   const [input, setInput] = useState('')
-  const [clock, setClock] = useState(jamSekarangLabel())
   const [nowAbs, setNowAbs] = useState(jamSekarangAbs())
   const [notifGranted, setNotifGranted] = useState(true)
 
@@ -94,10 +93,7 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    const id = setInterval(() => {
-      setClock(jamSekarangLabel())
-      setNowAbs(jamSekarangAbs())
-    }, 5000)
+    const id = setInterval(() => setNowAbs(jamSekarangAbs()), 5000)
     return () => clearInterval(id)
   }, [])
 
@@ -185,13 +181,8 @@ export default function App() {
       <header className="flex-shrink-0 bg-zinc-950 border-b border-zinc-800/60 pt-safe">
         <div className="flex items-center gap-3 px-4 h-12">
           {/* Branding */}
-          <span className="font-black text-[15px] text-zinc-100 tracking-tight leading-none">
+          <span className="font-black text-[15px] text-zinc-100 tracking-tight leading-none flex-1">
             Adoel<span className="text-cyan-400">.</span>
-          </span>
-
-          {/* Clock — large mono, centered */}
-          <span className="flex-1 text-center text-xl font-bold font-mono tracking-tighter text-zinc-100 tabular-nums">
-            {clock}
           </span>
 
           {/* Right: badge + gear */}
