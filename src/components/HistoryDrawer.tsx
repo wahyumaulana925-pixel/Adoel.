@@ -77,7 +77,7 @@ function HistoryRow({
   const num = total - index
 
   return (
-    <div className="relative overflow-hidden rounded-2xl">
+    <div className="relative overflow-hidden rounded-2xl bg-zinc-900 isolate">
       {/* Action buttons — EDIT (primary, cyan) + HAPUS (red) */}
       <div className="absolute inset-y-0 right-0 flex" style={{ width: REVEAL_W }}>
         <button

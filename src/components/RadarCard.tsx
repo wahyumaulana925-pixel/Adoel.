@@ -114,7 +114,7 @@ export function RadarCard({ est, mesin, nowAbs, onDoff, onHapus, onLongPress }: 
   }
 
   return (
-    <div className="relative rounded-2xl overflow-hidden" style={{ height: 80 }}>
+    <div className="relative rounded-2xl overflow-hidden bg-zinc-900 isolate" style={{ height: 80 }}>
       {/* Action strip — revealed on left-swipe; HAPUS left, DOFF right */}
       <div className="absolute inset-y-0 right-0 flex items-center justify-end pr-3 gap-2" style={{ width: REVEAL_W }}>
         <button
