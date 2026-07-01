@@ -1,35 +1,28 @@
 package com.jekael.adoel.ui.components
 
-import android.content.Intent
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jekael.adoel.data.AktualEntry
 import com.jekael.adoel.data.DoffState
-import com.jekael.adoel.data.absMinToTimeStr
 import com.jekael.adoel.ui.theme.*
-import kotlinx.coroutines.launch
-import java.util.Calendar
-import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -142,9 +135,6 @@ fun HistoryDrawer(
     }
 }
 
-private const val SWIPE_SENSITIVITY = 1.8f
-private const val SNAP_OPEN_FRACTION = 0.32f
-
 @Composable
 private fun HistoryRow(
     entry: AktualEntry,
@@ -158,154 +148,88 @@ private fun HistoryRow(
     val corak = entry.corakOverride ?: mesin?.corak ?: "—"
     val num = total - index
 
-    val revealDp = 150.dp
-    val density = androidx.compose.ui.platform.LocalDensity.current
-    val revealPx = with(density) { revealDp.toPx() }
-    val animOffset = remember { Animatable(0f) }
-    var isDragging by remember { mutableStateOf(false) }
-    var dragOffset by remember { mutableFloatStateOf(0f) }
-    val currentOffset = if (isDragging) dragOffset else animOffset.value
-    val scope = rememberCoroutineScope()
-
-    fun snapTo(open: Boolean) = scope.launch {
-        animOffset.animateTo(
-            if (open) revealPx else 0f,
-            animationSpec = tween(220, easing = FastOutSlowInEasing),
-        )
-    }
-
-    Box(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(68.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(Zinc900),
+            .background(Zinc900)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // Action buttons
-        Row(
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .width(revealDp)
-                .fillMaxHeight(),
-        ) {
-            Button(
-                onClick = { snapTo(false); onEdit() },
-                modifier = Modifier.weight(1f).fillMaxHeight(),
-                shape = RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Cyan700),
-                contentPadding = PaddingValues(0.dp),
-            ) {
-                Text("EDIT", style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp))
-            }
-            Box(Modifier.width(1.dp).fillMaxHeight().background(Zinc950.copy(alpha = 0.2f)))
-            Button(
-                onClick = { snapTo(false); onHapus() },
-                modifier = Modifier.width(65.dp).fillMaxHeight(),
-                shape = RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Red700),
-                contentPadding = PaddingValues(0.dp),
-            ) {
-                Text("HAPUS", style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp))
-            }
+        // Sequence number
+        Text(
+            text = "$num",
+            style = TextStyle(
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Black,
+                color = Zinc500,
+            ),
+            modifier = Modifier.width(20.dp),
+        )
+        // Type dot
+        val dotColor = when (mesin?.tipe) {
+            com.jekael.adoel.data.MesinTipe.TAPPET -> Teal500
+            com.jekael.adoel.data.MesinTipe.CAM -> Violet500
+            com.jekael.adoel.data.MesinTipe.D405 -> Amber500
+            com.jekael.adoel.data.MesinTipe.D408 -> Sky500
+            null -> Zinc600
         }
-
-        // Row face
-        Row(
+        Box(
             modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer { translationX = -currentOffset }
-                .background(Zinc900)
-                .padding(horizontal = 16.dp)
-                .pointerInput(Unit) {
-                    awaitEachGesture {
-                        val down = awaitFirstDown()
-                        isDragging = false
-                        val startOffset = animOffset.value
-                        while (true) {
-                            val event = awaitPointerEvent()
-                            val change = event.changes.firstOrNull() ?: break
-                            if (!change.pressed) {
-                                if (isDragging) {
-                                    isDragging = false
-                                    val open = dragOffset > revealPx * SNAP_OPEN_FRACTION
-                                    scope.launch {
-                                        animOffset.snapTo(dragOffset)
-                                        animOffset.animateTo(
-                                            if (open) revealPx else 0f,
-                                            animationSpec = tween(220, easing = FastOutSlowInEasing),
-                                        )
-                                    }
-                                }
-                                break
-                            }
-                            val dx = down.position.x - change.position.x
-                            if (!isDragging && abs(dx) > 8f) isDragging = true
-                            if (isDragging) {
-                                change.consume()
-                                dragOffset = (startOffset + dx * SWIPE_SENSITIVITY).coerceIn(0f, revealPx)
-                            }
-                        }
-                    }
-                },
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            // Sequence number
+                .size(8.dp)
+                .clip(CircleShape)
+                .background(dotColor),
+        )
+        // Machine + corak
+        Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "$num",
+                text = entry.mcNo,
                 style = TextStyle(
-                    fontSize = 14.sp,
+                    fontSize = 24.sp,
                     fontWeight = FontWeight.Black,
+                    letterSpacing = (-1.5).sp,
+                    color = Cyan500,
+                ),
+            )
+            val sub = if (entry.customYard != null) "$corak · ${entry.customYard}y" else corak
+            Text(
+                text = sub,
+                style = TextStyle(
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp,
                     color = Zinc500,
                 ),
-                modifier = Modifier.width(20.dp),
+                maxLines = 1,
             )
-            // Type dot
-            val dotColor = when (mesin?.tipe) {
-                com.jekael.adoel.data.MesinTipe.TAPPET -> Teal500
-                com.jekael.adoel.data.MesinTipe.CAM -> Violet500
-                com.jekael.adoel.data.MesinTipe.D405 -> Amber500
-                com.jekael.adoel.data.MesinTipe.D408 -> Sky500
-                null -> Zinc600
+        }
+        // Ket
+        Text(
+            text = entry.ket,
+            style = TextStyle(
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = Zinc200,
+            ),
+        )
+        // Action buttons — always visible, no swipe
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            IconButton(
+                onClick = onEdit,
+                modifier = Modifier.size(28.dp).background(Cyan700, CircleShape),
+            ) {
+                Icon(Icons.Outlined.Edit, contentDescription = "Edit", tint = Color.White, modifier = Modifier.size(14.dp))
             }
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .clip(CircleShape)
-                    .background(dotColor),
-            )
-            // Machine + corak
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = entry.mcNo,
-                    style = TextStyle(
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = (-1.5).sp,
-                        color = Cyan500,
-                    ),
-                )
-                val sub = if (entry.customYard != null) "$corak · ${entry.customYard}y" else corak
-                Text(
-                    text = sub,
-                    style = TextStyle(
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp,
-                        color = Zinc500,
-                    ),
-                    maxLines = 1,
-                )
+            IconButton(
+                onClick = onHapus,
+                modifier = Modifier.size(28.dp).background(Red700, CircleShape),
+            ) {
+                Icon(Icons.Outlined.Delete, contentDescription = "Hapus", tint = Color.White, modifier = Modifier.size(14.dp))
             }
-            // Ket
-            Text(
-                text = entry.ket,
-                style = TextStyle(
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Zinc200,
-                ),
-            )
         }
     }
 }

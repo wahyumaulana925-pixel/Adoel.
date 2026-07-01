@@ -1,9 +1,10 @@
 package com.jekael.adoel.ui.components
 
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,8 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Warning
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,9 +21,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.positionChange
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -31,12 +28,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jekael.adoel.data.*
 import com.jekael.adoel.ui.theme.*
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlin.math.abs
-
-private const val SWIPE_SENSITIVITY = 1.8f
-private const val SNAP_OPEN_FRACTION = 0.32f
 
 private data class UrgencyStyle(
     val accent: Color,
@@ -54,6 +45,7 @@ private fun urgency(remaining: Long): UrgencyStyle = when {
     else           -> UrgencyStyle(Red500, Red500, Red400, Red700, true, Icons.Filled.Warning)
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun RadarCard(
     est: Estimasi,
@@ -74,23 +66,6 @@ fun RadarCard(
     val tipe = mesin?.tipe?.name ?: "?"
     val showDot = remaining <= 5
 
-    val revealDp = 180.dp
-    val density = LocalDensity.current
-    val revealPx = with(density) { revealDp.toPx() }
-
-    val animOffset = remember { Animatable(0f) }
-    var isDragging by remember { mutableStateOf(false) }
-    var dragOffset by remember { mutableFloatStateOf(0f) }
-    val currentOffset = if (isDragging) dragOffset else animOffset.value
-    val scope = rememberCoroutineScope()
-
-    fun snapTo(open: Boolean) = scope.launch {
-        animOffset.animateTo(
-            if (open) revealPx else 0f,
-            animationSpec = tween(220, easing = FastOutSlowInEasing),
-        )
-    }
-
     val criticalPulse = rememberInfiniteTransition(label = "criticalPulse")
     val pulseFraction by criticalPulse.animateFloat(
         initialValue = 0f,
@@ -103,101 +78,13 @@ fun RadarCard(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(80.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(Zinc900),
+            .background(faceBg),
     ) {
-        // Action buttons strip (behind card face)
-        Row(
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .width(revealDp)
-                .fillMaxHeight()
-                .padding(end = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            ActionButton(
-                label = "HAPUS",
-                bgColor = Zinc700,
-                modifier = Modifier
-                    .width(72.dp)
-                    .fillMaxHeight(0.8f),
-                onClick = { snapTo(false); onHapus() },
-            ) {
-                TrashIcon()
-            }
-            ActionButton(
-                label = "DOFF",
-                bgColor = Cyan600,
-                modifier = Modifier
-                    .width(88.dp)
-                    .fillMaxHeight(0.8f),
-                onClick = { snapTo(false); onDoff() },
-            ) {
-                CheckIcon()
-            }
-        }
-
-        // Card face
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    translationX = -currentOffset
-                }
-                .background(faceBg)
-                .pointerInput(Unit) {
-                    awaitEachGesture {
-                        val down = awaitFirstDown()
-                        isDragging = false
-                        var longPressTriggered = false
-                        var longPressJob = scope.launch {
-                            delay(480)
-                            if (!isDragging) {
-                                longPressTriggered = true
-                                onLongPress()
-                            }
-                        }
-                        val startOffset = animOffset.value
-
-                        try {
-                            while (true) {
-                                val event = awaitPointerEvent()
-                                val change = event.changes.firstOrNull() ?: break
-                                if (!change.pressed) {
-                                    longPressJob.cancel()
-                                    if (isDragging) {
-                                        isDragging = false
-                                        val open = dragOffset > revealPx * SNAP_OPEN_FRACTION
-                                        scope.launch {
-                                            animOffset.snapTo(dragOffset)
-                                            animOffset.animateTo(
-                                                if (open) revealPx else 0f,
-                                                animationSpec = tween(220, easing = FastOutSlowInEasing),
-                                            )
-                                        }
-                                    } else if (!longPressTriggered && animOffset.value > 1f) {
-                                        snapTo(false)
-                                    }
-                                    break
-                                }
-                                val dx = down.position.x - change.position.x
-                                if (!isDragging && abs(dx) > 6f) {
-                                    isDragging = true
-                                    longPressJob.cancel()
-                                }
-                                if (isDragging) {
-                                    change.consume()
-                                    dragOffset = (startOffset + dx * SWIPE_SENSITIVITY).coerceIn(0f, revealPx)
-                                }
-                            }
-                        } finally {
-                            longPressJob.cancel()
-                        }
-                    }
-                },
-        ) {
+        // Decorative full-height overlays — wrapped in matchParentSize() so they resolve
+        // against the height the Column below actually ends up with (LazyColumn gives
+        // this Box unbounded height, so a bare fillMaxHeight() here would collapse to 0).
+        Box(modifier = Modifier.matchParentSize()) {
             // Left accent border
             Box(
                 modifier = Modifier
@@ -213,12 +100,15 @@ fun RadarCard(
                     .fillMaxWidth(progress)
                     .background(clr.barColor.copy(alpha = 0.12f)),
             )
+        }
 
-            // Content
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // Content — long-press to edit estimasi; no swipe/tap action
             Row(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp),
+                    .fillMaxWidth()
+                    .combinedClickable(onClick = {}, onLongClick = onLongPress)
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -294,6 +184,39 @@ fun RadarCard(
                             ),
                         )
                     }
+                }
+            }
+
+            // Always-visible action buttons — no swipe needed
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp)
+                    .padding(bottom = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OutlinedButton(
+                    onClick = onHapus,
+                    modifier = Modifier.weight(1f).height(40.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Zinc400),
+                    border = BorderStroke(1.dp, Zinc700),
+                    contentPadding = PaddingValues(0.dp),
+                ) {
+                    TrashIcon()
+                    Spacer(Modifier.width(6.dp))
+                    Text("HAPUS", style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp))
+                }
+                Button(
+                    onClick = onDoff,
+                    modifier = Modifier.weight(1f).height(40.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
+                    contentPadding = PaddingValues(0.dp),
+                ) {
+                    CheckIcon()
+                    Spacer(Modifier.width(6.dp))
+                    Text("DOFF", style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp))
                 }
             }
         }
