@@ -1,32 +1,32 @@
-# React + TypeScript + Vite
+# Adoel.
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Native Android app (Kotlin + Jetpack Compose) for tracking machine doffing schedules and estimates.
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Kotlin 2.0.21
+- Jetpack Compose (BOM 2024.12.01) + Material3
+- DataStore (Preferences) + Gson for persistence
+- AlarmManager + BroadcastReceiver for scheduled doff notifications
 
-## React Compiler
+## Build
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```
+cd android
+./gradlew assembleDebug
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+The debug APK is produced at `android/app/build/outputs/apk/debug/app-debug.apk`.
+
+## Project structure
+
+```
+android/app/src/main/java/com/jekael/adoel/
+├── data/            # models, default machine DB, DataStore repository
+├── notification/    # AlarmManager scheduling + BroadcastReceivers
+├── viewmodel/       # DoffViewModel (business logic), UIViewModel (toast/confirm)
+├── ui/
+│   ├── components/  # RadarCard, HistoryDrawer, SettingsDrawer, sheets, dialogs
+│   └── theme/       # color palette + MaterialTheme
+├── MainActivity.kt
+```

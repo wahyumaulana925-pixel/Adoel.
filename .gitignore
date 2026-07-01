@@ -1,16 +1,12 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-node_modules
-dist
-dist-ssr
-*.local
+# Android / Gradle
+android/.gradle
+android/build
+android/app/build
+android/local.properties
+android/captures
+android/.cxx
+*.apk
+*.aab
 
 # Editor directories and files
 .vscode/*
