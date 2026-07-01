@@ -347,7 +347,6 @@ export function SettingsDrawer({ open, onClose }: Props) {
           </div>
         </div>
 
-        {/* Content */}
         <div className="flex-1 overflow-y-auto hide-scroll px-5 pb-safe-floor">
           {tab === 'edit' && <EditMesinTab />}
           {tab === 'list' && <DaftarMesinTab />}

@@ -15,7 +15,7 @@ type Mode = 'estimasi' | 'aktual'
 
 function GearIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
       <circle cx="12" cy="12" r="3" />
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
     </svg>
@@ -70,17 +70,14 @@ export default function App() {
 
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // White status bar icons on dark header
   useEffect(() => {
     StatusBar.setStyle({ style: Style.Dark }).catch(() => {})
   }, [])
 
-  // Notification permission check
   useEffect(() => {
     checkPermission().then(setNotifGranted)
   }, [])
 
-  // Clock tick every 5 s
   useEffect(() => {
     const id = setInterval(() => {
       setClock(jamSekarangLabel())
@@ -174,25 +171,21 @@ export default function App() {
         <div className="flex items-center gap-3 px-4 h-12">
           {/* Branding */}
           <span className="font-black text-[15px] text-zinc-100 tracking-tight leading-none">
-            Adoel<span className="text-teal-400">.</span>
+            Adoel<span className="text-cyan-400">.</span>
           </span>
 
-          {/* Clock — centered */}
-          <span className="flex-1 text-center text-sm font-semibold text-zinc-400 tabular-nums">
+          {/* Clock — large mono, centered */}
+          <span className="flex-1 text-center text-xl font-bold font-mono tracking-tighter text-zinc-100 tabular-nums">
             {clock}
           </span>
 
-          {/* Right cluster */}
-          <div className="flex items-center gap-1.5">
-            {/* Doff counter */}
-            <div className="flex items-baseline gap-0.5 px-2 py-1 rounded-lg bg-zinc-900">
-              <span className="text-sm font-bold text-zinc-200 tabular-nums">{doffCount}</span>
-              <span className="text-xs text-zinc-700">/</span>
-              <span className="text-xs text-zinc-500 tabular-nums">{totalMc}</span>
-            </div>
-            {/* Settings */}
+          {/* Right: badge + gear */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold tabular-nums bg-cyan-950/40 text-cyan-400 px-2.5 py-1 rounded-full">
+              {doffCount}<span className="text-cyan-800 mx-0.5">/</span>{totalMc}
+            </span>
             <button
-              className="w-9 h-9 flex items-center justify-center text-zinc-500 active:text-zinc-200 rounded-xl active:bg-zinc-800 transition-colors duration-150"
+              className="p-1.5 bg-zinc-900 rounded-full text-zinc-400 active:text-zinc-100 active:bg-zinc-800 transition-colors duration-150"
               onClick={() => setSettingsOpen(true)}
             >
               <GearIcon />
@@ -204,7 +197,7 @@ export default function App() {
       {/* ── Notification permission banner ── */}
       {!notifGranted && (
         <button
-          className="flex-shrink-0 flex items-center justify-center gap-2 bg-amber-950/60 border-b border-amber-900/50 text-amber-400 text-xs py-2 px-4 w-full transition-colors duration-150 active:bg-amber-950"
+          className="flex-shrink-0 flex items-center justify-center gap-2 bg-amber-950/60 border-b border-amber-900/50 text-amber-400 text-xs py-2 px-4 w-full active:bg-amber-950 transition-colors duration-150"
           onClick={handleRequestNotifPermission}
         >
           <BellOffIcon />
@@ -215,7 +208,7 @@ export default function App() {
       {/* ── Main radar card list ── */}
       <main className="flex-1 overflow-y-auto hide-scroll py-2.5 px-3">
         {radarList.length === 0 ? (
-          <EmptyState mode={mode} />
+          <EmptyState />
         ) : (
           <div className="flex flex-col gap-2">
             {radarList.map((est) => (
@@ -234,22 +227,36 @@ export default function App() {
       </main>
 
       {/* ── Footer: mode toggle + command input ── */}
-      <footer className="flex-shrink-0 px-3 pt-2 pb-safe-floor border-t border-zinc-800/60 bg-zinc-950">
-        {/* Mode toggle */}
-        <div className="flex mb-2 bg-zinc-900 rounded-xl p-0.5 gap-0.5">
-          {([['estimasi', 'Estimasi'], ['aktual', 'Doff']] as const).map(([m, label]) => (
-            <button
-              key={m}
-              className={`flex-1 py-1.5 text-xs rounded-[10px] font-semibold transition-colors duration-200 ${
-                mode === m
-                  ? 'bg-teal-500 text-white'
-                  : 'text-zinc-500 active:text-zinc-300'
-              }`}
-              onClick={() => setMode(m)}
-            >
-              {label}
-            </button>
-          ))}
+      <footer className="flex-shrink-0 px-3 pt-2.5 pb-safe-floor border-t border-zinc-800/60 bg-zinc-950">
+        {/* Mode toggle — sliding pill indicator */}
+        <div className="relative flex mb-2.5 bg-zinc-800 rounded-full" style={{ padding: '4px' }}>
+          {/* Sliding highlight */}
+          <div
+            className={mode === 'estimasi' ? 'bg-amber-500' : 'bg-cyan-600'}
+            style={{
+              position: 'absolute',
+              borderRadius: '9999px',
+              top: '4px',
+              bottom: '4px',
+              left: mode === 'estimasi' ? '4px' : 'calc(50% + 2px)',
+              right: mode === 'aktual'   ? '4px' : 'calc(50% + 2px)',
+              transition: 'left 0.28s cubic-bezier(0.32,0.72,0,1), right 0.28s cubic-bezier(0.32,0.72,0,1), background-color 0.28s',
+            }}
+          />
+          <button
+            className={`relative z-10 flex-1 py-2 text-[13px] font-bold ${mode === 'estimasi' ? 'text-white' : 'text-zinc-500'}`}
+            style={{ transition: 'color 0.2s' }}
+            onClick={() => setMode('estimasi')}
+          >
+            ESTIMASI
+          </button>
+          <button
+            className={`relative z-10 flex-1 py-2 text-[13px] font-bold ${mode === 'aktual' ? 'text-white' : 'text-zinc-500'}`}
+            style={{ transition: 'color 0.2s' }}
+            onClick={() => setMode('aktual')}
+          >
+            DOFFING
+          </button>
         </div>
 
         {/* Command row */}
@@ -262,16 +269,16 @@ export default function App() {
             onChange={(e) => setInput(e.target.value.toUpperCase())}
             onKeyDown={(e) => e.key === 'Enter' && handleCommand()}
             placeholder={mode === 'estimasi' ? 'cth: 31 45' : 'cth: 31 HB'}
-            className="flex-1 min-w-0 bg-zinc-800 text-zinc-100 placeholder-zinc-600 text-sm px-4 py-3 rounded-2xl border border-zinc-700/60 focus:border-teal-500 outline-none transition-colors duration-150"
+            className="flex-1 min-w-0 bg-zinc-800 text-zinc-100 placeholder-zinc-600 font-mono font-bold tracking-tight text-[17px] px-5 h-14 rounded-full border border-zinc-700/60 focus:border-cyan-500 outline-none transition-colors duration-150"
           />
           <button
-            className="w-11 h-11 bg-teal-500 active:bg-teal-600 rounded-2xl flex items-center justify-center text-white shrink-0 transition-colors duration-150"
+            className="w-14 h-14 bg-cyan-600 active:bg-cyan-700 rounded-full flex items-center justify-center text-white shrink-0 transition-colors duration-150"
             onClick={handleCommand}
           >
             <SendIcon />
           </button>
           <button
-            className="w-11 h-11 bg-zinc-800 active:bg-zinc-700 rounded-2xl flex items-center justify-center text-zinc-400 active:text-zinc-200 shrink-0 transition-colors duration-150"
+            className="w-14 h-14 bg-zinc-800 active:bg-zinc-700 rounded-full flex items-center justify-center text-zinc-400 active:text-zinc-200 shrink-0 transition-colors duration-150"
             onClick={() => setHistoryOpen(true)}
           >
             <HistoryIcon />
@@ -294,25 +301,20 @@ export default function App() {
   )
 }
 
-function EmptyState({ mode }: { mode: Mode }) {
+function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center h-full gap-3 pb-12 select-none">
-      {/* Radar rings — purely decorative */}
       <div className="relative w-24 h-24 flex items-center justify-center">
         <div className="absolute inset-0 rounded-full border border-zinc-800" />
         <div className="absolute inset-3 rounded-full border border-zinc-800/60" />
-        <div className="absolute inset-6 rounded-full border border-zinc-800/40" />
+        <div className="absolute inset-6 rounded-full border border-zinc-800/30" />
         <div className="w-3 h-3 rounded-full bg-zinc-700" />
       </div>
       <p className="text-sm text-zinc-600 text-center leading-relaxed">
-        {mode === 'estimasi'
-          ? 'Belum ada estimasi aktif'
-          : 'Belum ada estimasi aktif'}
+        Belum ada estimasi aktif
       </p>
       <p className="text-xs text-zinc-700 text-center">
-        {mode === 'estimasi'
-          ? 'Masukkan nomor mesin + menit di bawah'
-          : 'Tambah estimasi dulu via mode Estimasi'}
+        Masukkan nomor mesin + menit di bawah
       </p>
     </div>
   )

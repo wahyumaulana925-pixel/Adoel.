@@ -11,42 +11,32 @@ interface Props {
   onLongPress: () => void
 }
 
-// Width revealed on full left-swipe
-const REVEAL_W = 156
+const REVEAL_W = 180
 
 function urgency(remaining: number) {
-  if (remaining > 30) return {
-    border: 'border-teal-500',
-    text:   'text-teal-400',
-    bar:    'bg-teal-500',
-    label:  'text-teal-600',
-    cardBg: '',
-    pulse:  false,
-  }
-  if (remaining > 10) return {
-    border: 'border-amber-400',
-    text:   'text-amber-400',
-    bar:    'bg-amber-400',
-    label:  'text-amber-600',
-    cardBg: '',
-    pulse:  false,
-  }
-  if (remaining > 0) return {
-    border: 'border-orange-500',
-    text:   'text-orange-400',
-    bar:    'bg-orange-500',
-    label:  'text-orange-600',
-    cardBg: '',
-    pulse:  false,
-  }
-  return {
-    border: 'border-red-500',
-    text:   'text-red-400',
-    bar:    'bg-red-500',
-    label:  'text-red-600',
-    cardBg: 'bg-red-950/20',
-    pulse:  true,
-  }
+  if (remaining > 30) return { accent: '#06b6d4', bar: 'bg-cyan-500',   text: 'text-cyan-400',   label: 'text-cyan-700',   pulse: false }
+  if (remaining > 10) return { accent: '#f59e0b', bar: 'bg-amber-400',  text: 'text-amber-400',  label: 'text-amber-700',  pulse: false }
+  if (remaining > 0)  return { accent: '#f97316', bar: 'bg-orange-500', text: 'text-orange-400', label: 'text-orange-700', pulse: false }
+  return               { accent: '#ef4444', bar: 'bg-red-500',    text: 'text-red-400',    label: 'text-red-700',    pulse: true  }
+}
+
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  )
+}
+
+function TrashIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+      <path d="M10 11v6M14 11v6" />
+      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+    </svg>
+  )
 }
 
 export function RadarCard({ est, mesin, nowAbs, onDoff, onHapus, onLongPress }: Props) {
@@ -58,8 +48,8 @@ export function RadarCard({ est, mesin, nowAbs, onDoff, onHapus, onLongPress }: 
   const remStr    = remaining >= 0 ? `+${remaining}m` : `−${Math.abs(remaining)}m`
   const corak     = est.corakOverride ?? mesin?.corak ?? '—'
   const tipe      = mesin?.tipe ?? '?'
+  const showDot   = remaining <= 5
 
-  // Swipe gesture refs — mutations, not state, so no re-renders during drag
   const innerRef  = useRef<HTMLDivElement>(null)
   const startXRef = useRef(0)
   const dragging  = useRef(false)
@@ -118,69 +108,79 @@ export function RadarCard({ est, mesin, nowAbs, onDoff, onHapus, onLongPress }: 
   }
 
   return (
-    <div className="relative rounded-2xl overflow-hidden">
-      {/* Action strip — revealed on left-swipe */}
-      <div className="absolute inset-y-0 right-0 flex" style={{ width: REVEAL_W }}>
+    <div className="relative rounded-2xl overflow-hidden" style={{ height: 80 }}>
+      {/* Action strip — revealed on left-swipe; HAPUS left, DOFF right */}
+      <div className="absolute inset-y-0 right-0 flex items-center justify-end pr-3 gap-2" style={{ width: REVEAL_W }}>
         <button
-          className="flex-1 flex items-center justify-center bg-teal-600 active:bg-teal-500 text-white"
-          onClick={() => { snap(false); onDoff() }}
-        >
-          <span className="text-sm font-black tracking-widest">DOFF</span>
-        </button>
-        <div className="w-px bg-black/25" />
-        <button
-          className="w-16 flex items-center justify-center bg-zinc-700 active:bg-zinc-600 text-zinc-300"
+          className="flex flex-col items-center justify-center gap-1 bg-zinc-700 active:bg-zinc-600 text-zinc-200 rounded-xl"
+          style={{ width: 72, height: '80%' }}
           onClick={() => { snap(false); onHapus() }}
         >
-          <span className="text-[11px] font-bold tracking-wide">HAPUS</span>
+          <TrashIcon />
+          <span className="text-[10px] font-bold tracking-wide">HAPUS</span>
+        </button>
+        <button
+          className="flex flex-col items-center justify-center gap-1 bg-cyan-600 active:bg-cyan-500 text-white rounded-xl"
+          style={{ width: 88, height: '80%' }}
+          onClick={() => { snap(false); onDoff() }}
+        >
+          <CheckIcon />
+          <span className="text-[10px] font-bold tracking-wide">DOFF</span>
         </button>
       </div>
 
       {/* Card face — transition-colors lets urgency tier shifts animate smoothly */}
       <div
         ref={innerRef}
-        className={[
-          'relative rounded-2xl border-l-[3px] select-none bg-zinc-900 transition-colors duration-700',
-          clr.border,
-          clr.cardBg,
-          clr.pulse ? 'animate-pulse-soft' : '',
-        ].filter(Boolean).join(' ')}
+        className={`relative h-full bg-zinc-900 rounded-2xl select-none overflow-hidden ${clr.pulse ? 'animate-pulse-soft' : ''}`}
+        style={{
+          borderLeft: `3px solid ${clr.accent}`,
+          boxShadow: `inset 0 0 0 1px ${clr.accent}18`,
+        }}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
         onMouseDown={onMouseDown}
       >
-        <div className="px-4 pt-3.5 pb-3">
-          {/* Row 1: machine number + tipe   |   est. time + delta */}
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-black text-zinc-100 leading-none tabular-nums">
-                  {est.mcNo}
-                </span>
-                <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors duration-700 ${clr.label}`}>
-                  {tipe}
-                </span>
-              </div>
-              <div className="mt-1 text-xs text-zinc-500 truncate leading-tight">{corak}</div>
-            </div>
+        {/* Progress fill — grows from left as subtle tinted background */}
+        <div
+          className={`absolute left-0 top-0 bottom-0 ${clr.bar} opacity-[0.12]`}
+          style={{ width: `${Math.round(progress * 100)}%`, transition: 'width 4s linear' }}
+        />
 
-            <div className="text-right shrink-0">
-              <div className={`text-[22px] font-black tabular-nums leading-none transition-colors duration-700 ${clr.text}`}>
-                {shiftAbsKeJamStr(est.estAbsMin)}
-              </div>
-              <div className={`text-xs tabular-nums mt-1 font-semibold transition-colors duration-700 ${remaining < 0 ? 'text-red-400' : 'text-zinc-600'}`}>
-                {remStr}
-              </div>
+        {/* Content */}
+        <div className="relative z-10 h-full flex items-center px-4 gap-3">
+          {/* Left: machine number + tipe + corak */}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-baseline gap-2">
+              <span className="text-4xl font-black tracking-tighter text-zinc-100 tabular-nums leading-none">
+                {est.mcNo}
+              </span>
+              <span className={`text-[10px] font-bold uppercase tracking-widest ${clr.label}`}>
+                {tipe}
+              </span>
+            </div>
+            <div className="text-[11px] font-bold uppercase tracking-wide text-zinc-500 truncate mt-0.5">
+              {corak}
             </div>
           </div>
 
-          {/* Progress bar */}
-          <div className="mt-3.5 h-1 bg-zinc-800 rounded-full overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-colors duration-700 ${clr.bar}`}
-              style={{ width: `${Math.round(progress * 100)}%`, transition: 'width 4s linear, background-color 0.7s ease' }}
-            />
+          {/* Right: ping dot + est time + remaining */}
+          <div className="flex items-center gap-2.5 shrink-0">
+            {showDot && (
+              <span className="relative flex h-3 w-3 shrink-0">
+                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${remaining < 0 ? 'bg-red-400' : 'bg-emerald-400'}`} />
+                <span className={`relative inline-flex rounded-full h-3 w-3 ${remaining < 0 ? 'bg-red-500' : 'bg-emerald-500'}`} />
+              </span>
+            )}
+            <div className="text-right">
+              <div className={`text-3xl font-bold tracking-tighter tabular-nums leading-none font-mono ${clr.text}`}>
+                {shiftAbsKeJamStr(est.estAbsMin)}
+              </div>
+              <div className={`text-xs font-black uppercase tracking-wider tabular-nums mt-0.5 ${remaining < 0 ? 'text-red-400' : clr.text}`}>
+                {remStr}
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -9,9 +9,8 @@ interface Props {
   onEditAkt: (id: number) => void
 }
 
-const REVEAL_W = 140
+const REVEAL_W = 150
 
-// Color dot per machine type — helps the eye scan history by category
 const TIPE_DOT: Record<string, string> = {
   TAPPET: 'bg-teal-500',
   CAM:    'bg-violet-500',
@@ -76,18 +75,18 @@ function HistoryRow({
   const num = total - index
 
   return (
-    <div className="relative overflow-hidden rounded-xl">
-      {/* Action buttons */}
+    <div className="relative overflow-hidden rounded-2xl">
+      {/* Action buttons — EDIT (primary, cyan) + HAPUS (red) */}
       <div className="absolute inset-y-0 right-0 flex" style={{ width: REVEAL_W }}>
         <button
-          className="flex-1 bg-zinc-700 active:bg-zinc-600 text-zinc-200 text-xs font-bold tracking-wide"
+          className="flex-1 flex items-center justify-center bg-cyan-700 active:bg-cyan-600 text-white text-xs font-bold tracking-wide rounded-l-2xl"
           onClick={() => { snap(false); onEdit() }}
         >
           EDIT
         </button>
         <div className="w-px bg-black/20" />
         <button
-          className="w-16 bg-red-700/90 active:bg-red-700 text-white text-xs font-bold tracking-wide"
+          className="w-[65px] flex items-center justify-center bg-red-700/90 active:bg-red-700 text-white text-xs font-bold tracking-wide rounded-r-2xl"
           onClick={() => { snap(false); onHapus() }}
         >
           HAPUS
@@ -97,24 +96,32 @@ function HistoryRow({
       {/* Row face */}
       <div
         ref={innerRef}
-        className="relative bg-zinc-800 rounded-xl flex items-center gap-3 px-3 py-3 select-none"
+        className="relative bg-zinc-900 rounded-2xl flex items-center gap-3 px-4 py-3 select-none"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
         onMouseDown={onMouseDown}
       >
-        <span className="text-xs text-zinc-600 tabular-nums w-6 text-right shrink-0">#{num}</span>
-        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dot}`} />
+        {/* Sequence number */}
+        <span className="text-sm font-black text-zinc-500 tabular-nums w-5 text-right shrink-0">
+          {num}
+        </span>
+
+        {/* Type dot */}
+        <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
+
+        {/* Machine number + corak */}
         <div className="min-w-0 flex-1">
-          <div className="flex items-baseline gap-1.5">
-            <span className="font-bold text-zinc-100 text-sm tabular-nums">Mc {entry.mcNo}</span>
-            <span className="text-xs text-zinc-500 truncate">{corak}</span>
+          <div className="text-3xl font-black tracking-tighter tabular-nums leading-none text-cyan-500">
+            {entry.mcNo}
           </div>
-          {entry.customYard !== undefined && (
-            <span className="text-xs text-zinc-600">{entry.customYard}y</span>
-          )}
+          <div className="text-[11px] font-bold uppercase tracking-wide text-zinc-500 truncate mt-0.5">
+            {corak}{entry.customYard !== undefined ? ` · ${entry.customYard}y` : ''}
+          </div>
         </div>
-        <span className="text-xs text-zinc-400 tabular-nums shrink-0 font-medium">{entry.ket}</span>
+
+        {/* Ket / condition */}
+        <span className="text-sm font-bold text-zinc-200 tabular-nums shrink-0">{entry.ket}</span>
       </div>
     </div>
   )
@@ -174,7 +181,7 @@ export function HistoryDrawer({ open, onClose, onEditAkt }: Props) {
           <div className="w-10 h-1 bg-zinc-700 rounded-full mx-auto mb-4" />
           <div className="flex items-center justify-between">
             <span className="font-bold text-zinc-100 text-base">Riwayat</span>
-            <span className="text-sm text-zinc-500 tabular-nums">{total} doff</span>
+            <span className="text-sm font-bold text-cyan-500 tabular-nums">{total} doff</span>
           </div>
         </div>
 
@@ -201,13 +208,13 @@ export function HistoryDrawer({ open, onClose, onEditAkt }: Props) {
         {/* Footer */}
         <div className="flex-shrink-0 flex gap-3 px-4 pt-3 pb-safe-floor border-t border-zinc-800">
           <button
-            className="flex-1 py-3 rounded-2xl border border-zinc-700 text-zinc-300 text-sm font-medium active:bg-zinc-800 transition-colors duration-150"
+            className="flex-1 py-3 rounded-2xl border border-zinc-700 text-zinc-400 text-sm font-medium active:bg-zinc-800 transition-colors duration-150"
             onClick={handleShare}
           >
             Bagikan
           </button>
           <button
-            className="flex-1 py-3 rounded-2xl bg-teal-600 active:bg-teal-700 text-white text-sm font-semibold transition-colors duration-150"
+            className="flex-1 py-3 rounded-2xl bg-cyan-600 active:bg-cyan-700 text-white text-sm font-semibold transition-colors duration-150"
             onClick={handleFinishShift}
           >
             Selesai Shift
