@@ -18,14 +18,6 @@ const TIPE_DOT: Record<string, string> = {
   D408:   'bg-sky-500',
 }
 
-// Color dot per machine type — helps the eye scan history by category
-const TIPE_DOT: Record<string, string> = {
-  TAPPET: 'bg-teal-500',
-  CAM:    'bg-violet-500',
-  D405:   'bg-amber-500',
-  D408:   'bg-sky-500',
-}
-
 function HistoryRow({
   entry, index, total, onEdit, onHapus,
 }: {
