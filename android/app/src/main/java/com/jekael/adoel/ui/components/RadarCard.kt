@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalDensity
@@ -76,15 +77,14 @@ fun RadarCard(
         )
     }
 
-    val alpha = remember { Animatable(1f) }
-    if (clr.pulse) {
-        LaunchedEffect(est.mcNo) {
-            while (true) {
-                alpha.animateTo(0.5f, tween(800))
-                alpha.animateTo(1f, tween(800))
-            }
-        }
-    }
+    val criticalPulse = rememberInfiniteTransition(label = "criticalPulse")
+    val pulseFraction by criticalPulse.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(800, easing = LinearEasing), RepeatMode.Reverse),
+        label = "pulseFraction",
+    )
+    val faceBg = if (clr.pulse) lerp(Zinc900, Color(0xFF3A1414), pulseFraction) else Zinc900
 
     Box(
         modifier = Modifier
@@ -131,9 +131,8 @@ fun RadarCard(
                 .fillMaxSize()
                 .graphicsLayer {
                     translationX = -animOffset.value
-                    this.alpha = if (clr.pulse) alpha.value else 1f
                 }
-                .background(Zinc900)
+                .background(faceBg)
                 .pointerInput(Unit) {
                     awaitEachGesture {
                         val down = awaitFirstDown()
