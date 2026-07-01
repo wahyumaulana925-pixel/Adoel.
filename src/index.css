@@ -1,38 +1,53 @@
 @import "tailwindcss";
 
 @layer utilities {
-  .hide-scroll {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-  .hide-scroll::-webkit-scrollbar {
-    display: none;
-  }
+  /* ── Scrollbar ── */
+  .hide-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+  .hide-scroll::-webkit-scrollbar { display: none; }
 
-  /* Safe-area helpers for edge-to-edge Android */
-  .pt-safe {
-    padding-top: env(safe-area-inset-top, 0px);
-  }
-  .pb-safe {
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-  }
-  /* Footer: safe area OR a minimum floor, whichever is larger */
-  .pb-safe-floor {
-    padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
-  }
+  /* ── Safe-area helpers (edge-to-edge Android) ── */
+  .pt-safe        { padding-top:    env(safe-area-inset-top,    0px); }
+  .pb-safe        { padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .pb-safe-floor  { padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px)); }
+
+  /* ── Animation utilities ── */
+  .animate-pulse-soft { animation: pulse-soft  2s    ease-in-out                        infinite; }
+  .animate-slide-up   { animation: slide-up    0.3s  cubic-bezier(0.32, 0.72, 0, 1)    both;     }
+  .animate-fade-in    { animation: fade-in     0.22s ease-out                            both;     }
+  .animate-toast-in   { animation: toast-in    0.24s cubic-bezier(0.34, 1.56, 0.64, 1)  both;     }
+  .animate-scale-in   { animation: scale-in    0.22s cubic-bezier(0.34, 1.56, 0.64, 1)  both;     }
 }
+
+/* ── Keyframes ── */
 
 @keyframes pulse-soft {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
+  0%, 100% { opacity: 1;    }
+  50%       { opacity: 0.55; }
 }
 
-@layer utilities {
-  .animate-pulse-soft {
-    animation: pulse-soft 2s ease-in-out infinite;
-  }
+@keyframes slide-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0);    }
 }
 
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Toast drops in from top with spring bounce */
+@keyframes toast-in {
+  from { transform: translateY(-10px) scale(0.97); opacity: 0; }
+  to   { transform: translateY(0)     scale(1);    opacity: 1; }
+}
+
+/* Confirm modal pops in with scale spring */
+@keyframes scale-in {
+  from { transform: scale(0.92); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+
+/* ── Global resets ── */
 * {
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;

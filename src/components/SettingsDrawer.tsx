@@ -305,9 +305,9 @@ export function SettingsDrawer({ open, onClose }: Props) {
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/60 z-30" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/60 z-30 animate-fade-in" onClick={onClose} />
       <div
-        className="fixed bottom-0 left-0 right-0 z-30 flex flex-col bg-zinc-950 border-t border-zinc-800 rounded-t-3xl"
+        className="fixed bottom-0 left-0 right-0 z-30 flex flex-col bg-zinc-950 border-t border-zinc-800 rounded-t-3xl animate-slide-up"
         style={{ maxHeight: '90vh' }}
       >
         <div className="flex-shrink-0 px-5 pt-4 pb-3">
