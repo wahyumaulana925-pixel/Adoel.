@@ -161,14 +161,6 @@ class DoffViewModel(app: Application) : AndroidViewModel(app) {
         s.copy(estimasi = s.estimasi + (est.mcNo to est))
     }
 
-    fun updateEstimasi(mcNo: String, corakOverride: String?, yardOverride: Double?) = updateState { s ->
-        val existing = s.estimasi[mcNo] ?: return@updateState s
-        s.copy(estimasi = s.estimasi + (mcNo to existing.copy(
-            corakOverride = corakOverride,
-            yardOverride = yardOverride ?: existing.yardOverride,
-        )))
-    }
-
     fun hapusAktualById(id: Int) = updateState { s ->
         s.copy(aktual = s.aktual.filter { it.id != id })
     }

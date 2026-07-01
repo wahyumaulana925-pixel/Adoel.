@@ -2,9 +2,7 @@ package com.jekael.adoel.ui.components
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -45,7 +43,6 @@ private fun urgency(remaining: Long): UrgencyStyle = when {
     else           -> UrgencyStyle(Red500, Red500, Red400, Red700, true, Icons.Filled.Warning)
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun RadarCard(
     est: Estimasi,
@@ -53,7 +50,6 @@ fun RadarCard(
     nowAbs: Long,
     onDoff: () -> Unit,
     onHapus: () -> Unit,
-    onLongPress: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val remaining = est.estAbsMin - nowAbs
@@ -103,11 +99,10 @@ fun RadarCard(
         }
 
         Column(modifier = Modifier.fillMaxWidth()) {
-            // Content — long-press to edit estimasi; no swipe/tap action
+            // Content
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .combinedClickable(onClick = {}, onLongClick = onLongPress)
                     .padding(horizontal = 16.dp, vertical = 14.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,

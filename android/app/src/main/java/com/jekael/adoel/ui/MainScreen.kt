@@ -70,7 +70,6 @@ fun MainScreen(
 
     var historyOpen by remember { mutableStateOf(false) }
     var settingsOpen by remember { mutableStateOf(false) }
-    var editEstMc by remember { mutableStateOf<String?>(null) }
     var editAktId by remember { mutableStateOf<Int?>(null) }
     var historyExpanded by remember { mutableStateOf(false) }
 
@@ -292,13 +291,6 @@ fun MainScreen(
             ) {
                 item {
                     SectionHeader(title = "Mesin Siap", count = radarList.size)
-                    if (radarList.isNotEmpty()) {
-                        Text(
-                            text = "Tahan kartu untuk edit estimasi",
-                            style = TextStyle(fontSize = 11.sp, color = Zinc600),
-                            modifier = Modifier.padding(start = 4.dp, end = 4.dp, bottom = 4.dp),
-                        )
-                    }
                 }
 
                 if (radarList.isEmpty()) {
@@ -317,7 +309,6 @@ fun MainScreen(
                                 nowAbs = nowAbs,
                                 onDoff = { handleDoff(est.mcNo) },
                                 onHapus = { handleHapusEst(est.mcNo) },
-                                onLongPress = { editEstMc = est.mcNo },
                                 modifier = Modifier.animateItem(),
                             )
                         }
@@ -333,7 +324,6 @@ fun MainScreen(
                                 nowAbs = nowAbs,
                                 onDoff = { handleDoff(est.mcNo) },
                                 onHapus = { handleHapusEst(est.mcNo) },
-                                onLongPress = { editEstMc = est.mcNo },
                                 modifier = Modifier.animateItem(),
                             )
                         }
@@ -536,48 +526,6 @@ fun MainScreen(
             onImportDb = { db -> db.forEach { (k, v) -> doffVm.setMesin(k, v) } },
             showToast = { uiVm.showToast(it) },
             showConfirm = { msg, fn -> uiVm.showConfirm(msg, onConfirm = fn) },
-        )
-    }
-
-    if (editEstMc != null) {
-        EditEstSheet(
-            mcNo = editEstMc,
-            state = state,
-            nowAbs = nowAbs,
-            onClose = { editEstMc = null },
-            onSave = { rawInput, corakOverride ->
-                val mcNo = editEstMc!!
-                if (rawInput.isNotBlank()) {
-                    val result = doffVm.prosesBarisKondisiMesin("$mcNo ${rawInput.trim().uppercase()}", nowAbsMin())
-                    if (result is ProsesResult.Err) { uiVm.showToast("⚠ ${result.msg}"); return@EditEstSheet }
-                    if (result is ProsesResult.Ok && result.estAbs != null) {
-                        NotificationHelper.scheduleNotif(context, mcNo, result.estAbs)
-                    }
-                }
-                val cleanCorak = corakOverride?.trim()?.takeIf { it.isNotEmpty() }
-                val mesin = state.db[mcNo]
-                doffVm.updateEstimasi(
-                    mcNo,
-                    corakOverride = if (cleanCorak != mesin?.corak) cleanCorak else null,
-                    yardOverride = null,
-                )
-                state.estimasi[mcNo]?.let { NotificationHelper.scheduleNotif(context, mcNo, it.estAbsMin) }
-                uiVm.showToast("Mc $mcNo diperbarui")
-                editEstMc = null
-            },
-            onHapus = {
-                val mcNo = editEstMc!!
-                val prevEst = state.estimasi[mcNo]
-                doffVm.hapusEstimasi(mcNo)
-                NotificationHelper.cancelNotif(context, mcNo)
-                uiVm.showToast("Mc $mcNo dihapus", undo = {
-                    if (prevEst != null) {
-                        doffVm.restoreEstimasi(prevEst)
-                        NotificationHelper.scheduleNotif(context, prevEst.mcNo, prevEst.estAbsMin)
-                    }
-                })
-                editEstMc = null
-            },
         )
     }
 
