@@ -75,6 +75,7 @@ fun MainScreen(
     var addSheetOpen by remember { mutableStateOf(false) }
     var catatEstimasiOpen by remember { mutableStateOf(false) }
     var catatDoffingOpen by remember { mutableStateOf(false) }
+    var quickDoffMc by remember { mutableStateOf<String?>(null) }
 
     val inputFocus = remember { FocusRequester() }
 
@@ -178,7 +179,7 @@ fun MainScreen(
         }
     }
 
-    fun handleCatatDoffing(mcNo: String, keterangan: String) {
+    fun submitDoffing(mcNo: String, keterangan: String, onSuccess: () -> Unit) {
         val result = doffVm.catatDoffing(mcNo, keterangan)
         when (result) {
             is ProsesResult.Ok -> {
@@ -187,7 +188,7 @@ fun MainScreen(
                     result.undoFn?.invoke()
                     result.prevEst?.let { NotificationHelper.scheduleNotif(context, it.mcNo, it.estAbsMin) }
                 })
-                catatDoffingOpen = false
+                onSuccess()
             }
             is ProsesResult.Err -> uiVm.showToast("⚠ ${result.msg}")
         }
@@ -291,6 +292,13 @@ fun MainScreen(
                 ) {
                     item {
                         SectionHeader(title = "Mesin Siap", count = radarList.size)
+                        if (radarList.isNotEmpty()) {
+                            Text(
+                                text = "Ketuk kartu untuk catat doffing · tahan untuk edit estimasi",
+                                style = TextStyle(fontSize = 11.sp, color = Zinc600),
+                                modifier = Modifier.padding(horizontal = 4.dp, bottom = 4.dp),
+                            )
+                        }
                     }
 
                     if (radarList.isEmpty()) {
@@ -306,6 +314,7 @@ fun MainScreen(
                                 onDoff = { handleDoff(est.mcNo) },
                                 onHapus = { handleHapusEst(est.mcNo) },
                                 onLongPress = { editEstMc = est.mcNo },
+                                onTap = { quickDoffMc = est.mcNo },
                             )
                         }
                     }
@@ -507,7 +516,16 @@ fun MainScreen(
         CatatDoffingSheet(
             state = state,
             onClose = { catatDoffingOpen = false },
-            onSubmit = { mcNo, keterangan -> handleCatatDoffing(mcNo, keterangan) },
+            onSubmit = { mcNo, keterangan -> submitDoffing(mcNo, keterangan) { catatDoffingOpen = false } },
+        )
+    }
+
+    if (quickDoffMc != null) {
+        QuickDoffSheet(
+            mcNo = quickDoffMc!!,
+            state = state,
+            onClose = { quickDoffMc = null },
+            onSubmit = { keterangan -> submitDoffing(quickDoffMc!!, keterangan) { quickDoffMc = null } },
         )
     }
 

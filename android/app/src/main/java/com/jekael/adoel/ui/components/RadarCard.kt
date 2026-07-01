@@ -55,6 +55,7 @@ fun RadarCard(
     onDoff: () -> Unit,
     onHapus: () -> Unit,
     onLongPress: () -> Unit,
+    onTap: () -> Unit,
 ) {
     val remaining = est.estAbsMin - nowAbs
     val clr = urgency(remaining)
@@ -143,9 +144,11 @@ fun RadarCard(
                     awaitEachGesture {
                         val down = awaitFirstDown()
                         isDragging = false
+                        var longPressTriggered = false
                         var longPressJob = scope.launch {
                             delay(480)
                             if (!isDragging) {
+                                longPressTriggered = true
                                 onLongPress()
                             }
                         }
@@ -166,6 +169,12 @@ fun RadarCard(
                                                 if (open) revealPx else 0f,
                                                 animationSpec = tween(220, easing = FastOutSlowInEasing),
                                             )
+                                        }
+                                    } else if (!longPressTriggered) {
+                                        if (animOffset.value > 1f) {
+                                            snapTo(false)
+                                        } else {
+                                            onTap()
                                         }
                                     }
                                     break
