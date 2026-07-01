@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -289,10 +290,13 @@ fun MainScreen(
                 HorizontalDivider(color = Amber700.copy(alpha = 0.5f))
             }
 
-            // Main scrollable content
+            // Main scrollable content — scrolls behind the floating console card
             LazyColumn(
                 modifier = Modifier.weight(1f).fillMaxWidth(),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
+                contentPadding = PaddingValues(
+                    start = 12.dp, end = 12.dp, top = 10.dp,
+                    bottom = 10.dp + consoleBarHeight + 16.dp,
+                ),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 item {
@@ -376,22 +380,30 @@ fun MainScreen(
                     }
                 }
             }
+        }
 
-            HorizontalDivider(color = Zinc800.copy(alpha = 0.6f))
-
-            // Console command bar — the sole input model for estimasi/doffing
+        // Console command bar — floating card, overlays the list (list scrolls behind it)
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .onGloballyPositioned { coords ->
+                    consoleBarHeight = with(density) { coords.size.height.toDp() }
+                }
+                .padding(horizontal = 12.dp)
+                .padding(bottom = 12.dp)
+                .shadow(elevation = 16.dp, shape = RoundedCornerShape(28.dp))
+                .clip(RoundedCornerShape(28.dp))
+                .background(Zinc900)
+                .imePadding(),
+        ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Zinc950)
                     .padding(horizontal = 12.dp)
                     .padding(top = 10.dp)
-                    .imePadding()
                     .navigationBarsPadding()
-                    .padding(bottom = 4.dp)
-                    .onGloballyPositioned { coords ->
-                        consoleBarHeight = with(density) { coords.size.height.toDp() }
-                    },
+                    .padding(bottom = 10.dp),
             ) {
                 // Mode toggle
                 Box(
@@ -489,12 +501,12 @@ fun MainScreen(
             }
         }
 
-        // Toast — floats just above the console bar, never covers it
+        // Toast — floats just above the floating console card, never covers it
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
-                .padding(bottom = consoleBarHeight),
+                .padding(bottom = consoleBarHeight + 8.dp),
         ) {
             ToastHost(toast = toast, onDismiss = { uiVm.dismissToast() })
         }
