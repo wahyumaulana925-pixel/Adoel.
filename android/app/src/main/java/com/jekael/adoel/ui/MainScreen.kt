@@ -6,16 +6,21 @@ import android.content.Intent
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rotate
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -54,8 +59,10 @@ fun MainScreen(
     val toast by uiVm.toast.collectAsStateWithLifecycle()
     val confirm by uiVm.confirm.collectAsStateWithLifecycle()
 
+    // Quick-mode command bar state (only used when state.quickModeEnabled)
     var mode by remember { mutableStateOf(Mode.AKTUAL) }
     var input by remember { mutableStateOf("") }
+
     var nowAbs by remember { mutableLongStateOf(nowAbsMin()) }
     var notifGranted by remember { mutableStateOf(true) }
 
@@ -63,6 +70,11 @@ fun MainScreen(
     var settingsOpen by remember { mutableStateOf(false) }
     var editEstMc by remember { mutableStateOf<String?>(null) }
     var editAktId by remember { mutableStateOf<Int?>(null) }
+    var historyExpanded by remember { mutableStateOf(false) }
+
+    var addSheetOpen by remember { mutableStateOf(false) }
+    var catatEstimasiOpen by remember { mutableStateOf(false) }
+    var catatDoffingOpen by remember { mutableStateOf(false) }
 
     val inputFocus = remember { FocusRequester() }
 
@@ -149,6 +161,33 @@ fun MainScreen(
                 NotificationHelper.scheduleNotif(context, prevEst.mcNo, prevEst.estAbsMin)
             }
         })
+    }
+
+    fun handleCatatEstimasi(mcNo: String, rawInput: String) {
+        val result = doffVm.prosesBarisKondisiMesin("$mcNo ${rawInput.trim().uppercase()}", nowAbsMin())
+        when (result) {
+            is ProsesResult.Ok -> {
+                uiVm.showToast(result.msg)
+                result.estAbs?.let { NotificationHelper.scheduleNotif(context, result.mcNo, it) }
+                catatEstimasiOpen = false
+            }
+            is ProsesResult.Err -> uiVm.showToast("⚠ ${result.msg}")
+        }
+    }
+
+    fun handleCatatDoffing(mcNo: String, keterangan: String) {
+        val result = doffVm.catatDoffing(mcNo, keterangan)
+        when (result) {
+            is ProsesResult.Ok -> {
+                NotificationHelper.cancelNotif(context, result.mcNo)
+                uiVm.showToast(result.msg, undo = {
+                    result.undoFn?.invoke()
+                    result.prevEst?.let { NotificationHelper.scheduleNotif(context, it.mcNo, it.estAbsMin) }
+                })
+                catatDoffingOpen = false
+            }
+            is ProsesResult.Err -> uiVm.showToast("⚠ ${result.msg}")
+        }
     }
 
     val doffCount = state.aktual.size
@@ -240,144 +279,197 @@ fun MainScreen(
                 HorizontalDivider(color = Amber700.copy(alpha = 0.5f))
             }
 
-            // Radar card list
-            if (radarList.isEmpty()) {
-                Box(
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    EmptyState()
-                }
-            } else {
+            // Main scrollable content + FAB
+            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                 LazyColumn(
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    items(radarList, key = { it.mcNo }) { est ->
-                        RadarCard(
-                            est = est,
-                            mesin = state.db[est.mcNo],
-                            nowAbs = nowAbs,
-                            onDoff = { handleDoff(est.mcNo) },
-                            onHapus = { handleHapusEst(est.mcNo) },
-                            onLongPress = { editEstMc = est.mcNo },
+                    item {
+                        SectionHeader(title = "Mesin Siap", count = radarList.size)
+                    }
+
+                    if (radarList.isEmpty()) {
+                        item {
+                            EmptyState(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp))
+                        }
+                    } else {
+                        items(radarList, key = { it.mcNo }) { est ->
+                            RadarCard(
+                                est = est,
+                                mesin = state.db[est.mcNo],
+                                nowAbs = nowAbs,
+                                onDoff = { handleDoff(est.mcNo) },
+                                onHapus = { handleHapusEst(est.mcNo) },
+                                onLongPress = { editEstMc = est.mcNo },
+                            )
+                        }
+                    }
+
+                    item {
+                        Spacer(Modifier.height(12.dp))
+                        HistorySectionHeader(
+                            count = state.aktual.size,
+                            expanded = historyExpanded,
+                            onToggle = { historyExpanded = !historyExpanded },
                         )
                     }
+
+                    if (historyExpanded) {
+                        val recent = remember(state.aktual) { state.aktual.take(5) }
+                        if (recent.isEmpty()) {
+                            item {
+                                Text(
+                                    text = "Belum ada doff hari ini",
+                                    style = TextStyle(fontSize = 13.sp, color = Zinc600),
+                                    modifier = Modifier.padding(vertical = 16.dp),
+                                )
+                            }
+                        } else {
+                            items(recent, key = { "hist_${it.id}" }) { entry ->
+                                HistoryPreviewRow(
+                                    entry = entry,
+                                    mesin = state.db[entry.mcNo],
+                                    onClick = { editAktId = entry.id },
+                                )
+                            }
+                            item {
+                                TextButton(
+                                    onClick = { historyOpen = true },
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text(
+                                        "Lihat semua riwayat →",
+                                        style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Cyan400),
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    item { Spacer(Modifier.height(72.dp)) }
+                }
+
+                // Floating action button — primary way to add estimasi/doffing
+                FloatingActionButton(
+                    onClick = { addSheetOpen = true },
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(16.dp),
+                    containerColor = Cyan600,
+                    contentColor = Zinc100,
+                ) {
+                    Icon(Icons.Filled.Add, contentDescription = "Tambah catatan")
                 }
             }
 
-            HorizontalDivider(color = Zinc800.copy(alpha = 0.6f))
-
-            // Footer
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Zinc950)
-                    .padding(horizontal = 12.dp)
-                    .padding(top = 10.dp)
-                    .imePadding()
-                    .navigationBarsPadding()
-                    .padding(bottom = 4.dp),
-            ) {
-                // Mode toggle
-                Box(
+            // Quick Mode command bar — only shown when explicitly enabled in Settings
+            if (state.quickModeEnabled) {
+                HorizontalDivider(color = Zinc800.copy(alpha = 0.6f))
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Zinc800, RoundedCornerShape(50.dp))
-                        .padding(4.dp),
+                        .background(Zinc950)
+                        .padding(horizontal = 12.dp)
+                        .padding(top = 10.dp)
+                        .imePadding()
+                        .navigationBarsPadding()
+                        .padding(bottom = 4.dp),
                 ) {
-                    // Sliding highlight
-                    val highlightFraction by animateDpAsState(
-                        targetValue = if (mode == Mode.ESTIMASI) 0.dp else 1.dp,
-                        animationSpec = tween(280),
-                        label = "modeSlide",
-                    )
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        Button(
-                            onClick = { mode = Mode.ESTIMASI },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(50.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (mode == Mode.ESTIMASI) Amber500 else Color.Transparent,
-                                contentColor = if (mode == Mode.ESTIMASI) Zinc950 else Zinc500,
-                            ),
-                            contentPadding = PaddingValues(vertical = 10.dp),
-                            elevation = ButtonDefaults.buttonElevation(0.dp),
-                        ) {
-                            Text("ESTIMASI", style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold))
-                        }
-                        Button(
-                            onClick = { mode = Mode.AKTUAL },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(50.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (mode == Mode.AKTUAL) Cyan600 else Color.Transparent,
-                                contentColor = if (mode == Mode.AKTUAL) Zinc100 else Zinc500,
-                            ),
-                            contentPadding = PaddingValues(vertical = 10.dp),
-                            elevation = ButtonDefaults.buttonElevation(0.dp),
-                        ) {
-                            Text("DOFFING", style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold))
+                    // Mode toggle
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Zinc800, RoundedCornerShape(50.dp))
+                            .padding(4.dp),
+                    ) {
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            Button(
+                                onClick = { mode = Mode.ESTIMASI },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(50.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (mode == Mode.ESTIMASI) Amber500 else Color.Transparent,
+                                    contentColor = if (mode == Mode.ESTIMASI) Zinc950 else Zinc500,
+                                ),
+                                contentPadding = PaddingValues(vertical = 10.dp),
+                                elevation = ButtonDefaults.buttonElevation(0.dp),
+                            ) {
+                                Text("ESTIMASI", style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold))
+                            }
+                            Button(
+                                onClick = { mode = Mode.AKTUAL },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(50.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (mode == Mode.AKTUAL) Cyan600 else Color.Transparent,
+                                    contentColor = if (mode == Mode.AKTUAL) Zinc100 else Zinc500,
+                                ),
+                                contentPadding = PaddingValues(vertical = 10.dp),
+                                elevation = ButtonDefaults.buttonElevation(0.dp),
+                            ) {
+                                Text("DOFFING", style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold))
+                            }
                         }
                     }
-                }
 
-                Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(10.dp))
 
-                // Command row
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    OutlinedTextField(
-                        value = input,
-                        onValueChange = { input = it.uppercase() },
-                        modifier = Modifier.weight(1f).focusRequester(inputFocus),
-                        placeholder = {
-                            Text(
-                                if (mode == Mode.ESTIMASI) "cth: 31 45" else "cth: 31 HB",
-                                color = Zinc600,
-                            )
-                        },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Cyan500,
-                            unfocusedBorderColor = Zinc700,
-                            cursorColor = Cyan500,
-                            focusedContainerColor = Zinc800,
-                            unfocusedContainerColor = Zinc800,
-                        ),
-                        shape = RoundedCornerShape(50.dp),
-                        textStyle = TextStyle(
-                            color = Zinc100,
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Monospace,
-                            letterSpacing = (-0.5).sp,
-                        ),
-                        keyboardOptions = KeyboardOptions(
-                            capitalization = KeyboardCapitalization.Characters,
-                            imeAction = ImeAction.Send,
-                        ),
-                        keyboardActions = KeyboardActions(onSend = { handleCommand() }),
-                        singleLine = true,
-                    )
-                    // Send button
-                    Button(
-                        onClick = { handleCommand() },
-                        modifier = Modifier.size(56.dp),
-                        shape = CircleShape,
-                        colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
-                        contentPadding = PaddingValues(0.dp),
-                    ) { SendIcon() }
-                    // History button
-                    Button(
-                        onClick = { historyOpen = true },
-                        modifier = Modifier.size(56.dp),
-                        shape = CircleShape,
-                        colors = ButtonDefaults.buttonColors(containerColor = Zinc800, contentColor = Zinc400),
-                        contentPadding = PaddingValues(0.dp),
-                    ) { HistoryIcon() }
+                    // Command row
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        OutlinedTextField(
+                            value = input,
+                            onValueChange = { input = it.uppercase() },
+                            modifier = Modifier.weight(1f).focusRequester(inputFocus),
+                            placeholder = {
+                                Text(
+                                    if (mode == Mode.ESTIMASI) "cth: 31 45" else "cth: 31 HB",
+                                    color = Zinc600,
+                                )
+                            },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Cyan500,
+                                unfocusedBorderColor = Zinc700,
+                                cursorColor = Cyan500,
+                                focusedContainerColor = Zinc800,
+                                unfocusedContainerColor = Zinc800,
+                            ),
+                            shape = RoundedCornerShape(50.dp),
+                            textStyle = TextStyle(
+                                color = Zinc100,
+                                fontSize = 17.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace,
+                                letterSpacing = (-0.5).sp,
+                            ),
+                            keyboardOptions = KeyboardOptions(
+                                capitalization = KeyboardCapitalization.Characters,
+                                imeAction = ImeAction.Send,
+                            ),
+                            keyboardActions = KeyboardActions(onSend = { handleCommand() }),
+                            singleLine = true,
+                        )
+                        // Send button
+                        Button(
+                            onClick = { handleCommand() },
+                            modifier = Modifier.size(56.dp),
+                            shape = CircleShape,
+                            colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
+                            contentPadding = PaddingValues(0.dp),
+                        ) { SendIcon() }
+                        // History button
+                        Button(
+                            onClick = { historyOpen = true },
+                            modifier = Modifier.size(56.dp),
+                            shape = CircleShape,
+                            colors = ButtonDefaults.buttonColors(containerColor = Zinc800, contentColor = Zinc400),
+                            contentPadding = PaddingValues(0.dp),
+                        ) { HistoryIcon() }
+                    }
                 }
             }
         }
@@ -393,6 +485,30 @@ fun MainScreen(
     }
 
     // Overlays
+    if (addSheetOpen) {
+        AddActionSheet(
+            onClose = { addSheetOpen = false },
+            onCatatEstimasi = { catatEstimasiOpen = true },
+            onCatatDoffing = { catatDoffingOpen = true },
+        )
+    }
+
+    if (catatEstimasiOpen) {
+        CatatEstimasiSheet(
+            state = state,
+            onClose = { catatEstimasiOpen = false },
+            onSubmit = { mcNo, rawInput -> handleCatatEstimasi(mcNo, rawInput) },
+        )
+    }
+
+    if (catatDoffingOpen) {
+        CatatDoffingSheet(
+            state = state,
+            onClose = { catatDoffingOpen = false },
+            onSubmit = { mcNo, keterangan -> handleCatatDoffing(mcNo, keterangan) },
+        )
+    }
+
     if (historyOpen) {
         HistoryDrawer(
             state = state,
@@ -426,6 +542,7 @@ fun MainScreen(
                 doffVm.resetDb()
             },
             onImportDb = { db -> db.forEach { (k, v) -> doffVm.setMesin(k, v) } },
+            onSetQuickMode = { enabled -> doffVm.setQuickMode(enabled) },
             showToast = { uiVm.showToast(it) },
             showConfirm = { msg, fn -> uiVm.showConfirm(msg, onConfirm = fn) },
         )
@@ -500,16 +617,101 @@ fun MainScreen(
 }
 
 @Composable
-private fun EmptyState() {
+private fun SectionHeader(title: String, count: Int) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = title,
+            style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp, color = Zinc300),
+        )
+        if (count > 0) {
+            Text(
+                text = "$count",
+                style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Zinc600),
+            )
+        }
+    }
+}
+
+@Composable
+private fun HistorySectionHeader(count: Int, expanded: Boolean, onToggle: () -> Unit) {
+    val rotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = tween(200),
+        label = "chevronRotation",
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onToggle)
+            .padding(horizontal = 4.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "Riwayat Hari Ini",
+            style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp, color = Zinc300),
+        )
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                text = "$count",
+                style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Zinc600),
+            )
+            Icon(
+                Icons.Filled.KeyboardArrowDown,
+                contentDescription = if (expanded) "Sembunyikan" else "Tampilkan",
+                tint = Zinc500,
+                modifier = Modifier.size(18.dp).rotate(rotation),
+            )
+        }
+    }
+}
+
+@Composable
+private fun HistoryPreviewRow(entry: AktualEntry, mesin: MesinData?, onClick: () -> Unit) {
+    val corak = entry.corakOverride ?: mesin?.corak ?: "—"
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Zinc900)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text(
+            text = entry.mcNo,
+            style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Black, color = Cyan500, letterSpacing = (-0.5).sp),
+        )
+        Text(
+            text = corak,
+            style = TextStyle(fontSize = 12.sp, color = Zinc500),
+            modifier = Modifier.weight(1f),
+            maxLines = 1,
+        )
+        Text(
+            text = entry.ket,
+            style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Zinc300),
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun EmptyState(modifier: Modifier = Modifier) {
     Column(
+        modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.size(96.dp)) {
-            Box(Modifier.size(96.dp).clip(CircleShape).background(Color.Transparent).also {
-                // Three concentric rings
-            })
-            // Outer ring
             Box(Modifier.size(96.dp).clip(CircleShape).background(Zinc800.copy(alpha = 0.3f)))
             Box(Modifier.size(72.dp).clip(CircleShape).background(Zinc950))
             Box(Modifier.size(72.dp).clip(CircleShape).background(Zinc800.copy(alpha = 0.2f)))
@@ -517,12 +719,14 @@ private fun EmptyState() {
             Box(Modifier.size(12.dp).clip(CircleShape).background(Zinc700))
         }
         Text(
-            text = "Belum ada estimasi aktif",
-            style = TextStyle(fontSize = 14.sp, color = Zinc600),
+            text = "Belum ada mesin yang dipantau",
+            style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Zinc400),
         )
         Text(
-            text = "Masukkan nomor mesin + menit di bawah",
-            style = TextStyle(fontSize = 12.sp, color = Zinc700),
+            text = "Ketuk tombol ＋ di kanan bawah untuk mulai catat estimasi atau doffing ↘",
+            style = TextStyle(fontSize = 12.sp, color = Zinc600, lineHeight = 17.sp),
+            modifier = Modifier.padding(horizontal = 32.dp),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
     }
 }

@@ -29,7 +29,7 @@ import com.google.gson.GsonBuilder
 import com.jekael.adoel.data.*
 import com.jekael.adoel.ui.theme.*
 
-private enum class SettingsTab { EDIT, LIST, DATA }
+private enum class SettingsTab { UMUM, EDIT, LIST, DATA }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,10 +40,11 @@ fun SettingsDrawer(
     onResetMesin: (String) -> Unit,
     onResetDb: () -> Unit,
     onImportDb: (Map<String, MesinData>) -> Unit,
+    onSetQuickMode: (Boolean) -> Unit,
     showToast: (String) -> Unit,
     showConfirm: (String, () -> Unit) -> Unit,
 ) {
-    var tab by remember { mutableStateOf(SettingsTab.EDIT) }
+    var tab by remember { mutableStateOf(SettingsTab.UMUM) }
 
     ModalBottomSheet(
         onDismissRequest = onClose,
@@ -81,7 +82,7 @@ fun SettingsDrawer(
                     .background(Zinc900, RoundedCornerShape(12.dp))
                     .padding(4.dp),
             ) {
-                listOf(SettingsTab.EDIT to "Edit Mesin", SettingsTab.LIST to "Daftar", SettingsTab.DATA to "Data")
+                listOf(SettingsTab.UMUM to "Umum", SettingsTab.EDIT to "Edit Mesin", SettingsTab.LIST to "Daftar", SettingsTab.DATA to "Data")
                     .forEach { (t, label) ->
                         val selected = tab == t
                         Box(
@@ -113,12 +114,53 @@ fun SettingsDrawer(
                     .navigationBarsPadding(),
             ) {
                 when (tab) {
+                    SettingsTab.UMUM -> UmumTab(state, onSetQuickMode)
                     SettingsTab.EDIT -> EditMesinTab(state, onSetMesin, onResetMesin, showToast)
                     SettingsTab.LIST -> DaftarMesinTab(state)
                     SettingsTab.DATA -> DataTab(state, onResetDb, showToast, showConfirm)
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun UmumTab(
+    state: DoffState,
+    onSetQuickMode: (Boolean) -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Zinc900, RoundedCornerShape(16.dp))
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Mode Cepat (Command)",
+                    style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Zinc100),
+                )
+                Text(
+                    "Tampilkan kolom perintah singkat (cth: \"61 150y\") sebagai tambahan di layar utama, untuk pengguna berpengalaman.",
+                    style = TextStyle(fontSize = 12.sp, color = Zinc500, lineHeight = 16.sp),
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+            Switch(
+                checked = state.quickModeEnabled,
+                onCheckedChange = onSetQuickMode,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Zinc100,
+                    checkedTrackColor = Cyan600,
+                    uncheckedThumbColor = Zinc400,
+                    uncheckedTrackColor = Zinc700,
+                ),
+            )
+        }
+        Spacer(Modifier.height(8.dp))
     }
 }
 

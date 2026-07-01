@@ -36,6 +36,7 @@ data class DoffState(
     val estimasi: Map<String, Estimasi> = emptyMap(),
     val aktual: List<AktualEntry> = emptyList(),
     val nextId: Int = 1,
+    val quickModeEnabled: Boolean = false,
 )
 
 sealed class ProsesResult {
