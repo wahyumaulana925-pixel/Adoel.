@@ -62,6 +62,8 @@ fun RadarCard(
     val progress = if (totalDur > 0) (elapsed.toFloat() / totalDur).coerceIn(0f, 1f) else 0f
     val remStr = formatDeltaMin(remaining)
     val corak = est.corakOverride ?: mesin?.corak ?: "—"
+    val standardYard = est.yardOverride ?: mesin?.targetYard
+    val corakLine = if (standardYard != null) "$corak · ${formatYard(standardYard)}y" else corak
     val tipe = mesin?.tipe?.name ?: "?"
     val showDot = remaining <= 5
     val colors = LocalAppColors.current
@@ -170,7 +172,7 @@ fun RadarCard(
                         }
                     }
                     Text(
-                        text = corak,
+                        text = corakLine,
                         style = TextStyle(
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
