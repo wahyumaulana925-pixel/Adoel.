@@ -13,6 +13,10 @@ type Tab = 'edit' | 'list' | 'data'
 
 const TIPES: MesinTipe[] = ['TAPPET', 'CAM', 'D405', 'D408']
 
+// Shared input class used across all tabs
+const INPUT_CLS = 'w-full bg-zinc-800 text-zinc-100 placeholder-zinc-600 text-sm px-4 py-3 rounded-xl border border-zinc-700/80 focus:border-teal-500 outline-none transition-colors duration-150'
+const LABEL_CLS = 'text-xs text-zinc-500 uppercase tracking-wider mb-1.5 block font-semibold'
+
 function EditMesinTab() {
   const store = useDoffStore()
   const { showToast } = useUIStore()
@@ -33,11 +37,11 @@ function EditMesinTab() {
     const n = mcNo.trim()
     if (!form.tipe) return
     const data: MesinData = {
-      tipe: form.tipe,
-      corak: (form.corak ?? '').trim() || '-',
+      tipe:       form.tipe,
+      corak:      (form.corak ?? '').trim() || '-',
       targetYard: form.targetYard,
-      speed: form.speed,
-      koreksi: form.koreksi,
+      speed:      form.speed,
+      koreksi:    form.koreksi,
     }
     store.setMesin(n, data)
     showToast(`Mc ${n} disimpan ✓`)
@@ -56,14 +60,15 @@ function EditMesinTab() {
   const onTipeChange = (t: MesinTipe) => {
     setForm((f) => ({
       ...f,
-      tipe: t,
-      speed: t === 'D405' ? f.speed : undefined,
+      tipe:    t,
+      speed:   t === 'D405' ? f.speed   : undefined,
       koreksi: t === 'D408' ? f.koreksi : undefined,
     }))
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pt-1">
+      {/* Machine number + load */}
       <div className="flex gap-2">
         <input
           type="number"
@@ -72,10 +77,10 @@ function EditMesinTab() {
           onChange={(e) => { setMcNo(e.target.value); setLoaded(false) }}
           onKeyDown={(e) => e.key === 'Enter' && handleLoad()}
           placeholder="Nomor mesin"
-          className="flex-1 bg-zinc-800 text-zinc-100 placeholder-zinc-600 text-sm px-4 py-2.5 rounded-xl border border-zinc-700 focus:border-teal-500 outline-none"
+          className="flex-1 bg-zinc-800 text-zinc-100 placeholder-zinc-600 text-sm px-4 py-3 rounded-xl border border-zinc-700/80 focus:border-teal-500 outline-none transition-colors duration-150"
         />
         <button
-          className="px-4 py-2.5 bg-teal-600 text-white text-sm font-semibold rounded-xl active:bg-teal-700"
+          className="px-5 py-3 bg-teal-600 text-white text-sm font-semibold rounded-xl active:bg-teal-700 transition-colors duration-150"
           onClick={handleLoad}
         >
           Load
@@ -83,17 +88,18 @@ function EditMesinTab() {
       </div>
 
       {loaded && form.tipe && (
-        <div className="space-y-3">
+        <div className="space-y-4">
+          {/* Tipe selector */}
           <div>
-            <label className="text-xs text-zinc-500 uppercase tracking-wider mb-1 block">Tipe</label>
+            <label className={LABEL_CLS}>Tipe</label>
             <div className="flex gap-2 flex-wrap">
               {TIPES.map((t) => (
                 <button
                   key={t}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                  className={`px-4 py-2 rounded-xl text-xs font-bold border transition-colors duration-150 ${
                     form.tipe === t
                       ? 'bg-teal-600 border-teal-500 text-white'
-                      : 'border-zinc-600 text-zinc-400 active:bg-zinc-700'
+                      : 'border-zinc-700 text-zinc-400 active:bg-zinc-700'
                   }`}
                   onClick={() => onTipeChange(t)}
                 >
@@ -104,67 +110,67 @@ function EditMesinTab() {
           </div>
 
           <div>
-            <label className="text-xs text-zinc-500 uppercase tracking-wider mb-1 block">Corak</label>
+            <label className={LABEL_CLS}>Corak</label>
             <input
               type="text"
               value={form.corak ?? ''}
               onChange={(e) => setForm((f) => ({ ...f, corak: e.target.value }))}
               placeholder="-"
-              className="w-full bg-zinc-800 text-zinc-100 placeholder-zinc-600 text-sm px-4 py-2.5 rounded-xl border border-zinc-700 focus:border-teal-500 outline-none"
+              className={INPUT_CLS}
             />
           </div>
 
           {(form.tipe === 'D405' || form.tipe === 'D408' || form.tipe === 'TAPPET' || form.tipe === 'CAM') && (
             <div>
-              <label className="text-xs text-zinc-500 uppercase tracking-wider mb-1 block">Target Yard</label>
+              <label className={LABEL_CLS}>Target Yard</label>
               <input
                 type="number"
                 inputMode="decimal"
                 value={form.targetYard ?? ''}
                 onChange={(e) => setForm((f) => ({ ...f, targetYard: e.target.value ? parseFloat(e.target.value) : undefined }))}
                 placeholder="opsional"
-                className="w-full bg-zinc-800 text-zinc-100 placeholder-zinc-600 text-sm px-4 py-2.5 rounded-xl border border-zinc-700 focus:border-teal-500 outline-none"
+                className={INPUT_CLS}
               />
             </div>
           )}
 
           {form.tipe === 'D405' && (
             <div>
-              <label className="text-xs text-zinc-500 uppercase tracking-wider mb-1 block">Speed (yard/menit)</label>
+              <label className={LABEL_CLS}>Speed (yard/menit)</label>
               <input
                 type="number"
                 inputMode="decimal"
                 value={form.speed ?? ''}
                 onChange={(e) => setForm((f) => ({ ...f, speed: e.target.value ? parseFloat(e.target.value) : undefined }))}
                 placeholder="cth: 0.158"
-                className="w-full bg-zinc-800 text-zinc-100 placeholder-zinc-600 text-sm px-4 py-2.5 rounded-xl border border-zinc-700 focus:border-teal-500 outline-none"
+                className={INPUT_CLS}
               />
             </div>
           )}
 
           {form.tipe === 'D408' && (
             <div>
-              <label className="text-xs text-zinc-500 uppercase tracking-wider mb-1 block">Koreksi (menit)</label>
+              <label className={LABEL_CLS}>Koreksi (menit)</label>
               <input
                 type="number"
                 inputMode="decimal"
                 value={form.koreksi ?? ''}
                 onChange={(e) => setForm((f) => ({ ...f, koreksi: e.target.value ? parseFloat(e.target.value) : undefined }))}
                 placeholder="cth: 18"
-                className="w-full bg-zinc-800 text-zinc-100 placeholder-zinc-600 text-sm px-4 py-2.5 rounded-xl border border-zinc-700 focus:border-teal-500 outline-none"
+                className={INPUT_CLS}
               />
             </div>
           )}
 
           <div className="flex gap-2 pt-1">
             <button
-              className="px-4 py-2.5 rounded-xl border border-zinc-600 text-zinc-400 text-sm active:bg-zinc-800"
+              className="px-4 py-3 rounded-xl border border-zinc-700 text-zinc-400 text-sm font-medium active:bg-zinc-800 transition-colors duration-150"
               onClick={handleReset}
             >
               Reset
             </button>
             <button
-              className="flex-1 py-2.5 rounded-xl bg-teal-500 text-white text-sm font-semibold active:bg-teal-600"
+              className="flex-1 py-3 rounded-xl bg-teal-500 text-white text-sm font-semibold active:bg-teal-600 transition-colors duration-150"
               onClick={handleSave}
             >
               Simpan
@@ -190,19 +196,19 @@ function DaftarMesinTab() {
     .sort(([a], [b]) => parseInt(a) - parseInt(b))
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 pt-1">
       <input
         type="text"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Cari nomor / corak..."
-        className="w-full bg-zinc-800 text-zinc-100 placeholder-zinc-600 text-sm px-4 py-2.5 rounded-xl border border-zinc-700 focus:border-teal-500 outline-none"
+        className={INPUT_CLS}
       />
       <div className="flex gap-1.5 flex-wrap">
         {(['ALL', ...TIPES] as const).map((t) => (
           <button
             key={t}
-            className={`px-3 py-1 rounded-lg text-xs font-semibold border transition-colors ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors duration-150 ${
               filter === t
                 ? 'bg-teal-600 border-teal-500 text-white'
                 : 'border-zinc-700 text-zinc-500 active:bg-zinc-800'
@@ -215,11 +221,11 @@ function DaftarMesinTab() {
       </div>
       <div className="space-y-1 max-h-64 overflow-y-auto hide-scroll">
         {entries.map(([k, v]) => (
-          <div key={k} className="flex items-center gap-3 px-3 py-2 bg-zinc-800/50 rounded-xl">
-            <span className="font-bold text-zinc-200 text-sm w-8 tabular-nums">{k}</span>
+          <div key={k} className="flex items-center gap-3 px-3 py-2.5 bg-zinc-800/50 rounded-xl">
+            <span className="font-bold text-zinc-100 text-sm w-8 tabular-nums">{k}</span>
             <span className="text-xs text-zinc-500 uppercase tracking-wide w-14">{v.tipe}</span>
             <span className="flex-1 text-sm text-zinc-300 truncate">{v.corak}</span>
-            {v.targetYard && <span className="text-xs text-zinc-600">{v.targetYard}y</span>}
+            {v.targetYard && <span className="text-xs text-zinc-600 tabular-nums">{v.targetYard}y</span>}
           </div>
         ))}
         {entries.length === 0 && (
@@ -266,7 +272,6 @@ function DataTab() {
 
   const handleReset = () => {
     showConfirm('Reset semua data ke default? Estimasi & riwayat akan hilang.', async () => {
-      // Cancel all pending notifications before wiping estimasi
       await cancelAllNotifs(Object.keys(store.estimasi))
       store.resetDb()
       showToast('Data direset ke default')
@@ -274,26 +279,28 @@ function DataTab() {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 pt-1">
       <button
-        className="w-full py-3 rounded-2xl border border-zinc-700 text-zinc-300 text-sm font-medium active:bg-zinc-800"
+        className="w-full py-3 rounded-2xl border border-zinc-700 text-zinc-300 text-sm font-medium active:bg-zinc-800 transition-colors duration-150"
         onClick={handleExport}
       >
         Export / Bagikan Data
       </button>
       <button
-        className="w-full py-3 rounded-2xl border border-zinc-700 text-zinc-300 text-sm font-medium active:bg-zinc-800"
+        className="w-full py-3 rounded-2xl border border-zinc-700 text-zinc-300 text-sm font-medium active:bg-zinc-800 transition-colors duration-150"
         onClick={() => fileRef.current?.click()}
       >
         Import dari File
       </button>
       <input ref={fileRef} type="file" accept=".json" className="hidden" onChange={handleImport} />
-      <button
-        className="w-full py-3 rounded-2xl border border-red-800 text-red-400 text-sm font-medium active:bg-red-950"
-        onClick={handleReset}
-      >
-        Reset ke Default
-      </button>
+      <div className="pt-2 border-t border-zinc-800">
+        <button
+          className="w-full py-3 rounded-2xl border border-red-900/60 text-red-400 text-sm font-medium active:bg-red-950/50 transition-colors duration-150"
+          onClick={handleReset}
+        >
+          Reset ke Default
+        </button>
+      </div>
     </div>
   )
 }
@@ -310,18 +317,27 @@ export function SettingsDrawer({ open, onClose }: Props) {
         className="fixed bottom-0 left-0 right-0 z-30 flex flex-col bg-zinc-950 border-t border-zinc-800 rounded-t-3xl animate-slide-up"
         style={{ maxHeight: '90vh' }}
       >
+        {/* Handle + header */}
         <div className="flex-shrink-0 px-5 pt-4 pb-3">
           <div className="w-10 h-1 bg-zinc-700 rounded-full mx-auto mb-4" />
-          <div className="flex items-center justify-between mb-3">
-            <span className="font-bold text-zinc-100">Pengaturan</span>
-            <button className="text-zinc-500 text-sm" onClick={onClose}>✕</button>
+          <div className="flex items-center justify-between mb-3.5">
+            <span className="font-bold text-zinc-100 text-base">Pengaturan</span>
+            <button
+              className="w-8 h-8 flex items-center justify-center text-zinc-500 active:text-zinc-200 rounded-xl active:bg-zinc-800 transition-colors duration-150"
+              onClick={onClose}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="w-4 h-4">
+                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
           </div>
-          <div className="flex bg-zinc-900 rounded-xl p-0.5">
+          {/* Tab switcher */}
+          <div className="flex bg-zinc-900 rounded-xl p-0.5 gap-0.5">
             {([['edit', 'Edit Mesin'], ['list', 'Daftar'], ['data', 'Data']] as const).map(([t, label]) => (
               <button
                 key={t}
-                className={`flex-1 py-2 text-xs rounded-lg font-semibold transition-colors ${
-                  tab === t ? 'bg-teal-500 text-white' : 'text-zinc-400'
+                className={`flex-1 py-2 text-xs rounded-[10px] font-semibold transition-colors duration-200 ${
+                  tab === t ? 'bg-teal-500 text-white' : 'text-zinc-400 active:text-zinc-200'
                 }`}
                 onClick={() => setTab(t)}
               >

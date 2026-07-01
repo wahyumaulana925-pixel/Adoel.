@@ -9,6 +9,9 @@ interface Props {
   nowAbs: number
 }
 
+const INPUT_CLS = 'w-full bg-zinc-800 text-zinc-100 placeholder-zinc-600 text-sm px-4 py-3 rounded-xl border border-zinc-700/80 focus:border-teal-500 outline-none transition-colors duration-150'
+const LABEL_CLS = 'text-xs text-zinc-500 uppercase tracking-wider mb-1.5 block font-semibold'
+
 export function EditEstSheet({ mcNo, onClose, nowAbs }: Props) {
   const store = useDoffStore()
   const { showToast } = useUIStore()
@@ -16,8 +19,8 @@ export function EditEstSheet({ mcNo, onClose, nowAbs }: Props) {
   const [val, setVal] = useState('')
   const [corakVal, setCorakVal] = useState('')
 
-  const est = mcNo ? store.estimasi[mcNo] : null
-  const mesin = mcNo ? store.db[mcNo] : null
+  const est   = mcNo ? store.estimasi[mcNo] : null
+  const mesin = mcNo ? store.db[mcNo]       : null
 
   useEffect(() => {
     if (mcNo && est) {
@@ -29,6 +32,9 @@ export function EditEstSheet({ mcNo, onClose, nowAbs }: Props) {
 
   if (!mcNo || !est || !mesin) return null
 
+  const delta    = est.estAbsMin - nowAbs
+  const deltaStr = delta >= 0 ? `+${delta}m` : `−${Math.abs(delta)}m`
+
   const handleSave = async () => {
     const raw = val.trim().toUpperCase()
     let newEstAbs: number | undefined
@@ -38,13 +44,12 @@ export function EditEstSheet({ mcNo, onClose, nowAbs }: Props) {
       newEstAbs = result.estAbs
     }
     const corak = standarisasiKeterangan(corakVal.trim())
-    if (corak && corak !== (mesin.corak)) {
+    if (corak && corak !== mesin.corak) {
       store.updateEstimasi(mcNo, { corakOverride: corak })
     } else {
       store.updateEstimasi(mcNo, { corakOverride: undefined })
     }
-    // Reschedule notification with updated time
-    const finalEst = store.estimasi[mcNo]
+    const finalEst    = store.estimasi[mcNo]
     const finalAbsMin = newEstAbs ?? finalEst?.estAbsMin
     if (finalAbsMin) await scheduleNotif(mcNo, finalAbsMin)
     showToast(`Mc ${mcNo} diperbarui`)
@@ -62,28 +67,35 @@ export function EditEstSheet({ mcNo, onClose, nowAbs }: Props) {
     onClose()
   }
 
+  const inputHint =
+    mesin.tipe === 'TAPPET' || mesin.tipe === 'CAM' ? 'menit'       :
+    mesin.tipe === 'D405'                             ? 'yard'        : 'jam counter'
+  const inputPlaceholder =
+    mesin.tipe === 'D408'  ? 'cth: 14.30' :
+    mesin.tipe === 'D405'  ? 'cth: 150y'  : 'cth: 45'
+
   return (
     <>
       <div className="fixed inset-0 bg-black/60 z-40 animate-fade-in" onClick={onClose} />
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-zinc-900 border-t border-zinc-700 rounded-t-3xl px-5 pt-5 pb-safe-floor animate-slide-up">
         <div className="w-10 h-1 bg-zinc-700 rounded-full mx-auto mb-5" />
 
-        <div className="flex items-center justify-between mb-4">
+        {/* Header: machine identity + current estimate */}
+        <div className="flex items-center justify-between mb-5">
           <div>
-            <span className="text-lg font-black text-zinc-100">Mc {mcNo}</span>
-            <span className="ml-2 text-xs text-zinc-500 uppercase tracking-widest">{mesin.tipe}</span>
+            <span className="text-xl font-black text-zinc-100 tabular-nums">Mc {mcNo}</span>
+            <span className="ml-2 text-xs text-zinc-500 uppercase tracking-widest font-semibold">{mesin.tipe}</span>
           </div>
           <div className="text-right">
-            <div className="text-base font-bold text-teal-400 tabular-nums">{shiftAbsKeJamStr(est.estAbsMin)}</div>
-            <div className="text-xs text-zinc-500">{est.estAbsMin - nowAbs >= 0 ? `+${est.estAbsMin - nowAbs}m` : `−${nowAbs - est.estAbsMin}m`}</div>
+            <div className="text-lg font-black text-teal-400 tabular-nums leading-none">{shiftAbsKeJamStr(est.estAbsMin)}</div>
+            <div className={`text-xs tabular-nums mt-0.5 font-semibold ${delta < 0 ? 'text-red-400' : 'text-zinc-500'}`}>{deltaStr}</div>
           </div>
         </div>
 
-        <div className="space-y-3 mb-5">
+        {/* Fields */}
+        <div className="space-y-3.5 mb-5">
           <div>
-            <label className="text-xs text-zinc-500 uppercase tracking-wider mb-1 block">
-              Estimasi baru ({mesin.tipe === 'TAPPET' || mesin.tipe === 'CAM' ? 'menit' : mesin.tipe === 'D405' ? 'yard' : 'jam counter'})
-            </label>
+            <label className={LABEL_CLS}>Estimasi baru ({inputHint})</label>
             <input
               ref={inputRef}
               type="text"
@@ -91,37 +103,38 @@ export function EditEstSheet({ mcNo, onClose, nowAbs }: Props) {
               value={val}
               onChange={(e) => setVal(e.target.value.toUpperCase())}
               onKeyDown={(e) => e.key === 'Enter' && handleSave()}
-              placeholder={mesin.tipe === 'D408' ? 'cth: 14.30' : mesin.tipe === 'D405' ? 'cth: 150y' : 'cth: 45'}
-              className="w-full bg-zinc-800 text-zinc-100 placeholder-zinc-600 text-sm px-4 py-3 rounded-xl border border-zinc-700 focus:border-teal-500 outline-none"
+              placeholder={inputPlaceholder}
+              className={INPUT_CLS}
             />
           </div>
           <div>
-            <label className="text-xs text-zinc-500 uppercase tracking-wider mb-1 block">Corak (override sesi ini)</label>
+            <label className={LABEL_CLS}>Corak (override sesi ini)</label>
             <input
               type="text"
               value={corakVal}
               onChange={(e) => setCorakVal(e.target.value)}
               placeholder={mesin.corak}
-              className="w-full bg-zinc-800 text-zinc-100 placeholder-zinc-600 text-sm px-4 py-3 rounded-xl border border-zinc-700 focus:border-teal-500 outline-none"
+              className={INPUT_CLS}
             />
           </div>
         </div>
 
-        <div className="flex gap-3">
+        {/* Actions */}
+        <div className="flex gap-2.5">
           <button
-            className="py-3 px-5 rounded-2xl border border-zinc-600 text-red-400 text-sm font-medium active:bg-zinc-800"
+            className="py-3 px-4 rounded-2xl border border-zinc-700 text-red-400 text-sm font-medium active:bg-zinc-800 transition-colors duration-150"
             onClick={handleHapus}
           >
             Hapus
           </button>
           <button
-            className="flex-1 py-3 rounded-2xl border border-zinc-600 text-zinc-400 text-sm font-medium active:bg-zinc-800"
+            className="flex-1 py-3 rounded-2xl border border-zinc-700 text-zinc-400 text-sm font-medium active:bg-zinc-800 transition-colors duration-150"
             onClick={onClose}
           >
             Batal
           </button>
           <button
-            className="flex-1 py-3 rounded-2xl bg-teal-500 text-white text-sm font-semibold active:bg-teal-600"
+            className="flex-1 py-3 rounded-2xl bg-teal-500 text-white text-sm font-semibold active:bg-teal-600 transition-colors duration-150"
             onClick={handleSave}
           >
             Simpan
