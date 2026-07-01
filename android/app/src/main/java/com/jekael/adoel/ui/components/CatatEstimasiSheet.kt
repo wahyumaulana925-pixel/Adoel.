@@ -14,40 +14,46 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.jekael.adoel.data.DoffState
-import com.jekael.adoel.data.MesinTipe
 import com.jekael.adoel.ui.theme.*
 import kotlinx.coroutines.delay
 
 /**
- * Guided "Catat Estimasi" form: pick a machine, then the input field label/hint/keyboard
- * changes automatically based on the machine's type (TAPPET/CAM = duration, D405 = yard,
- * D408 = jam counter). Submits by building the same "mcNo rawInput" string the command-line
- * path uses, so it reuses DoffViewModel.prosesBarisKondisiMesin as-is.
+ * Batch "Catat Estimasi" entry. Operators type estimates for every machine in their
+ * responsibility one line at a time, right at the start of a shift — they already know
+ * the machine number and the value by heart, so a picker only slows that down. Format is
+ * "mcNo value" (e.g. "55 25", "67 297.4", "80 18.19"); machine type is looked up
+ * automatically so the same field works for TAPPET/CAM (minutes), D405 (yard) and D408
+ * (jam counter). The sheet stays open after each successful submit so the operator can
+ * keep entering machines without reopening it — closing is an explicit action.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CatatEstimasiSheet(
-    state: DoffState,
     onClose: () -> Unit,
-    onSubmit: (mcNo: String, rawInput: String) -> Unit,
+    onSubmit: (rawLine: String) -> Boolean,
 ) {
-    var selectedMcNo by remember { mutableStateOf<String?>(null) }
-    var value by remember { mutableStateOf("") }
+    var line by remember { mutableStateOf("") }
+    var count by remember { mutableIntStateOf(0) }
     val focusRequester = remember { FocusRequester() }
 
-    LaunchedEffect(selectedMcNo) {
-        if (selectedMcNo != null) {
-            delay(100)
-            focusRequester.requestFocus()
-        }
+    LaunchedEffect(Unit) {
+        delay(150)
+        focusRequester.requestFocus()
     }
 
-    val mesin = selectedMcNo?.let { state.db[it] }
+    fun submit() {
+        if (line.isBlank()) return
+        if (onSubmit(line)) {
+            line = ""
+            count++
+        }
+    }
 
     ModalBottomSheet(
         onDismissRequest = onClose,
@@ -70,66 +76,74 @@ fun CatatEstimasiSheet(
                 .navigationBarsPadding()
                 .imePadding(),
         ) {
-            Text(
-                text = "Catat Estimasi",
-                style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Black, color = Zinc100),
-                modifier = Modifier.padding(bottom = 16.dp),
-            )
-
-            FieldLabel("Nomor mesin")
-            MachinePicker(
-                db = state.db,
-                selectedMcNo = selectedMcNo,
-                onSelect = { selectedMcNo = it; value = "" },
-            )
-
-            if (mesin != null) {
-                Spacer(Modifier.height(16.dp))
-
-                val (label, hint) = when (mesin.tipe) {
-                    MesinTipe.TAPPET, MesinTipe.CAM -> "Durasi tersisa (menit)" to "cth: 45"
-                    MesinTipe.D405 -> "Yard berjalan" to "cth: 150"
-                    MesinTipe.D408 -> "Jam counter" to "cth: 14.30"
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "Catat Estimasi",
+                    style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Black, color = Zinc100),
+                )
+                if (count > 0) {
+                    Text(
+                        text = "$count mesin diinput",
+                        style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Amber400),
+                    )
                 }
+            }
 
-                FieldLabel(label)
+            Spacer(Modifier.height(6.dp))
+
+            Text(
+                text = "Ketik nomor mesin + estimasi, lalu kirim. Contoh: 55 25 (menit) · 67 297.4 (yard) · 80 18.19 (jam)",
+                style = TextStyle(fontSize = 12.sp, color = Zinc500, lineHeight = 16.sp),
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 OutlinedTextField(
-                    value = value,
-                    onValueChange = { value = it },
-                    modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
-                    placeholder = { Text(hint, color = Zinc600) },
+                    value = line,
+                    onValueChange = { line = it.uppercase() },
+                    modifier = Modifier.weight(1f).focusRequester(focusRequester),
+                    placeholder = { Text("cth: 55 25", color = Zinc600) },
                     colors = outlinedFieldColors(),
-                    shape = RoundedCornerShape(12.dp),
-                    textStyle = TextStyle(color = Zinc100, fontSize = 16.sp),
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = if (mesin.tipe == MesinTipe.D405) androidx.compose.ui.text.input.KeyboardType.Decimal
-                                       else androidx.compose.ui.text.input.KeyboardType.Text,
-                        imeAction = ImeAction.Done,
+                    shape = RoundedCornerShape(50.dp),
+                    textStyle = TextStyle(
+                        color = Zinc100,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
                     ),
-                    keyboardActions = KeyboardActions(onDone = {
-                        if (value.isNotBlank()) onSubmit(selectedMcNo!!, value.trim())
-                    }),
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Characters,
+                        imeAction = ImeAction.Send,
+                    ),
+                    keyboardActions = KeyboardActions(onSend = { submit() }),
                     singleLine = true,
                 )
-
-                Spacer(Modifier.height(20.dp))
-
                 Button(
-                    onClick = { if (value.isNotBlank()) onSubmit(selectedMcNo!!, value.trim()) },
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                    shape = RoundedCornerShape(16.dp),
+                    onClick = { submit() },
+                    modifier = Modifier.size(56.dp),
+                    shape = CircleShape,
                     colors = ButtonDefaults.buttonColors(containerColor = Amber500, contentColor = Zinc950),
-                    enabled = value.isNotBlank(),
-                ) {
-                    Text("Simpan Estimasi", style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Bold))
-                }
-            } else {
-                Spacer(Modifier.height(24.dp))
-                Text(
-                    text = "Pilih mesin dulu untuk melanjutkan.",
-                    style = TextStyle(fontSize = 13.sp, color = Zinc600),
-                )
-                Spacer(Modifier.height(24.dp))
+                    contentPadding = PaddingValues(0.dp),
+                ) { SendIcon() }
+            }
+
+            Spacer(Modifier.height(20.dp))
+
+            Button(
+                onClick = onClose,
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Zinc800, contentColor = Zinc300),
+            ) {
+                Text("Selesai", style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.SemiBold))
             }
 
             Spacer(Modifier.height(8.dp))

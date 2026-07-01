@@ -167,15 +167,20 @@ fun MainScreen(
         })
     }
 
-    fun handleCatatEstimasi(mcNo: String, rawInput: String) {
-        val result = doffVm.prosesBarisKondisiMesin("$mcNo ${rawInput.trim().uppercase()}", nowAbsMin())
-        when (result) {
+    fun handleCatatEstimasiLine(rawLine: String): Boolean {
+        val cmd = rawLine.trim().uppercase()
+        if (cmd.isEmpty()) return false
+        val result = doffVm.prosesBarisKondisiMesin(cmd, nowAbsMin())
+        return when (result) {
             is ProsesResult.Ok -> {
                 uiVm.showToast(result.msg)
                 result.estAbs?.let { NotificationHelper.scheduleNotif(context, result.mcNo, it) }
-                catatEstimasiOpen = false
+                true
             }
-            is ProsesResult.Err -> uiVm.showToast("⚠ ${result.msg}")
+            is ProsesResult.Err -> {
+                uiVm.showToast("⚠ ${result.msg}")
+                false
+            }
         }
     }
 
@@ -506,9 +511,8 @@ fun MainScreen(
 
     if (catatEstimasiOpen) {
         CatatEstimasiSheet(
-            state = state,
             onClose = { catatEstimasiOpen = false },
-            onSubmit = { mcNo, rawInput -> handleCatatEstimasi(mcNo, rawInput) },
+            onSubmit = { rawLine -> handleCatatEstimasiLine(rawLine) },
         )
     }
 
