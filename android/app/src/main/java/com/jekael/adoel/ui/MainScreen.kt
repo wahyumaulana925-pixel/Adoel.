@@ -427,7 +427,7 @@ fun MainScreen(
             },
             onImportDb = { db -> db.forEach { (k, v) -> doffVm.setMesin(k, v) } },
             showToast = { uiVm.showToast(it) },
-            showConfirm = { msg, fn -> uiVm.showConfirm(msg, fn) },
+            showConfirm = { msg, fn -> uiVm.showConfirm(msg, onConfirm = fn) },
         )
     }
 

@@ -35,7 +35,7 @@ class UIViewModel : ViewModel() {
         _toast.value = null
     }
 
-    fun showConfirm(msg: String, onConfirm: () -> Unit, onCancel: (() -> Unit)? = null) {
+    fun showConfirm(msg: String, onCancel: (() -> Unit)? = null, onConfirm: () -> Unit) {
         _confirm.value = ConfirmState(msg, onConfirm, onCancel)
     }
 
