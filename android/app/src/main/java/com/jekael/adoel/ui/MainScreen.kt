@@ -13,7 +13,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.animateItem
 import androidx.compose.ui.draw.rotate
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -336,7 +335,7 @@ fun MainScreen(
                             Text(
                                 text = "Ketuk kartu untuk catat doffing · tahan untuk edit estimasi",
                                 style = TextStyle(fontSize = 11.sp, color = Zinc600),
-                                modifier = Modifier.padding(horizontal = 4.dp, bottom = 4.dp),
+                                modifier = Modifier.padding(start = 4.dp, end = 4.dp, bottom = 4.dp),
                             )
                         }
                     }
