@@ -10,6 +10,7 @@ import { EditEstSheet } from './components/EditEstSheet'
 import { EditAktSheet } from './components/EditAktSheet'
 import { Toast } from './components/Toast'
 import { ConfirmModal } from './components/ConfirmModal'
+import { useKeyboard } from './hooks/useKeyboard'
 
 type Mode = 'estimasi' | 'aktual'
 
@@ -56,6 +57,7 @@ function SendIcon() {
 export default function App() {
   const store = useDoffStore()
   const { showToast } = useUIStore()
+  const kbH = useKeyboard()
 
   const [mode, setMode] = useState<Mode>('aktual')
   const [input, setInput] = useState('')
@@ -68,7 +70,20 @@ export default function App() {
   const [editEstMc, setEditEstMc] = useState<string | null>(null)
   const [editAktId, setEditAktId] = useState<number | null>(null)
 
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef   = useRef<HTMLInputElement>(null)
+  const swipeStartX = useRef<number | null>(null)
+
+  // Swipe left/right on mode toggle to change mode
+  const onToggleTouchStart = (e: React.TouchEvent) => {
+    swipeStartX.current = e.touches[0].clientX
+  }
+  const onToggleTouchEnd = (e: React.TouchEvent) => {
+    if (swipeStartX.current === null) return
+    const dx = e.changedTouches[0].clientX - swipeStartX.current
+    if (dx > 40) setMode('aktual')     // swipe right → DOFFING
+    else if (dx < -40) setMode('estimasi') // swipe left → ESTIMASI
+    swipeStartX.current = null
+  }
 
   useEffect(() => {
     StatusBar.setStyle({ style: Style.Dark }).catch(() => {})
@@ -164,7 +179,7 @@ export default function App() {
   const totalMc   = allTouched.size
 
   return (
-    <div className="h-screen flex flex-col bg-zinc-950 text-zinc-100 overflow-hidden">
+    <div className="h-dvh flex flex-col bg-zinc-950 text-zinc-100 overflow-hidden">
 
       {/* ── Header ── */}
       <header className="flex-shrink-0 bg-zinc-950 border-b border-zinc-800/60 pt-safe">
@@ -227,9 +242,22 @@ export default function App() {
       </main>
 
       {/* ── Footer: mode toggle + command input ── */}
-      <footer className="flex-shrink-0 px-3 pt-2.5 pb-safe-floor border-t border-zinc-800/60 bg-zinc-950">
-        {/* Mode toggle — sliding pill indicator */}
-        <div className="relative flex mb-2.5 bg-zinc-800 rounded-full" style={{ padding: '4px' }}>
+      {/* translateY lifts footer above soft keyboard when it appears (Visual Viewport) */}
+      <footer
+        className="flex-shrink-0 px-3 pt-2.5 border-t border-zinc-800/60 bg-zinc-950"
+        style={{
+          paddingBottom: kbH > 0 ? '8px' : 'max(1rem, env(safe-area-inset-bottom, 0px))',
+          transform: kbH > 0 ? `translateY(-${kbH}px)` : undefined,
+          transition: 'transform 0.18s ease, padding-bottom 0.18s ease',
+        }}
+      >
+        {/* Mode toggle — sliding pill, also swipeable left/right to change mode */}
+        <div
+          className="relative flex mb-2.5 bg-zinc-800 rounded-full select-none"
+          style={{ padding: '4px', touchAction: 'pan-y' }}
+          onTouchStart={onToggleTouchStart}
+          onTouchEnd={onToggleTouchEnd}
+        >
           {/* Sliding highlight */}
           <div
             className={mode === 'estimasi' ? 'bg-amber-500' : 'bg-cyan-600'}
