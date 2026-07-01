@@ -75,6 +75,7 @@ fun MainScreen(
     var settingsOpen by remember { mutableStateOf(false) }
     var editAktId by remember { mutableStateOf<Int?>(null) }
     var historyExpanded by remember { mutableStateOf(false) }
+    var showRemaining by remember { mutableStateOf(false) }
 
     val inputFocus = remember { FocusRequester() }
     val density = LocalDensity.current
@@ -224,6 +225,7 @@ fun MainScreen(
 
             // Shift progress — persistent framing of how far along the current shift is
             if (totalMc > 0) {
+                val remainingMc = totalMc - doffCount
                 val shiftFraction = doffCount.toFloat() / totalMc
                 val animatedFraction by animateFloatAsState(
                     targetValue = shiftFraction.coerceIn(0f, 1f),
@@ -233,6 +235,10 @@ fun MainScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .clickable {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            showRemaining = !showRemaining
+                        }
                         .background(Zinc950)
                         .padding(horizontal = 16.dp, vertical = 10.dp),
                 ) {
@@ -241,11 +247,11 @@ fun MainScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Text(
-                            text = "Progres shift",
+                            text = if (showRemaining) "Sisa doff" else "Progres shift",
                             style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.5.sp, color = Zinc500),
                         )
                         Text(
-                            text = "$doffCount dari $totalMc selesai",
+                            text = if (showRemaining) "$remainingMc mesin lagi" else "$doffCount dari $totalMc selesai",
                             style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Cyan400),
                         )
                     }
