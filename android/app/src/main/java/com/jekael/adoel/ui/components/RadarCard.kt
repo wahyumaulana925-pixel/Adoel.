@@ -7,6 +7,11 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Warning
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,6 +20,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalDensity
@@ -38,13 +44,14 @@ private data class UrgencyStyle(
     val textColor: Color,
     val labelColor: Color,
     val pulse: Boolean,
+    val icon: ImageVector?,
 )
 
 private fun urgency(remaining: Long): UrgencyStyle = when {
-    remaining > 30 -> UrgencyStyle(Cyan500, Cyan500, Cyan400, Cyan700, false)
-    remaining > 10 -> UrgencyStyle(Amber500, Amber400, Amber400, Amber700, false)
-    remaining > 0  -> UrgencyStyle(Orange500, Orange500, Orange400, Orange700, false)
-    else           -> UrgencyStyle(Red500, Red500, Red400, Red700, true)
+    remaining > 30 -> UrgencyStyle(Cyan500, Cyan500, Cyan400, Cyan700, false, null)
+    remaining > 10 -> UrgencyStyle(Amber500, Amber400, Amber400, Amber700, false, Icons.Outlined.Schedule)
+    remaining > 0  -> UrgencyStyle(Orange500, Orange500, Orange400, Orange700, false, Icons.Outlined.Warning)
+    else           -> UrgencyStyle(Red500, Red500, Red400, Red700, true, Icons.Filled.Warning)
 }
 
 @Composable
@@ -56,6 +63,7 @@ fun RadarCard(
     onHapus: () -> Unit,
     onLongPress: () -> Unit,
     onTap: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val remaining = est.estAbsMin - nowAbs
     val clr = urgency(remaining)
@@ -94,7 +102,7 @@ fun RadarCard(
     val faceBg = if (clr.pulse) lerp(Zinc900, Color(0xFF3A1414), pulseFraction) else Zinc900
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(80.dp)
             .clip(RoundedCornerShape(16.dp))
@@ -241,6 +249,14 @@ fun RadarCard(
                             ),
                             modifier = Modifier.padding(bottom = 4.dp),
                         )
+                        if (clr.icon != null) {
+                            Icon(
+                                imageVector = clr.icon,
+                                contentDescription = null,
+                                tint = clr.labelColor,
+                                modifier = Modifier.size(12.dp).padding(bottom = 4.dp),
+                            )
+                        }
                     }
                     Text(
                         text = corak,

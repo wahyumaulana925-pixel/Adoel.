@@ -13,6 +13,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.animateItem
 import androidx.compose.ui.draw.rotate
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,7 +30,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -55,6 +58,7 @@ fun MainScreen(
     uiVm: UIViewModel,
 ) {
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     val state by doffVm.state.collectAsStateWithLifecycle()
     val toast by uiVm.toast.collectAsStateWithLifecycle()
     val confirm by uiVm.confirm.collectAsStateWithLifecycle()
@@ -104,6 +108,9 @@ fun MainScreen(
     val radarList = remember(state.estimasi) {
         state.estimasi.values.sortedBy { it.estAbsMin }
     }
+    val (segeraList, menungguList) = remember(radarList, nowAbs) {
+        radarList.partition { it.estAbsMin - nowAbs <= 0 }
+    }
     val recentHistory = remember(state.aktual) {
         state.aktual.take(5)
     }
@@ -145,6 +152,7 @@ fun MainScreen(
         val result = doffVm.prosesBarisUmum(mcNo)
         when (result) {
             is ProsesResult.Ok -> {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 NotificationHelper.cancelNotif(context, result.mcNo)
                 uiVm.showToast(result.msg, undo = {
                     result.undoFn?.invoke()
@@ -188,6 +196,7 @@ fun MainScreen(
         val result = doffVm.catatDoffing(mcNo, keterangan)
         when (result) {
             is ProsesResult.Ok -> {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 NotificationHelper.cancelNotif(context, result.mcNo)
                 uiVm.showToast(result.msg, undo = {
                     result.undoFn?.invoke()
@@ -233,27 +242,6 @@ fun MainScreen(
                         style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Black, color = Cyan400),
                     )
                 }
-                // Badge
-                Box(
-                    modifier = Modifier
-                        .background(Cyan950.copy(alpha = 0.4f), CircleShape)
-                        .padding(horizontal = 10.dp, vertical = 4.dp),
-                ) {
-                    Row {
-                        Text(
-                            text = "$doffCount",
-                            style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Cyan400),
-                        )
-                        Text(
-                            text = "/",
-                            style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Cyan800),
-                        )
-                        Text(
-                            text = "$totalMc",
-                            style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Cyan400),
-                        )
-                    }
-                }
                 // Gear button
                 IconButton(
                     onClick = { settingsOpen = true },
@@ -266,6 +254,53 @@ fun MainScreen(
             }
 
             HorizontalDivider(color = Zinc800.copy(alpha = 0.6f))
+
+            // Shift progress — persistent framing of how far along the current shift is
+            if (totalMc > 0) {
+                val shiftFraction = doffCount.toFloat() / totalMc
+                val animatedFraction by animateFloatAsState(
+                    targetValue = shiftFraction.coerceIn(0f, 1f),
+                    animationSpec = tween(400),
+                    label = "shiftProgress",
+                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Zinc950)
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            text = "Progres shift",
+                            style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.5.sp, color = Zinc500),
+                        )
+                        Text(
+                            text = "$doffCount dari $totalMc selesai",
+                            style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Cyan400),
+                        )
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(Zinc800),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .fillMaxWidth(animatedFraction)
+                                .clip(RoundedCornerShape(3.dp))
+                                .background(Cyan500),
+                        )
+                    }
+                }
+                HorizontalDivider(color = Zinc800.copy(alpha = 0.6f))
+            }
 
             // Notification banner
             if (!notifGranted) {
@@ -311,16 +346,39 @@ fun MainScreen(
                             EmptyState(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp))
                         }
                     } else {
-                        items(radarList, key = { it.mcNo }) { est ->
-                            RadarCard(
-                                est = est,
-                                mesin = state.db[est.mcNo],
-                                nowAbs = nowAbs,
-                                onDoff = { handleDoff(est.mcNo) },
-                                onHapus = { handleHapusEst(est.mcNo) },
-                                onLongPress = { editEstMc = est.mcNo },
-                                onTap = { quickDoffMc = est.mcNo },
-                            )
+                        if (segeraList.isNotEmpty()) {
+                            item {
+                                UrgencyBandHeader(label = "Segera", color = Red400)
+                            }
+                            items(segeraList, key = { it.mcNo }) { est ->
+                                RadarCard(
+                                    est = est,
+                                    mesin = state.db[est.mcNo],
+                                    nowAbs = nowAbs,
+                                    onDoff = { handleDoff(est.mcNo) },
+                                    onHapus = { handleHapusEst(est.mcNo) },
+                                    onLongPress = { editEstMc = est.mcNo },
+                                    onTap = { quickDoffMc = est.mcNo },
+                                    modifier = Modifier.animateItem(),
+                                )
+                            }
+                        }
+                        if (menungguList.isNotEmpty()) {
+                            item {
+                                UrgencyBandHeader(label = "Menunggu", color = Cyan400)
+                            }
+                            items(menungguList, key = { it.mcNo }) { est ->
+                                RadarCard(
+                                    est = est,
+                                    mesin = state.db[est.mcNo],
+                                    nowAbs = nowAbs,
+                                    onDoff = { handleDoff(est.mcNo) },
+                                    onHapus = { handleHapusEst(est.mcNo) },
+                                    onLongPress = { editEstMc = est.mcNo },
+                                    onTap = { quickDoffMc = est.mcNo },
+                                    modifier = Modifier.animateItem(),
+                                )
+                            }
                         }
                     }
 
@@ -659,6 +717,28 @@ private fun SectionHeader(title: String, count: Int) {
                 style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Zinc600),
             )
         }
+    }
+}
+
+@Composable
+private fun UrgencyBandHeader(label: String, color: Color) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(6.dp)
+                .clip(CircleShape)
+                .background(color),
+        )
+        Text(
+            text = label,
+            style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = color),
+        )
     }
 }
 
