@@ -75,36 +75,21 @@ fun SettingsDrawer(
             }
 
             // Tab switcher
-            Row(
+            SlidingToggle(
+                labelLeft = "Mesin",
+                labelRight = "Data",
+                selectedIndex = if (tab == SettingsTab.MESIN) 0 else 1,
+                onSelect = { tab = if (it == 0) SettingsTab.MESIN else SettingsTab.DATA },
+                containerColor = colors.bgElevated2,
+                activeColorLeft = Teal500,
+                activeColorRight = Teal500,
+                activeTextColorLeft = Zinc950,
+                activeTextColorRight = Zinc950,
+                inactiveTextColor = colors.textSecondary,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 8.dp)
-                    .background(colors.bgElevated2, RoundedCornerShape(12.dp))
-                    .padding(4.dp),
-            ) {
-                listOf(SettingsTab.MESIN to "Mesin", SettingsTab.DATA to "Data")
-                    .forEach { (t, label) ->
-                        val selected = tab == t
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(if (selected) Teal500 else Color.Transparent)
-                                .clickable { tab = t }
-                                .padding(vertical = 9.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                label,
-                                style = TextStyle(
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = if (selected) Zinc950 else colors.textSecondary,
-                                ),
-                            )
-                        }
-                    }
-            }
+                    .padding(horizontal = 20.dp, vertical = 8.dp),
+            )
 
             Box(
                 modifier = Modifier

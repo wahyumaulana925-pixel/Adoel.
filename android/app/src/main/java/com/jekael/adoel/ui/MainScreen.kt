@@ -470,41 +470,19 @@ fun MainScreen(
                     .padding(bottom = 10.dp),
             ) {
                 // Mode toggle
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(colors.bgElevated2, RoundedCornerShape(50.dp))
-                        .padding(4.dp),
-                ) {
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        Button(
-                            onClick = { mode = Mode.ESTIMASI },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(50.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (mode == Mode.ESTIMASI) Amber500 else Color.Transparent,
-                                contentColor = if (mode == Mode.ESTIMASI) Zinc950 else colors.textMuted,
-                            ),
-                            contentPadding = PaddingValues(vertical = 10.dp),
-                            elevation = ButtonDefaults.buttonElevation(0.dp),
-                        ) {
-                            Text("ESTIMASI", style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold))
-                        }
-                        Button(
-                            onClick = { mode = Mode.AKTUAL },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(50.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (mode == Mode.AKTUAL) Cyan600 else Color.Transparent,
-                                contentColor = if (mode == Mode.AKTUAL) Zinc100 else colors.textMuted,
-                            ),
-                            contentPadding = PaddingValues(vertical = 10.dp),
-                            elevation = ButtonDefaults.buttonElevation(0.dp),
-                        ) {
-                            Text("DOFFING", style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold))
-                        }
-                    }
-                }
+                SlidingToggle(
+                    labelLeft = "ESTIMASI",
+                    labelRight = "DOFFING",
+                    selectedIndex = if (mode == Mode.ESTIMASI) 0 else 1,
+                    onSelect = { mode = if (it == 0) Mode.ESTIMASI else Mode.AKTUAL },
+                    containerColor = colors.bgElevated2,
+                    activeColorLeft = Amber500,
+                    activeColorRight = Cyan600,
+                    activeTextColorLeft = Zinc950,
+                    activeTextColorRight = Zinc100,
+                    inactiveTextColor = colors.textMuted,
+                    modifier = Modifier.fillMaxWidth(),
+                )
 
                 Spacer(Modifier.height(10.dp))
 
