@@ -10,8 +10,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -32,6 +32,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
@@ -54,6 +55,7 @@ fun SlidingToggle(
     activeTextColorRight: Color,
     inactiveTextColor: Color,
     modifier: Modifier = Modifier,
+    height: Dp = 44.dp,
 ) {
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
@@ -77,7 +79,8 @@ fun SlidingToggle(
 
         Box(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
+                .height(height)
                 .pointerInput(widthPx) {
                     if (widthPx <= 0f) return@pointerInput
                     awaitEachGesture {
@@ -110,9 +113,9 @@ fun SlidingToggle(
                     .clip(RoundedCornerShape(50.dp))
                     .background(if (pos < 0.5f) activeColorLeft else activeColorRight),
             )
-            Row(modifier = Modifier.fillMaxWidth()) {
+            Row(modifier = Modifier.fillMaxWidth().fillMaxHeight()) {
                 Box(
-                    modifier = Modifier.weight(1f).padding(vertical = 10.dp),
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
@@ -125,7 +128,7 @@ fun SlidingToggle(
                     )
                 }
                 Box(
-                    modifier = Modifier.weight(1f).padding(vertical = 10.dp),
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
