@@ -1,13 +1,17 @@
 package com.jekael.adoel.ui.components
 
 import android.content.Intent
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -153,13 +157,20 @@ fun SettingsDrawer(
                         .padding(horizontal = 20.dp, vertical = 8.dp),
                 )
 
-                Box(
+                AnimatedContent(
+                    targetState = tab,
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
                         .padding(horizontal = 20.dp),
-                ) {
-                    when (tab) {
+                    transitionSpec = {
+                        val dir = if (targetState.ordinal > initialState.ordinal) 1 else -1
+                        (slideInHorizontally(animationSpec = tween(220)) { w -> dir * w } + fadeIn(tween(180)))
+                            .togetherWith(slideOutHorizontally(animationSpec = tween(220)) { w -> -dir * w } + fadeOut(tween(140)))
+                    },
+                    label = "settingsTabContent",
+                ) { t ->
+                    when (t) {
                         SettingsTab.MESIN -> MesinTab(state, onSetMesin, onResetMesin, showToast)
                         SettingsTab.DATA -> DataTab(state, onResetDb, onSetThemeMode, showToast, showConfirm)
                     }

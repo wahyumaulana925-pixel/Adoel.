@@ -6,7 +6,11 @@ import android.content.Intent
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -29,6 +33,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
@@ -52,6 +57,7 @@ import com.jekael.adoel.ui.theme.*
 import com.jekael.adoel.viewmodel.DoffViewModel
 import com.jekael.adoel.viewmodel.UIViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.util.Calendar
 
 private enum class Mode { ESTIMASI, AKTUAL }
@@ -71,6 +77,21 @@ fun MainScreen(
     // Console command bar — the one and only way to record estimasi/doffing
     var mode by remember { mutableStateOf(Mode.AKTUAL) }
     var input by remember { mutableStateOf("") }
+
+    // Send button feedback — bounce + brief checkmark flash on a successful submit
+    var sendPulseKey by remember { mutableStateOf(0) }
+    val sendScale = remember { Animatable(1f) }
+    var sendShowCheck by remember { mutableStateOf(false) }
+    LaunchedEffect(sendPulseKey) {
+        if (sendPulseKey == 0) return@LaunchedEffect
+        sendShowCheck = true
+        sendScale.snapTo(0.8f)
+        launch {
+            sendScale.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+        }
+        delay(500)
+        sendShowCheck = false
+    }
 
     var nowAbs by remember { mutableLongStateOf(nowAbsMin()) }
     var notifGranted by remember { mutableStateOf(true) }
@@ -134,6 +155,7 @@ fun MainScreen(
                 val result = doffVm.prosesBarisKondisiMesin(cmd, nowAbsMin())
                 when (result) {
                     is ProsesResult.Ok -> {
+                        sendPulseKey++
                         uiVm.showToast(result.msg)
                         input = ""
                         result.estAbs?.let { NotificationHelper.scheduleNotif(context, result.mcNo, it) }
@@ -145,6 +167,7 @@ fun MainScreen(
                 val result = doffVm.prosesBarisUmum(cmd)
                 when (result) {
                     is ProsesResult.Ok -> {
+                        sendPulseKey++
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         NotificationHelper.cancelNotif(context, result.mcNo)
                         uiVm.showToast(result.msg, undo = {
@@ -219,7 +242,7 @@ fun MainScreen(
                                     notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                                 }
                             },
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth().animateItem(),
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.textButtonColors(
                                 containerColor = colors.bannerWarnBg,
@@ -527,14 +550,20 @@ fun MainScreen(
                         keyboardActions = KeyboardActions(onSend = { handleCommand() }),
                         singleLine = true,
                     )
-                    // Send button
+                    // Send button — bounces and briefly flashes a checkmark on a successful submit
                     Button(
                         onClick = { handleCommand() },
-                        modifier = Modifier.size(56.dp),
+                        modifier = Modifier
+                            .size(56.dp)
+                            .graphicsLayer { scaleX = sendScale.value; scaleY = sendScale.value },
                         shape = CircleShape,
-                        colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
+                        colors = ButtonDefaults.buttonColors(containerColor = if (sendShowCheck) Emerald500 else Cyan600),
                         contentPadding = PaddingValues(0.dp),
-                    ) { SendIcon() }
+                    ) {
+                        Crossfade(targetState = sendShowCheck, label = "sendIcon") { showCheck ->
+                            if (showCheck) CheckIcon() else SendIcon()
+                        }
+                    }
                     // History button
                     Button(
                         onClick = { historyOpen = true },
