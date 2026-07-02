@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Notification status-bar icon. Android strips all color from small icons and renders only the
+  alpha silhouette (white on transparent), so this is a monochrome "A" glyph echoing the launcher
+  monogram — the cyan background and amber dot of the launcher icon cannot appear here by design.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
@@ -6,5 +11,6 @@
     android:viewportHeight="24">
     <path
         android:fillColor="@android:color/white"
-        android:pathData="M12,2C6.48,2 2,6.48 2,12s4.48,10 10,10 10,-4.48 10,-10S17.52,2 12,2zM10,17l-5,-5 1.41,-1.41L10,14.17l7.59,-7.59L19,8l-9,9z"/>
+        android:fillType="evenOdd"
+        android:pathData="M12,3 L21.5,21 L2.5,21 Z M12,8.5 L14.7,14 L9.3,14 Z M12,15.2 L17,21 L7,21 Z" />
 </vector>
