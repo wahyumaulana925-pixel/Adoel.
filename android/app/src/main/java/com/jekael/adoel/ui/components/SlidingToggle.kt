@@ -28,6 +28,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -113,6 +114,7 @@ fun SlidingToggle(
                     .offset(x = segmentWidth * pos)
                     .width(segmentWidth)
                     .fillMaxHeight()
+                    .shadow(elevation = 3.dp, shape = RoundedCornerShape(50.dp), ambientColor = Color.Black.copy(alpha = 0.3f))
                     .clip(RoundedCornerShape(50.dp))
                     .background(if (pos < 0.5f) activeColorLeft else activeColorRight),
             )

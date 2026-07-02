@@ -9,6 +9,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -44,6 +46,7 @@ fun ToastHost(
             ) {
                 Row(
                     modifier = Modifier
+                        .shadow(elevation = 10.dp, shape = RoundedCornerShape(24.dp), ambientColor = Color.Black.copy(alpha = 0.4f))
                         .background(colors.bgElevated2, RoundedCornerShape(24.dp))
                         .padding(horizontal = 20.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,

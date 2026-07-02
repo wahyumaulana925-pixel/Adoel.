@@ -28,6 +28,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -91,6 +92,8 @@ fun SettingsDrawer(
         onDismissRequest = { requestClose() },
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
+        DisableDialogWindowAnimation()
+
         AnimatedVisibility(
             visible = visible,
             enter = slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(260)),
@@ -265,115 +268,16 @@ private fun MesinTab(
             ) { Text("Konfigurasi Mc $n (belum diatur)") }
         }
 
-        if (activeMcNo != null && form != null) {
-            val mcNo = activeMcNo!!
-            val f = form!!
-
-            FieldLabel("Tipe")
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                MesinTipe.entries.forEach { tipe ->
-                    ChipBtn(
-                        label = tipe.name,
-                        selected = f.tipe == tipe,
-                        onClick = {
-                            form = f.copy(
-                                tipe = tipe,
-                                speed = if (tipe == MesinTipe.D405) f.speed else null,
-                                koreksi = if (tipe == MesinTipe.D408) f.koreksi else null,
-                            )
-                        },
-                    )
-                }
-            }
-
-            FieldLabel("Corak")
-            OutlinedTextField(
-                value = f.corak,
-                onValueChange = { form = f.copy(corak = it) },
-                modifier = Modifier.fillMaxWidth(),
-                colors = outlinedFieldColors(),
-                shape = RoundedCornerShape(12.dp),
-                textStyle = TextStyle(color = colors.textPrimary, fontSize = 14.sp),
-                singleLine = true,
-            )
-
-            FieldLabel("Target Yard")
-            OutlinedTextField(
-                value = f.targetYard?.toString() ?: "",
-                onValueChange = { form = f.copy(targetYard = it.toDoubleOrNull()) },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("opsional", color = colors.textFaint) },
-                colors = outlinedFieldColors(),
-                shape = RoundedCornerShape(12.dp),
-                textStyle = TextStyle(color = colors.textPrimary, fontSize = 14.sp),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                singleLine = true,
-            )
-
-            if (f.tipe == MesinTipe.D405) {
-                FieldLabel("Speed (yard/menit)")
-                OutlinedTextField(
-                    value = f.speed?.toString() ?: "",
-                    onValueChange = { form = f.copy(speed = it.toDoubleOrNull()) },
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("cth: 0.158", color = colors.textFaint) },
-                    colors = outlinedFieldColors(),
-                    shape = RoundedCornerShape(12.dp),
-                    textStyle = TextStyle(color = colors.textPrimary, fontSize = 14.sp),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    singleLine = true,
-                )
-            }
-
-            if (f.tipe == MesinTipe.D408) {
-                FieldLabel("Koreksi (menit)")
-                OutlinedTextField(
-                    value = f.koreksi?.toString() ?: "",
-                    onValueChange = { form = f.copy(koreksi = it.toDoubleOrNull()) },
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("cth: 18", color = colors.textFaint) },
-                    colors = outlinedFieldColors(),
-                    shape = RoundedCornerShape(12.dp),
-                    textStyle = TextStyle(color = colors.textPrimary, fontSize = 14.sp),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    singleLine = true,
-                )
-            }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
-                    onClick = {
-                        onResetMesin(mcNo)
-                        showToast("Mc $mcNo direset ke default")
-                        activeMcNo = null; form = null
-                    },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
-                    border = BorderStroke(1.dp, colors.border),
-                ) { Text("Reset") }
-                Button(
-                    onClick = {
-                        val corak = f.corak.trim().ifEmpty { "-" }
-                        onSetMesin(mcNo, f.copy(corak = corak))
-                        showToast("Mc $mcNo disimpan ✓")
-                        activeMcNo = null; form = null; search = ""
-                    },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Teal500),
-                ) { Text("Simpan", fontWeight = FontWeight.SemiBold) }
-            }
-        }
-
         HorizontalDivider(color = colors.border)
 
-        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             entries.forEach { (k, v) ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .shadow(elevation = 3.dp, shape = RoundedCornerShape(12.dp), ambientColor = Color.Black.copy(alpha = 0.3f))
                         .clip(RoundedCornerShape(12.dp))
-                        .background(colors.bgElevated2.copy(alpha = 0.5f))
+                        .background(colors.bgElevated2)
                         .clickable { loadFrom(k, v) }
                         .padding(horizontal = 12.dp, vertical = 10.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -393,6 +297,138 @@ private fun MesinTab(
         }
 
         Spacer(Modifier.height(8.dp))
+    }
+
+    if (activeMcNo != null && form != null) {
+        val mcNo = activeMcNo!!
+        val f = form!!
+        MesinEditPanel(
+            mcNo = mcNo,
+            form = f,
+            onFormChange = { form = it },
+            onClose = { activeMcNo = null; form = null },
+            onReset = {
+                onResetMesin(mcNo)
+                showToast("Mc $mcNo direset ke default")
+                activeMcNo = null; form = null
+            },
+            onSave = {
+                val corak = f.corak.trim().ifEmpty { "-" }
+                onSetMesin(mcNo, f.copy(corak = corak))
+                showToast("Mc $mcNo disimpan ✓")
+                activeMcNo = null; form = null; search = ""
+            },
+        )
+    }
+}
+
+@Composable
+private fun MesinEditPanel(
+    mcNo: String,
+    form: MesinData,
+    onFormChange: (MesinData) -> Unit,
+    onClose: () -> Unit,
+    onReset: () -> Unit,
+    onSave: () -> Unit,
+) {
+    val colors = LocalAppColors.current
+    val f = form
+
+    FloatingEditDialog(onDismissRequest = onClose) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(
+                text = "Mc $mcNo",
+                style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Black, color = colors.textPrimary),
+            )
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(colors.bgElevated2)
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+            ) {
+                Text(
+                    text = f.tipe.name,
+                    style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = colors.textMuted),
+                )
+            }
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        FieldLabel("Corak")
+        OutlinedTextField(
+            value = f.corak,
+            onValueChange = { onFormChange(f.copy(corak = it)) },
+            modifier = Modifier.fillMaxWidth(),
+            colors = outlinedFieldColors(),
+            shape = RoundedCornerShape(12.dp),
+            textStyle = TextStyle(color = colors.textPrimary, fontSize = 14.sp),
+            singleLine = true,
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        FieldLabel("Target Yard")
+        OutlinedTextField(
+            value = f.targetYard?.toString() ?: "",
+            onValueChange = { onFormChange(f.copy(targetYard = it.toDoubleOrNull())) },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("opsional", color = colors.textFaint) },
+            colors = outlinedFieldColors(),
+            shape = RoundedCornerShape(12.dp),
+            textStyle = TextStyle(color = colors.textPrimary, fontSize = 14.sp),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            singleLine = true,
+        )
+
+        if (f.tipe == MesinTipe.D405) {
+            Spacer(Modifier.height(16.dp))
+            FieldLabel("Speed (yard/menit)")
+            OutlinedTextField(
+                value = f.speed?.toString() ?: "",
+                onValueChange = { onFormChange(f.copy(speed = it.toDoubleOrNull())) },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("cth: 0.158", color = colors.textFaint) },
+                colors = outlinedFieldColors(),
+                shape = RoundedCornerShape(12.dp),
+                textStyle = TextStyle(color = colors.textPrimary, fontSize = 14.sp),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                singleLine = true,
+            )
+        }
+
+        if (f.tipe == MesinTipe.D408) {
+            Spacer(Modifier.height(16.dp))
+            FieldLabel("Koreksi (menit)")
+            OutlinedTextField(
+                value = f.koreksi?.toString() ?: "",
+                onValueChange = { onFormChange(f.copy(koreksi = it.toDoubleOrNull())) },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("cth: 18", color = colors.textFaint) },
+                colors = outlinedFieldColors(),
+                shape = RoundedCornerShape(12.dp),
+                textStyle = TextStyle(color = colors.textPrimary, fontSize = 14.sp),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                singleLine = true,
+            )
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                onClick = onReset,
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
+                border = BorderStroke(1.dp, colors.border),
+            ) { Text("Reset") }
+            Button(
+                onClick = onSave,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Teal500),
+            ) { Text("Simpan", fontWeight = FontWeight.SemiBold) }
+        }
     }
 }
 

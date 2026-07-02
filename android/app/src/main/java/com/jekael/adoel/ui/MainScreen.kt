@@ -473,11 +473,14 @@ fun MainScreen(
             }
         }
 
-        // Console command bar — floating card, overlays the list (list scrolls behind it)
+        // Console command bar — floating card, overlays the list (list scrolls behind it).
+        // imePadding() sits outside the card's own shape/shadow/margin so the whole card
+        // rises above the keyboard as one floating unit instead of fusing flush to it.
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
+                .imePadding()
                 .onGloballyPositioned { coords ->
                     consoleBarHeight = with(density) { coords.size.height.toDp() }
                 }
@@ -485,8 +488,7 @@ fun MainScreen(
                 .padding(bottom = 12.dp)
                 .shadow(elevation = 16.dp, shape = RoundedCornerShape(28.dp))
                 .clip(RoundedCornerShape(28.dp))
-                .background(colors.bgElevated)
-                .imePadding(),
+                .background(colors.bgElevated),
         ) {
             Column(
                 modifier = Modifier
@@ -555,7 +557,8 @@ fun MainScreen(
                         onClick = { handleCommand() },
                         modifier = Modifier
                             .size(56.dp)
-                            .graphicsLayer { scaleX = sendScale.value; scaleY = sendScale.value },
+                            .graphicsLayer { scaleX = sendScale.value; scaleY = sendScale.value }
+                            .shadow(elevation = 8.dp, shape = CircleShape, ambientColor = Cyan600.copy(alpha = 0.6f)),
                         shape = CircleShape,
                         colors = ButtonDefaults.buttonColors(containerColor = if (sendShowCheck) Emerald500 else Cyan600),
                         contentPadding = PaddingValues(0.dp),
@@ -567,7 +570,9 @@ fun MainScreen(
                     // History button
                     Button(
                         onClick = { historyOpen = true },
-                        modifier = Modifier.size(56.dp),
+                        modifier = Modifier
+                            .size(56.dp)
+                            .shadow(elevation = 4.dp, shape = CircleShape, ambientColor = Color.Black.copy(alpha = 0.3f)),
                         shape = CircleShape,
                         colors = ButtonDefaults.buttonColors(containerColor = colors.bgElevated2, contentColor = colors.textSecondary),
                         contentPadding = PaddingValues(0.dp),

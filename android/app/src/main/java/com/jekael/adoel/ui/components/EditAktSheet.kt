@@ -1,9 +1,7 @@
 package com.jekael.adoel.ui.components
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -11,7 +9,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.TextStyle
@@ -61,27 +58,7 @@ fun EditAktSheet(
         focusRequester.requestFocus()
     }
 
-    ModalBottomSheet(
-        onDismissRequest = onClose,
-        containerColor = colors.bgElevated,
-        dragHandle = {
-            Box(
-                modifier = Modifier
-                    .padding(top = 14.dp, bottom = 8.dp)
-                    .width(40.dp)
-                    .height(4.dp)
-                    .clip(CircleShape)
-                    .background(colors.border),
-            )
-        },
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-                .navigationBarsPadding()
-                .imePadding(),
-        ) {
+    FloatingEditDialog(onDismissRequest = onClose) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -168,6 +145,5 @@ fun EditAktSheet(
             }
 
             Spacer(Modifier.height(8.dp))
-        }
     }
 }

@@ -16,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
@@ -107,6 +108,7 @@ fun RadarCard(
                 translationX = exitProgress * size.width
                 alpha = 1f - exitProgress
             }
+            .shadow(elevation = 5.dp, shape = RoundedCornerShape(16.dp), ambientColor = Color.Black.copy(alpha = 0.35f))
             .clip(RoundedCornerShape(16.dp))
             .background(faceBg),
     ) {
@@ -237,7 +239,10 @@ fun RadarCard(
                 Button(
                     onClick = { triggerDoff() },
                     enabled = !completing,
-                    modifier = Modifier.weight(1f).height(40.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(40.dp)
+                        .shadow(elevation = 4.dp, shape = RoundedCornerShape(10.dp), ambientColor = Cyan600.copy(alpha = 0.5f)),
                     shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
                     contentPadding = PaddingValues(0.dp),
