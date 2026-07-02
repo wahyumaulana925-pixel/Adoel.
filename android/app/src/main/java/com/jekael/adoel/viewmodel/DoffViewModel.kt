@@ -112,8 +112,13 @@ class DoffViewModel(app: Application) : AndroidViewModel(app) {
             val token = parts[i]
             val ydMatch = Regex("""^(\+?)([\d.,]+)y?$""", RegexOption.IGNORE_CASE).matchEntire(token)
             if (ydMatch != null) {
-                val y = ydMatch.groupValues[2].replace(',', '.').toDoubleOrNull()
-                if (y != null) { customYard = y; continue }
+                val isDelta = ydMatch.groupValues[1] == "+"
+                val num = ydMatch.groupValues[2].replace(',', '.').toDoubleOrNull()
+                if (num != null) {
+                    val standard = _state.value.estimasi[mcNo]?.yardOverride ?: mesin.targetYard
+                    customYard = if (isDelta && standard != null) standard + num else num
+                    continue
+                }
             }
             ketTokens.add(token)
         }
