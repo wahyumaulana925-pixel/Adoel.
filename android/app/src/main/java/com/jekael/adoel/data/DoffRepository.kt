@@ -9,7 +9,9 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore("adoel_v5")
 
@@ -51,9 +53,8 @@ private data class SerialAktual(
 class DoffRepository(private val context: Context) {
     private val gson: Gson = GsonBuilder().create()
 
-    suspend fun load(): DoffState {
+    private fun parseState(prefs: Preferences): DoffState {
         return try {
-            val prefs = context.dataStore.data.first()
             val json = prefs[STATE_KEY] ?: return DoffState(db = buildDefaultDb())
             val serial = gson.fromJson(json, SerialState::class.java) ?: return DoffState(db = buildDefaultDb())
             DoffState(
@@ -80,6 +81,12 @@ class DoffRepository(private val context: Context) {
         }
     }
 
+    suspend fun load(): DoffState = parseState(context.dataStore.data.first())
+
+    /** Reactive state — reflects any write, including ones from outside this ViewModel/process
+     * lifecycle (e.g. the notification action button). */
+    fun observeState(): Flow<DoffState> = context.dataStore.data.map(::parseState)
+
     suspend fun save(state: DoffState) {
         val serial = SerialState(
             db = state.db.mapValues { (_, v) ->
@@ -97,5 +104,30 @@ class DoffRepository(private val context: Context) {
         context.dataStore.edit { prefs ->
             prefs[STATE_KEY] = gson.toJson(serial)
         }
+    }
+
+    /** Records a plain doff (no keterangan/yard) for [mcNo] — used by the notification action button. */
+    suspend fun quickDoff(mcNo: String): Boolean {
+        val state = load()
+        val mesin = state.db[mcNo] ?: return false
+        val prevEst = state.estimasi[mcNo]
+        val jam = nowTimeStr()
+        val effectiveCorak = prevEst?.corakOverride ?: mesin.corak
+        val entry = AktualEntry(
+            id = state.nextId,
+            mcNo = mcNo,
+            jam = jam,
+            ket = jam,
+            corakOverride = if (effectiveCorak != mesin.corak) effectiveCorak else null,
+            customYard = null,
+        )
+        save(
+            state.copy(
+                nextId = state.nextId + 1,
+                estimasi = state.estimasi - mcNo,
+                aktual = listOf(entry) + state.aktual,
+            ),
+        )
+        return true
     }
 }

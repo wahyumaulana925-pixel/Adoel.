@@ -71,6 +71,13 @@ object NotificationHelper {
             },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
+        val doffIntent = PendingIntent.getBroadcast(
+            context, notifId,
+            Intent(context, DoffActionReceiver::class.java).apply {
+                putExtra("mcNo", mcNo)
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
         val notif = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("Mc $mcNo — siap doff")
@@ -78,6 +85,7 @@ object NotificationHelper {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .setContentIntent(tapIntent)
+            .addAction(0, "Doff", doffIntent)
             .build()
         context.getSystemService(NotificationManager::class.java).notify(notifId, notif)
     }

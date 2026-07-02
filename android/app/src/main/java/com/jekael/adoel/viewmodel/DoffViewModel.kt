@@ -18,7 +18,7 @@ class DoffViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         viewModelScope.launch {
-            _state.value = repo.load()
+            repo.observeState().collect { _state.value = it }
         }
     }
 
