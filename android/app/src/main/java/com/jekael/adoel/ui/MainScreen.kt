@@ -1,9 +1,13 @@
 package com.jekael.adoel.ui
 
 import android.Manifest
+import android.app.AlarmManager
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
+import android.os.PowerManager
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.Crossfade
@@ -95,6 +99,8 @@ fun MainScreen(
 
     var nowAbs by remember { mutableLongStateOf(nowAbsMin()) }
     var notifGranted by remember { mutableStateOf(true) }
+    var exactAlarmGranted by remember { mutableStateOf(true) }
+    var batteryUnrestricted by remember { mutableStateOf(true) }
 
     var historyOpen by remember { mutableStateOf(false) }
     var settingsOpen by remember { mutableStateOf(false) }
@@ -120,9 +126,17 @@ fun MainScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME && Build.VERSION.SDK_INT >= 33) {
-                val pm = context.getSystemService(android.app.NotificationManager::class.java)
-                notifGranted = pm.areNotificationsEnabled()
+            if (event == Lifecycle.Event.ON_RESUME) {
+                if (Build.VERSION.SDK_INT >= 33) {
+                    val nm = context.getSystemService(android.app.NotificationManager::class.java)
+                    notifGranted = nm.areNotificationsEnabled()
+                }
+                if (Build.VERSION.SDK_INT >= 31) {
+                    val am = context.getSystemService(AlarmManager::class.java)
+                    exactAlarmGranted = am.canScheduleExactAlarms()
+                }
+                val powerManager = context.getSystemService(PowerManager::class.java)
+                batteryUnrestricted = powerManager.isIgnoringBatteryOptimizations(context.packageName)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -251,6 +265,52 @@ fun MainScreen(
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
                         ) {
                             Text("Notifikasi nonaktif — ketuk untuk izinkan", style = TextStyle(fontSize = 12.sp))
+                        }
+                    }
+                }
+
+                if (notifGranted && !exactAlarmGranted) {
+                    item {
+                        TextButton(
+                            onClick = {
+                                if (Build.VERSION.SDK_INT >= 31) {
+                                    val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                                        data = Uri.parse("package:${context.packageName}")
+                                    }
+                                    context.startActivity(intent)
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth().animateItem(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.textButtonColors(
+                                containerColor = colors.bannerWarnBg,
+                                contentColor = colors.bannerWarnFg,
+                            ),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+                        ) {
+                            Text("Izin alarm tepat waktu nonaktif — ketuk untuk izinkan (wajib agar notifikasi doff tepat waktu)", style = TextStyle(fontSize = 12.sp))
+                        }
+                    }
+                }
+
+                if (notifGranted && exactAlarmGranted && !batteryUnrestricted) {
+                    item {
+                        TextButton(
+                            onClick = {
+                                val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                                    data = Uri.parse("package:${context.packageName}")
+                                }
+                                context.startActivity(intent)
+                            },
+                            modifier = Modifier.fillMaxWidth().animateItem(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.textButtonColors(
+                                containerColor = colors.bannerWarnBg,
+                                contentColor = colors.bannerWarnFg,
+                            ),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+                        ) {
+                            Text("Baterai dioptimalkan — ketuk agar notifikasi tidak diblokir sistem", style = TextStyle(fontSize = 12.sp))
                         }
                     }
                 }
