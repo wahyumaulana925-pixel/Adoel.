@@ -22,6 +22,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -61,6 +62,8 @@ fun SlidingToggle(
     val density = LocalDensity.current
     val position = remember { Animatable(selectedIndex.toFloat()) }
     var dragging by remember { mutableStateOf(false) }
+    val currentSelected = rememberUpdatedState(selectedIndex)
+    val currentOnSelect = rememberUpdatedState(onSelect)
 
     LaunchedEffect(selectedIndex) {
         if (!dragging) {
@@ -101,7 +104,7 @@ fun SlidingToggle(
                         scope.launch {
                             position.animateTo(nearest.toFloat(), animationSpec = spring(stiffness = Spring.StiffnessMediumLow))
                         }
-                        if (nearest != selectedIndex) onSelect(nearest)
+                        if (nearest != currentSelected.value) currentOnSelect.value(nearest)
                     }
                 },
         ) {

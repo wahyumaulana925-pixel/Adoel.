@@ -1,13 +1,16 @@
 package com.jekael.adoel.ui.components
 
 import android.content.Intent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -25,9 +28,12 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.google.gson.GsonBuilder
 import com.jekael.adoel.data.*
 import com.jekael.adoel.ui.theme.*
+import kotlinx.coroutines.delay
 
 private enum class SettingsTab { MESIN, DATA }
 
@@ -46,61 +52,76 @@ fun SettingsDrawer(
     var tab by remember { mutableStateOf(SettingsTab.MESIN) }
     val colors = LocalAppColors.current
 
-    ModalBottomSheet(
-        onDismissRequest = onClose,
-        containerColor = colors.bg,
-        sheetMaxWidth = 560.dp,
-        dragHandle = {
-            Box(
-                modifier = Modifier
-                    .padding(top = 14.dp, bottom = 8.dp)
-                    .width(40.dp)
-                    .height(4.dp)
-                    .clip(CircleShape)
-                    .background(colors.border),
-            )
-        },
+    // Panel slides in from the right (where the menu icon lives) and slides back out on close,
+    // even though the caller mounts/unmounts this composable abruptly via `settingsOpen`.
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { visible = true }
+
+    fun requestClose() {
+        visible = false
+    }
+
+    LaunchedEffect(visible) {
+        if (!visible) {
+            delay(220)
+            onClose()
+        }
+    }
+
+    Dialog(
+        onDismissRequest = { requestClose() },
+        properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            // Header
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+        AnimatedVisibility(
+            visible = visible,
+            enter = slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(260)),
+            exit = slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(220)),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(colors.bg)
+                    .systemBarsPadding(),
             ) {
-                Text("Pengaturan", style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary))
-                IconButton(onClick = onClose) {
-                    Text("✕", style = TextStyle(fontSize = 16.sp, color = colors.textMuted))
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("Pengaturan", style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary))
+                    IconButton(onClick = { requestClose() }) {
+                        Text("✕", style = TextStyle(fontSize = 18.sp, color = colors.textMuted))
+                    }
                 }
-            }
 
-            // Tab switcher
-            SlidingToggle(
-                labelLeft = "Mesin",
-                labelRight = "Data",
-                selectedIndex = if (tab == SettingsTab.MESIN) 0 else 1,
-                onSelect = { tab = if (it == 0) SettingsTab.MESIN else SettingsTab.DATA },
-                containerColor = colors.bgElevated2,
-                activeColorLeft = Teal500,
-                activeColorRight = Teal500,
-                activeTextColorLeft = Zinc950,
-                activeTextColorRight = Zinc950,
-                inactiveTextColor = colors.textSecondary,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 8.dp),
-            )
+                // Tab switcher
+                SlidingToggle(
+                    labelLeft = "Mesin",
+                    labelRight = "Data",
+                    selectedIndex = if (tab == SettingsTab.MESIN) 0 else 1,
+                    onSelect = { tab = if (it == 0) SettingsTab.MESIN else SettingsTab.DATA },
+                    containerColor = colors.bgElevated2,
+                    activeColorLeft = Teal500,
+                    activeColorRight = Teal500,
+                    activeTextColorLeft = Zinc950,
+                    activeTextColorRight = Zinc950,
+                    inactiveTextColor = colors.textSecondary,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 8.dp),
+                )
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f, fill = false)
-                    .padding(horizontal = 20.dp)
-                    .navigationBarsPadding(),
-            ) {
-                when (tab) {
-                    SettingsTab.MESIN -> MesinTab(state, onSetMesin, onResetMesin, showToast)
-                    SettingsTab.DATA -> DataTab(state, onResetDb, onSetThemeMode, showToast, showConfirm)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(horizontal = 20.dp),
+                ) {
+                    when (tab) {
+                        SettingsTab.MESIN -> MesinTab(state, onSetMesin, onResetMesin, showToast)
+                        SettingsTab.DATA -> DataTab(state, onResetDb, onSetThemeMode, showToast, showConfirm)
+                    }
                 }
             }
         }
