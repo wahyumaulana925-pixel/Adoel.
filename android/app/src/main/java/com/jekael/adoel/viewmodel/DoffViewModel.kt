@@ -23,9 +23,13 @@ class DoffViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun updateState(transform: (DoffState) -> DoffState) {
-        val next = transform(_state.value)
-        _state.value = next
-        viewModelScope.launch { repo.save(next) }
+        // Optimistic in-memory apply for instant UI feedback...
+        _state.value = transform(_state.value)
+        // ...while the authoritative write re-applies the same transform atomically against the
+        // persisted state (DataStore serializes transactions), so a concurrent writer such as the
+        // notification action's quickDoff can't clobber it. observeState() then reconciles _state
+        // to the merged result.
+        viewModelScope.launch { repo.update(transform) }
     }
 
     fun setMesin(mcNo: String, data: MesinData) = updateState { s ->

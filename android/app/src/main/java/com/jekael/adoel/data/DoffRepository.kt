@@ -87,7 +87,7 @@ class DoffRepository(private val context: Context) {
      * lifecycle (e.g. the notification action button). */
     fun observeState(): Flow<DoffState> = context.dataStore.data.map(::parseState)
 
-    suspend fun save(state: DoffState) {
+    private fun serialize(state: DoffState): String {
         val serial = SerialState(
             db = state.db.mapValues { (_, v) ->
                 SerialMesin(v.tipe.name, v.corak, v.targetYard, v.speed, v.koreksi)
@@ -101,33 +101,49 @@ class DoffRepository(private val context: Context) {
             nextId = state.nextId,
             themeMode = state.themeMode,
         )
-        context.dataStore.edit { prefs ->
-            prefs[STATE_KEY] = gson.toJson(serial)
-        }
+        return gson.toJson(serial)
     }
 
-    /** Records a plain doff (no keterangan/yard) for [mcNo] — used by the notification action button. */
+    /**
+     * Atomically read-modify-write the persisted state inside a single DataStore transaction.
+     * DataStore serializes transactions, so concurrent callers (the ViewModel and the
+     * notification action's [quickDoff]) can never overwrite each other based on a stale snapshot.
+     * [transform] must be pure — it is applied to whatever the latest persisted state is, not to
+     * the caller's own in-memory copy.
+     */
+    suspend fun update(transform: (DoffState) -> DoffState): DoffState {
+        lateinit var next: DoffState
+        context.dataStore.edit { prefs ->
+            next = transform(parseState(prefs))
+            prefs[STATE_KEY] = serialize(next)
+        }
+        return next
+    }
+
+    /** Records a plain doff (no keterangan/yard) for [mcNo] — used by the notification action
+     * button. Runs as one atomic transaction so it can't clobber a concurrent in-app write. */
     suspend fun quickDoff(mcNo: String): Boolean {
-        val state = load()
-        val mesin = state.db[mcNo] ?: return false
-        val prevEst = state.estimasi[mcNo]
-        val jam = nowTimeStr()
-        val effectiveCorak = prevEst?.corakOverride ?: mesin.corak
-        val entry = AktualEntry(
-            id = state.nextId,
-            mcNo = mcNo,
-            jam = jam,
-            ket = jam,
-            corakOverride = if (effectiveCorak != mesin.corak) effectiveCorak else null,
-            customYard = null,
-        )
-        save(
+        var recorded = false
+        update { state ->
+            val mesin = state.db[mcNo] ?: return@update state
+            val prevEst = state.estimasi[mcNo]
+            val jam = nowTimeStr()
+            val effectiveCorak = prevEst?.corakOverride ?: mesin.corak
+            val entry = AktualEntry(
+                id = state.nextId,
+                mcNo = mcNo,
+                jam = jam,
+                ket = jam,
+                corakOverride = if (effectiveCorak != mesin.corak) effectiveCorak else null,
+                customYard = null,
+            )
+            recorded = true
             state.copy(
                 nextId = state.nextId + 1,
                 estimasi = state.estimasi - mcNo,
                 aktual = listOf(entry) + state.aktual,
-            ),
-        )
-        return true
+            )
+        }
+        return recorded
     }
 }
