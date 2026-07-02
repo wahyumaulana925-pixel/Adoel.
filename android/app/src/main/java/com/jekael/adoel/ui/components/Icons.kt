@@ -5,12 +5,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Send
 import androidx.compose.material.icons.outlined.List
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.jekael.adoel.ui.theme.LocalAppColors
 
 @Composable
 fun CheckIcon() {
@@ -33,9 +34,10 @@ fun TrashIcon() {
 @Composable
 fun GearIcon() {
     Icon(
-        imageVector = Icons.Outlined.Settings,
-        contentDescription = "Settings",
-        modifier = Modifier.size(18.dp),
+        imageVector = Icons.Outlined.Menu,
+        contentDescription = "Pengaturan",
+        tint = LocalAppColors.current.textPrimary,
+        modifier = Modifier.size(20.dp),
     )
 }
 
