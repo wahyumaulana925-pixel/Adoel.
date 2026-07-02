@@ -1,6 +1,7 @@
 package com.jekael.adoel.ui.components
 
 import android.content.Intent
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
@@ -40,8 +41,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import com.google.gson.GsonBuilder
 import com.jekael.adoel.data.*
 import com.jekael.adoel.ui.theme.*
@@ -88,95 +87,95 @@ fun SettingsDrawer(
     val dragOffset = remember { Animatable(0f) }
     var panelWidthPx by remember { mutableStateOf(0f) }
 
-    Dialog(
-        onDismissRequest = { requestClose() },
-        properties = DialogProperties(usePlatformDefaultWidth = false),
+    BackHandler(enabled = visible) { requestClose() }
+
+    // Rendered directly in the caller's own window (no Dialog) so our AnimatedVisibility is the
+    // ONLY thing driving the enter/exit motion — a Dialog's own window has a default scale/fade
+    // animation that fires before any in-content effect can suppress it, which showed up as a
+    // diagonal entrance no matter what.
+    AnimatedVisibility(
+        visible = visible,
+        enter = slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(260)),
+        exit = slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(220)),
     ) {
-        DisableDialogWindowAnimation()
-
-        AnimatedVisibility(
-            visible = visible,
-            enter = slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(260)),
-            exit = slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(220)),
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(colors.bg)
-                    .onGloballyPositioned { panelWidthPx = it.size.width.toFloat() }
-                    .offset { IntOffset(dragOffset.value.roundToInt(), 0) }
-                    .pointerInput(Unit) {
-                        detectHorizontalDragGestures(
-                            onDragEnd = {
-                                val width = if (panelWidthPx > 0f) panelWidthPx else 1f
-                                if (dragOffset.value > width * 0.3f) {
-                                    scope.launch {
-                                        dragOffset.animateTo(width, animationSpec = tween(200))
-                                        onClose()
-                                    }
-                                } else {
-                                    scope.launch {
-                                        dragOffset.animateTo(0f, animationSpec = spring(stiffness = Spring.StiffnessMediumLow))
-                                    }
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(colors.bg)
+                .onGloballyPositioned { panelWidthPx = it.size.width.toFloat() }
+                .offset { IntOffset(dragOffset.value.roundToInt(), 0) }
+                .pointerInput(Unit) {
+                    detectHorizontalDragGestures(
+                        onDragEnd = {
+                            val width = if (panelWidthPx > 0f) panelWidthPx else 1f
+                            if (dragOffset.value > width * 0.3f) {
+                                scope.launch {
+                                    dragOffset.animateTo(width, animationSpec = tween(200))
+                                    onClose()
                                 }
-                            },
-                            onDragCancel = {
-                                scope.launch { dragOffset.animateTo(0f, animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) }
-                            },
-                        ) { change, dragAmount ->
-                            change.consume()
-                            val newVal = (dragOffset.value + dragAmount).coerceAtLeast(0f)
-                            scope.launch { dragOffset.snapTo(newVal) }
-                        }
+                            } else {
+                                scope.launch {
+                                    dragOffset.animateTo(0f, animationSpec = spring(stiffness = Spring.StiffnessMediumLow))
+                                }
+                            }
+                        },
+                        onDragCancel = {
+                            scope.launch { dragOffset.animateTo(0f, animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) }
+                        },
+                    ) { change, dragAmount ->
+                        change.consume()
+                        val newVal = (dragOffset.value + dragAmount).coerceAtLeast(0f)
+                        scope.launch { dragOffset.snapTo(newVal) }
                     }
-                    .systemBarsPadding(),
+                },
+            // No systemBarsPadding() here — this panel now lives inside MainScreen's own root
+            // Box, which already insets its children from the system bars once.
+        ) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Header
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text("Pengaturan", style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary))
-                    IconButton(onClick = { requestClose() }) {
-                        Text("✕", style = TextStyle(fontSize = 18.sp, color = colors.textMuted))
-                    }
+                Text("Pengaturan", style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary))
+                IconButton(onClick = { requestClose() }) {
+                    Text("✕", style = TextStyle(fontSize = 18.sp, color = colors.textMuted))
                 }
+            }
 
-                // Tab switcher
-                SlidingToggle(
-                    labelLeft = "Mesin",
-                    labelRight = "Data",
-                    selectedIndex = if (tab == SettingsTab.MESIN) 0 else 1,
-                    onSelect = { tab = if (it == 0) SettingsTab.MESIN else SettingsTab.DATA },
-                    containerColor = colors.bgElevated2,
-                    activeColorLeft = Teal500,
-                    activeColorRight = Teal500,
-                    activeTextColorLeft = Zinc950,
-                    activeTextColorRight = Zinc950,
-                    inactiveTextColor = colors.textSecondary,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 8.dp),
-                )
+            // Tab switcher
+            SlidingToggle(
+                labelLeft = "Mesin",
+                labelRight = "Data",
+                selectedIndex = if (tab == SettingsTab.MESIN) 0 else 1,
+                onSelect = { tab = if (it == 0) SettingsTab.MESIN else SettingsTab.DATA },
+                containerColor = colors.bgElevated2,
+                activeColorLeft = Teal500,
+                activeColorRight = Teal500,
+                activeTextColorLeft = Zinc950,
+                activeTextColorRight = Zinc950,
+                inactiveTextColor = colors.textSecondary,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 8.dp),
+            )
 
-                AnimatedContent(
-                    targetState = tab,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .padding(horizontal = 20.dp),
-                    transitionSpec = {
-                        val dir = if (targetState.ordinal > initialState.ordinal) 1 else -1
-                        (slideInHorizontally(animationSpec = tween(220)) { w -> dir * w } + fadeIn(tween(180)))
-                            .togetherWith(slideOutHorizontally(animationSpec = tween(220)) { w -> -dir * w } + fadeOut(tween(140)))
-                    },
-                    label = "settingsTabContent",
-                ) { t ->
-                    when (t) {
-                        SettingsTab.MESIN -> MesinTab(state, onSetMesin, onResetMesin, showToast)
-                        SettingsTab.DATA -> DataTab(state, onResetDb, onSetThemeMode, showToast, showConfirm)
-                    }
+            AnimatedContent(
+                targetState = tab,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(horizontal = 20.dp),
+                transitionSpec = {
+                    val dir = if (targetState.ordinal > initialState.ordinal) 1 else -1
+                    (slideInHorizontally(animationSpec = tween(220)) { w -> dir * w } + fadeIn(tween(180)))
+                        .togetherWith(slideOutHorizontally(animationSpec = tween(220)) { w -> -dir * w } + fadeOut(tween(140)))
+                },
+                label = "settingsTabContent",
+            ) { t ->
+                when (t) {
+                    SettingsTab.MESIN -> MesinTab(state, onSetMesin, onResetMesin, showToast)
+                    SettingsTab.DATA -> DataTab(state, onResetDb, onSetThemeMode, showToast, showConfirm)
                 }
             }
         }

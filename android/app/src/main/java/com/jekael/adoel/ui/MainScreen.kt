@@ -650,6 +650,24 @@ fun MainScreen(
         ) {
             ToastHost(toast = toast, onDismiss = { uiVm.dismissToast() })
         }
+
+        // Settings panel — rendered in this same Box (not a separate Dialog window) so its own
+        // AnimatedVisibility is the only thing animating it in/out, drawn last to sit on top.
+        if (settingsOpen) {
+            SettingsDrawer(
+                state = state,
+                onClose = { settingsOpen = false },
+                onSetMesin = { mcNo, data -> doffVm.setMesin(mcNo, data) },
+                onResetMesin = { mcNo -> doffVm.resetMesin(mcNo) },
+                onResetDb = {
+                    NotificationHelper.cancelAll(context, state.estimasi.keys.toList())
+                    doffVm.resetDb()
+                },
+                onSetThemeMode = { mode -> doffVm.setThemeMode(mode.name) },
+                showToast = { uiVm.showToast(it) },
+                showConfirm = { msg, fn -> uiVm.showConfirm(msg, onConfirm = fn) },
+            )
+        }
     }
 
     // Overlays
@@ -667,22 +685,6 @@ fun MainScreen(
                     uiVm.showToast("Shift selesai ✓")
                 }
             },
-        )
-    }
-
-    if (settingsOpen) {
-        SettingsDrawer(
-            state = state,
-            onClose = { settingsOpen = false },
-            onSetMesin = { mcNo, data -> doffVm.setMesin(mcNo, data) },
-            onResetMesin = { mcNo -> doffVm.resetMesin(mcNo) },
-            onResetDb = {
-                NotificationHelper.cancelAll(context, state.estimasi.keys.toList())
-                doffVm.resetDb()
-            },
-            onSetThemeMode = { mode -> doffVm.setThemeMode(mode.name) },
-            showToast = { uiVm.showToast(it) },
-            showConfirm = { msg, fn -> uiVm.showConfirm(msg, onConfirm = fn) },
         )
     }
 
