@@ -133,19 +133,19 @@ private fun MesinTab(
     var activeMcNo by remember { mutableStateOf<String?>(null) }
     var form by remember { mutableStateOf<MesinData?>(null) }
     var search by remember { mutableStateOf("") }
-    var filter by remember { mutableStateOf<MesinTipe?>(null) }
+    var showAll by remember { mutableStateOf(false) }
 
     fun loadFrom(mcNo: String, mesin: MesinData) {
         activeMcNo = mcNo
         form = mesin.copy()
     }
 
-    val entries = remember(state.db, search, filter) {
+    val entries = remember(state.db, search, showAll) {
         state.db.entries
             .filter { (k, v) ->
-                if (filter != null && v.tipe != filter) return@filter false
+                if (!showAll && (v.corak.isEmpty() || v.corak == "-")) return@filter false
                 if (search.isNotEmpty() && !k.contains(search) && !v.corak.contains(search, ignoreCase = true)) return@filter false
-                v.corak.isNotEmpty() && v.corak != "-"
+                true
             }
             .sortedBy { (k, _) -> k.toIntOrNull() ?: 0 }
     }
@@ -178,11 +178,22 @@ private fun MesinTab(
             keyboardActions = KeyboardActions(onDone = { unconfigured?.let { (n, m) -> loadFrom(n, m) } }),
             singleLine = true,
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            ChipBtn("Semua", filter == null) { filter = null }
-            MesinTipe.entries.forEach { t ->
-                ChipBtn(t.name, filter == t) { filter = t }
-            }
+        Row(
+            modifier = Modifier
+                .clickable { showAll = !showAll }
+                .padding(vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Checkbox(
+                checked = showAll,
+                onCheckedChange = { showAll = it },
+                colors = CheckboxDefaults.colors(checkedColor = Teal500, uncheckedColor = colors.border),
+            )
+            Text(
+                "Tampilkan semua (termasuk corak \"-\")",
+                style = TextStyle(fontSize = 13.sp, color = colors.textSecondary),
+            )
         }
 
         if (unconfigured != null) {
