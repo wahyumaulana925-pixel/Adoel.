@@ -6,9 +6,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -29,7 +29,7 @@ import com.google.gson.GsonBuilder
 import com.jekael.adoel.data.*
 import com.jekael.adoel.ui.theme.*
 
-private enum class SettingsTab { EDIT, LIST, DATA }
+private enum class SettingsTab { MESIN, DATA }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,7 +43,7 @@ fun SettingsDrawer(
     showToast: (String) -> Unit,
     showConfirm: (String, () -> Unit) -> Unit,
 ) {
-    var tab by remember { mutableStateOf(SettingsTab.EDIT) }
+    var tab by remember { mutableStateOf(SettingsTab.MESIN) }
     val colors = LocalAppColors.current
 
     ModalBottomSheet(
@@ -82,7 +82,7 @@ fun SettingsDrawer(
                     .background(colors.bgElevated2, RoundedCornerShape(12.dp))
                     .padding(4.dp),
             ) {
-                listOf(SettingsTab.EDIT to "Edit Mesin", SettingsTab.LIST to "Daftar", SettingsTab.DATA to "Data")
+                listOf(SettingsTab.MESIN to "Mesin", SettingsTab.DATA to "Data")
                     .forEach { (t, label) ->
                         val selected = tab == t
                         Box(
@@ -114,8 +114,7 @@ fun SettingsDrawer(
                     .navigationBarsPadding(),
             ) {
                 when (tab) {
-                    SettingsTab.EDIT -> EditMesinTab(state, onSetMesin, onResetMesin, showToast)
-                    SettingsTab.LIST -> DaftarMesinTab(state)
+                    SettingsTab.MESIN -> MesinTab(state, onSetMesin, onResetMesin, showToast)
                     SettingsTab.DATA -> DataTab(state, onResetDb, onSetThemeMode, showToast, showConfirm)
                 }
             }
@@ -124,7 +123,7 @@ fun SettingsDrawer(
 }
 
 @Composable
-private fun EditMesinTab(
+private fun MesinTab(
     state: DoffState,
     onSetMesin: (String, MesinData) -> Unit,
     onResetMesin: (String) -> Unit,
@@ -134,6 +133,8 @@ private fun EditMesinTab(
     var mcNoInput by remember { mutableStateOf("") }
     var form by remember { mutableStateOf<MesinData?>(null) }
     var loaded by remember { mutableStateOf(false) }
+    var search by remember { mutableStateOf("") }
+    var filter by remember { mutableStateOf<MesinTipe?>(null) }
 
     fun doLoad() {
         val n = mcNoInput.trim()
@@ -144,7 +145,29 @@ private fun EditMesinTab(
         loaded = true
     }
 
-    Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    fun loadFrom(mcNo: String, mesin: MesinData) {
+        mcNoInput = mcNo
+        form = mesin.copy()
+        loaded = true
+    }
+
+    val entries = remember(state.db, search, filter) {
+        state.db.entries
+            .filter { (k, v) ->
+                if (filter != null && v.tipe != filter) return@filter false
+                if (search.isNotEmpty() && !k.contains(search) && !v.corak.contains(search, ignoreCase = true)) return@filter false
+                v.corak.isNotEmpty() && v.corak != "-"
+            }
+            .sortedBy { (k, _) -> k.toIntOrNull() ?: 0 }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp)
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
                 value = mcNoInput,
@@ -264,6 +287,49 @@ private fun EditMesinTab(
             }
         }
 
+        HorizontalDivider(color = colors.border)
+
+        OutlinedTextField(
+            value = search,
+            onValueChange = { search = it },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("Cari nomor / corak...", color = colors.textFaint) },
+            colors = outlinedFieldColors(),
+            shape = RoundedCornerShape(12.dp),
+            textStyle = TextStyle(color = colors.textPrimary, fontSize = 14.sp),
+            singleLine = true,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            ChipBtn("Semua", filter == null) { filter = null }
+            MesinTipe.entries.forEach { t ->
+                ChipBtn(t.name, filter == t) { filter = t }
+            }
+        }
+        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            entries.forEach { (k, v) ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(colors.bgElevated2.copy(alpha = 0.5f))
+                        .clickable { loadFrom(k, v) }
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(k, style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary), modifier = Modifier.width(32.dp))
+                    Text(v.tipe.name, style = TextStyle(fontSize = 11.sp, letterSpacing = 1.sp, color = colors.textMuted), modifier = Modifier.width(56.dp))
+                    Text(v.corak, style = TextStyle(fontSize = 14.sp, color = colors.textPrimary), modifier = Modifier.weight(1f), maxLines = 1)
+                    if (v.targetYard != null) Text("${v.targetYard}y", style = TextStyle(fontSize = 11.sp, color = colors.textFaint))
+                }
+            }
+            if (entries.isEmpty()) {
+                Box(Modifier.fillMaxWidth().height(80.dp), contentAlignment = Alignment.Center) {
+                    Text("Tidak ditemukan", color = colors.textFaint, style = TextStyle(fontSize = 14.sp))
+                }
+            }
+        }
+
         Spacer(Modifier.height(8.dp))
     }
 }
@@ -289,70 +355,6 @@ private fun ChipBtn(label: String, selected: Boolean, onClick: () -> Unit) {
                 color = if (selected) Zinc100 else colors.textSecondary,
             ),
         )
-    }
-}
-
-@Composable
-private fun DaftarMesinTab(state: DoffState) {
-    val colors = LocalAppColors.current
-    var search by remember { mutableStateOf("") }
-    var filter by remember { mutableStateOf<MesinTipe?>(null) }
-
-    val entries = remember(state.db, search, filter) {
-        state.db.entries
-            .filter { (k, v) ->
-                if (filter != null && v.tipe != filter) return@filter false
-                if (search.isNotEmpty() && !k.contains(search) && !v.corak.contains(search, ignoreCase = true)) return@filter false
-                v.corak.isNotEmpty() && v.corak != "-"
-            }
-            .sortedBy { (k, _) -> k.toIntOrNull() ?: 0 }
-    }
-
-    Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedTextField(
-            value = search,
-            onValueChange = { search = it },
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Cari nomor / corak...", color = colors.textFaint) },
-            colors = outlinedFieldColors(),
-            shape = RoundedCornerShape(12.dp),
-            textStyle = TextStyle(color = colors.textPrimary, fontSize = 14.sp),
-            singleLine = true,
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            ChipBtn("Semua", filter == null) { filter = null }
-            MesinTipe.entries.forEach { t ->
-                ChipBtn(t.name, filter == t) { filter = t }
-            }
-        }
-        LazyColumn(
-            modifier = Modifier.heightIn(max = 280.dp).fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            items(entries, key = { it.key }) { (k, v) ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(colors.bgElevated2.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(k, style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary), modifier = Modifier.width(32.dp))
-                    Text(v.tipe.name, style = TextStyle(fontSize = 11.sp, letterSpacing = 1.sp, color = colors.textMuted), modifier = Modifier.width(56.dp))
-                    Text(v.corak, style = TextStyle(fontSize = 14.sp, color = colors.textPrimary), modifier = Modifier.weight(1f), maxLines = 1)
-                    if (v.targetYard != null) Text("${v.targetYard}y", style = TextStyle(fontSize = 11.sp, color = colors.textFaint))
-                }
-            }
-            if (entries.isEmpty()) {
-                item {
-                    Box(Modifier.fillMaxWidth().height(80.dp), contentAlignment = Alignment.Center) {
-                        Text("Tidak ditemukan", color = colors.textFaint, style = TextStyle(fontSize = 14.sp))
-                    }
-                }
-            }
-        }
-        Spacer(Modifier.height(8.dp))
     }
 }
 
