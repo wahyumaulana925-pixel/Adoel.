@@ -224,9 +224,7 @@ fun MainScreen(
                 // Gear button
                 IconButton(
                     onClick = { settingsOpen = true },
-                    modifier = Modifier
-                        .size(36.dp)
-                        .background(colors.bgElevated, CircleShape),
+                    modifier = Modifier.size(36.dp),
                 ) {
                     GearIcon()
                 }
