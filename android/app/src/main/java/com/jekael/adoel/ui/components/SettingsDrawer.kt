@@ -317,7 +317,7 @@ private fun MesinTab(
                         .clip(RoundedCornerShape(12.dp))
                         .background(colors.bgElevated2.copy(alpha = 0.5f))
                         .clickable { loadFrom(k, v) }
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                        .padding(start = 12.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -325,6 +325,13 @@ private fun MesinTab(
                     Text(v.tipe.name, style = TextStyle(fontSize = 11.sp, letterSpacing = 1.sp, color = colors.textMuted), modifier = Modifier.width(56.dp))
                     Text(v.corak, style = TextStyle(fontSize = 14.sp, color = colors.textPrimary), modifier = Modifier.weight(1f), maxLines = 1)
                     if (v.targetYard != null) Text("${v.targetYard}y", style = TextStyle(fontSize = 11.sp, color = colors.textFaint))
+                    OutlinedButton(
+                        onClick = { loadFrom(k, v) },
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Teal500),
+                        border = BorderStroke(1.dp, Teal500),
+                    ) { Text("Edit", style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold)) }
                 }
             }
             if (entries.isEmpty()) {
