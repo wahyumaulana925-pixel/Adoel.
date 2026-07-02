@@ -7,6 +7,7 @@ import android.content.Intent
 class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val mcNo = intent.getStringExtra("mcNo") ?: return
-        NotificationHelper.showNotification(context, mcNo)
+        val isReminder = intent.getBooleanExtra("isReminder", false)
+        NotificationHelper.showNotification(context, mcNo, isReminder)
     }
 }
