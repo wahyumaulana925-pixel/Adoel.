@@ -2,6 +2,9 @@ package com.jekael.adoel.ui.components
 
 import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
@@ -9,6 +12,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -21,11 +25,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -34,6 +41,8 @@ import com.google.gson.GsonBuilder
 import com.jekael.adoel.data.*
 import com.jekael.adoel.ui.theme.*
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 private enum class SettingsTab { MESIN, DATA }
 
@@ -51,6 +60,7 @@ fun SettingsDrawer(
 ) {
     var tab by remember { mutableStateOf(SettingsTab.MESIN) }
     val colors = LocalAppColors.current
+    val scope = rememberCoroutineScope()
 
     // Panel slides in from the right (where the menu icon lives) and slides back out on close,
     // even though the caller mounts/unmounts this composable abruptly via `settingsOpen`.
@@ -68,6 +78,11 @@ fun SettingsDrawer(
         }
     }
 
+    // Manual drag offset for swipe-right-to-dismiss; separate from the AnimatedVisibility
+    // enter/exit transition above so the two animation systems never fight over the same value.
+    val dragOffset = remember { Animatable(0f) }
+    var panelWidthPx by remember { mutableStateOf(0f) }
+
     Dialog(
         onDismissRequest = { requestClose() },
         properties = DialogProperties(usePlatformDefaultWidth = false),
@@ -81,6 +96,32 @@ fun SettingsDrawer(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(colors.bg)
+                    .onGloballyPositioned { panelWidthPx = it.size.width.toFloat() }
+                    .offset { IntOffset(dragOffset.value.roundToInt(), 0) }
+                    .pointerInput(Unit) {
+                        detectHorizontalDragGestures(
+                            onDragEnd = {
+                                val width = if (panelWidthPx > 0f) panelWidthPx else 1f
+                                if (dragOffset.value > width * 0.3f) {
+                                    scope.launch {
+                                        dragOffset.animateTo(width, animationSpec = tween(200))
+                                        onClose()
+                                    }
+                                } else {
+                                    scope.launch {
+                                        dragOffset.animateTo(0f, animationSpec = spring(stiffness = Spring.StiffnessMediumLow))
+                                    }
+                                }
+                            },
+                            onDragCancel = {
+                                scope.launch { dragOffset.animateTo(0f, animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) }
+                            },
+                        ) { change, dragAmount ->
+                            change.consume()
+                            val newVal = (dragOffset.value + dragAmount).coerceAtLeast(0f)
+                            scope.launch { dragOffset.snapTo(newVal) }
+                        }
+                    }
                     .systemBarsPadding(),
             ) {
                 // Header
