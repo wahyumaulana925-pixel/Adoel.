@@ -86,6 +86,7 @@ fun MainScreen(
     val inputFocus = remember { FocusRequester() }
     val density = LocalDensity.current
     var consoleBarHeight by remember { mutableStateOf(0.dp) }
+    var headerHeight by remember { mutableStateOf(0.dp) }
 
     // Request notification permission launcher
     val notifPermLauncher = rememberLauncherForActivityResult(
@@ -200,120 +201,37 @@ fun MainScreen(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
 
-            // Header
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(colors.bg)
-                    .padding(horizontal = 16.dp)
-                    .height(48.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                // Branding
-                Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "Adoel",
-                        style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Black, color = colors.textPrimary, letterSpacing = (-0.5).sp),
-                    )
-                    Text(
-                        text = ".",
-                        style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Black, color = Cyan400),
-                    )
-                }
-                // Gear button
-                IconButton(
-                    onClick = { settingsOpen = true },
-                    modifier = Modifier.size(36.dp),
-                ) {
-                    GearIcon()
-                }
-            }
-
-            HorizontalDivider(color = colors.bgElevated2.copy(alpha = 0.6f))
-
-            // Shift progress — persistent framing of how far along the current shift is
-            if (totalMc > 0) {
-                val remainingMc = totalMc - doffCount
-                val shiftFraction = doffCount.toFloat() / totalMc
-                val animatedFraction by animateFloatAsState(
-                    targetValue = shiftFraction.coerceIn(0f, 1f),
-                    animationSpec = tween(400),
-                    label = "shiftProgress",
-                )
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            showRemaining = !showRemaining
-                        }
-                        .background(colors.bg)
-                        .padding(horizontal = 16.dp, vertical = 10.dp),
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text(
-                            text = if (showRemaining) "Sisa doff" else "Progres shift",
-                            style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.5.sp, color = colors.textMuted),
-                        )
-                        Text(
-                            text = if (showRemaining) "$remainingMc mesin lagi" else "$doffCount dari $totalMc selesai",
-                            style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Cyan400),
-                        )
-                    }
-                    Spacer(Modifier.height(6.dp))
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(6.dp)
-                            .clip(RoundedCornerShape(3.dp))
-                            .background(colors.bgElevated2),
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .fillMaxWidth(animatedFraction)
-                                .clip(RoundedCornerShape(3.dp))
-                                .background(Cyan500),
-                        )
-                    }
-                }
-                HorizontalDivider(color = colors.bgElevated2.copy(alpha = 0.6f))
-            }
-
-            // Notification banner
-            if (!notifGranted) {
-                TextButton(
-                    onClick = {
-                        if (Build.VERSION.SDK_INT >= 33) {
-                            notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(0.dp),
-                    colors = ButtonDefaults.textButtonColors(
-                        containerColor = colors.bannerWarnBg,
-                        contentColor = colors.bannerWarnFg,
-                    ),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                ) {
-                    Text("Notifikasi nonaktif — ketuk untuk izinkan", style = TextStyle(fontSize = 12.sp))
-                }
-                HorizontalDivider(color = Amber700.copy(alpha = 0.5f))
-            }
-
-            // Main scrollable content — scrolls behind the floating console card
+            // Main scrollable content — scrolls behind the floating header & console card
             LazyColumn(
                 modifier = Modifier.weight(1f).fillMaxWidth(),
                 contentPadding = PaddingValues(
-                    start = 12.dp, end = 12.dp, top = 10.dp,
+                    start = 12.dp, end = 12.dp,
+                    top = 10.dp + headerHeight + 16.dp,
                     bottom = 10.dp + consoleBarHeight + 16.dp,
                 ),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                if (!notifGranted) {
+                    item {
+                        TextButton(
+                            onClick = {
+                                if (Build.VERSION.SDK_INT >= 33) {
+                                    notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.textButtonColors(
+                                containerColor = colors.bannerWarnBg,
+                                contentColor = colors.bannerWarnFg,
+                            ),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+                        ) {
+                            Text("Notifikasi nonaktif — ketuk untuk izinkan", style = TextStyle(fontSize = 12.sp))
+                        }
+                    }
+                }
+
                 item {
                     SectionHeader(title = "Mesin Siap", count = radarList.size)
                 }
@@ -442,6 +360,92 @@ fun MainScreen(
                             onExpand = { historyExpanded = true },
                         )
                     }
+                }
+            }
+        }
+
+        // Header — floating card, overlays the list (list scrolls behind it)
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .onGloballyPositioned { coords ->
+                    headerHeight = with(density) { coords.size.height.toDp() }
+                }
+                .padding(horizontal = 12.dp)
+                .padding(top = 12.dp)
+                .shadow(elevation = 16.dp, shape = RoundedCornerShape(28.dp))
+                .clip(RoundedCornerShape(28.dp))
+                .background(colors.bgElevated),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // Branding
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Adoel",
+                        style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Black, color = colors.textPrimary, letterSpacing = (-0.5).sp),
+                    )
+                    Text(
+                        text = ".",
+                        style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Black, color = Cyan400),
+                    )
+                }
+
+                // Shift progress — centered between branding and the menu icon
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    if (totalMc > 0) {
+                        val remainingMc = totalMc - doffCount
+                        val shiftFraction = doffCount.toFloat() / totalMc
+                        val animatedFraction by animateFloatAsState(
+                            targetValue = shiftFraction.coerceIn(0f, 1f),
+                            animationSpec = tween(400),
+                            label = "shiftProgress",
+                        )
+                        Column(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    showRemaining = !showRemaining
+                                }
+                                .padding(horizontal = 10.dp, vertical = 4.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Text(
+                                text = if (showRemaining) "$remainingMc lagi" else "$doffCount/$totalMc",
+                                style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Cyan400),
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Box(
+                                modifier = Modifier
+                                    .width(90.dp)
+                                    .height(4.dp)
+                                    .clip(RoundedCornerShape(2.dp))
+                                    .background(colors.bgElevated2),
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxHeight()
+                                        .fillMaxWidth(animatedFraction)
+                                        .clip(RoundedCornerShape(2.dp))
+                                        .background(Cyan500),
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Gear button
+                IconButton(
+                    onClick = { settingsOpen = true },
+                    modifier = Modifier.size(36.dp),
+                ) {
+                    GearIcon()
                 }
             }
         }
