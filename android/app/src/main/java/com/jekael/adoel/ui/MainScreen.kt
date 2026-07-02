@@ -105,7 +105,6 @@ fun MainScreen(
     var historyOpen by remember { mutableStateOf(false) }
     var settingsOpen by remember { mutableStateOf(false) }
     var editAktId by remember { mutableStateOf<Int?>(null) }
-    var historyExpanded by remember { mutableStateOf(false) }
     var showRemaining by remember { mutableStateOf(false) }
     var segeraExpanded by remember { mutableStateOf(true) }
     var menungguExpanded by remember { mutableStateOf(true) }
@@ -156,10 +155,6 @@ fun MainScreen(
     val (segeraList, menungguList) = remember(radarList, nowAbs) {
         radarList.partition { it.estAbsMin - nowAbs <= 0 }
     }
-    val recentHistory = remember(state.aktual) {
-        state.aktual.take(5)
-    }
-
     fun handleCommand() {
         val cmd = input.trim().uppercase()
         if (cmd.isEmpty()) return
@@ -394,56 +389,8 @@ fun MainScreen(
                     }
                 }
 
-                item {
-                    Spacer(Modifier.height(12.dp))
-                    HistorySectionHeader(
-                        count = state.aktual.size,
-                        expanded = historyExpanded,
-                        onToggle = { historyExpanded = !historyExpanded },
-                    )
-                }
-
-                if (recentHistory.isEmpty()) {
-                    if (historyExpanded) {
-                        item {
-                            Text(
-                                text = "Belum ada doff hari ini",
-                                style = TextStyle(fontSize = 13.sp, color = colors.textFaint),
-                                modifier = Modifier.padding(vertical = 16.dp),
-                            )
-                        }
-                    }
-                } else if (historyExpanded) {
-                    items(recentHistory, key = { "hist_${it.id}" }) { entry ->
-                        HistoryPreviewRow(
-                            entry = entry,
-                            mesin = state.db[entry.mcNo],
-                            onClick = { editAktId = entry.id },
-                        )
-                    }
-                    item {
-                        TextButton(
-                            onClick = { historyOpen = true },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(
-                                "Lihat semua riwayat →",
-                                style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Cyan400),
-                            )
-                        }
-                    }
-                } else {
-                    item(key = "history_stack") {
-                        val front = recentHistory.first()
-                        HistoryStackedPeek(
-                            front = front,
-                            mesin = state.db[front.mcNo],
-                            peekCount = recentHistory.size - 1,
-                            onClick = { editAktId = front.id },
-                            onExpand = { historyExpanded = true },
-                        )
-                    }
-                }
+                // Riwayat dipusatkan ke panel (tombol Riwayat di konsol) — tidak lagi
+                // dipratinjau di layar utama agar fokus ke "Mesin Siap".
             }
         }
 
@@ -812,101 +759,6 @@ private fun RadarStackedPeek(
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun HistoryStackedPeek(
-    front: AktualEntry,
-    mesin: MesinData?,
-    peekCount: Int,
-    onClick: () -> Unit,
-    onExpand: () -> Unit,
-) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        HistoryPreviewRow(entry = front, mesin = mesin, onClick = onClick)
-        if (peekCount > 0) {
-            PeekBars(count = peekCount, accent = Cyan500)
-            TextButton(onClick = onExpand, modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    "+$peekCount lainnya",
-                    style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Cyan500),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun HistorySectionHeader(count: Int, expanded: Boolean, onToggle: () -> Unit) {
-    val colors = LocalAppColors.current
-    val rotation by animateFloatAsState(
-        targetValue = if (expanded) 180f else 0f,
-        animationSpec = tween(200),
-        label = "chevronRotation",
-    )
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onToggle)
-            .padding(horizontal = 4.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = "Riwayat Hari Ini",
-            style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp, color = colors.textPrimary),
-        )
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                text = "$count",
-                style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = colors.textFaint),
-            )
-            Icon(
-                Icons.Filled.KeyboardArrowDown,
-                contentDescription = if (expanded) "Sembunyikan" else "Tampilkan",
-                tint = colors.textMuted,
-                modifier = Modifier.size(18.dp).rotate(rotation),
-            )
-        }
-    }
-}
-
-@Composable
-private fun HistoryPreviewRow(entry: AktualEntry, mesin: MesinData?, onClick: () -> Unit) {
-    val colors = LocalAppColors.current
-    val corak = entry.corakOverride ?: mesin?.corak ?: "—"
-    val sub = when {
-        entry.customYard != null -> "$corak · ${formatYard(entry.customYard)}y"
-        mesin?.targetYard != null -> "$corak · ${formatYard(mesin.targetYard)}y (standar)"
-        else -> corak
-    }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(colors.bgElevated)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Text(
-            text = entry.mcNo,
-            style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Black, color = Cyan500, letterSpacing = (-0.5).sp),
-        )
-        Text(
-            text = sub,
-            style = TextStyle(fontSize = 12.sp, color = colors.textMuted),
-            modifier = Modifier.weight(1f),
-            maxLines = 1,
-        )
-        Text(
-            text = entry.ket,
-            style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = colors.textPrimary),
-            maxLines = 1,
-        )
     }
 }
 
