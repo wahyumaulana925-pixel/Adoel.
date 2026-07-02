@@ -40,7 +40,13 @@ object NotificationHelper {
         if (reminderAt > now) {
             scheduleAt(context, mcNo, reminderAt, isReminder = true)
         }
-        scheduleAt(context, mcNo, estAbsMin, isReminder = false)
+        // Only schedule the "siap doff" alarm if the estimate is still in the future.
+        // For an already-past estimate, AlarmManager would fire it instantly — but the operator
+        // is looking at the screen when they enter it and the RadarCard already shows it as
+        // overdue, so an immediate notification would just be redundant noise.
+        if (estAbsMin > now) {
+            scheduleAt(context, mcNo, estAbsMin, isReminder = false)
+        }
     }
 
     private fun scheduleAt(context: Context, mcNo: String, atAbsMin: Long, isReminder: Boolean) {
