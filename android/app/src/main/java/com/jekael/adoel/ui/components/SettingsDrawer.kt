@@ -130,25 +130,14 @@ private fun MesinTab(
     showToast: (String) -> Unit,
 ) {
     val colors = LocalAppColors.current
-    var mcNoInput by remember { mutableStateOf("") }
+    var activeMcNo by remember { mutableStateOf<String?>(null) }
     var form by remember { mutableStateOf<MesinData?>(null) }
-    var loaded by remember { mutableStateOf(false) }
     var search by remember { mutableStateOf("") }
     var filter by remember { mutableStateOf<MesinTipe?>(null) }
 
-    fun doLoad() {
-        val n = mcNoInput.trim()
-        if (!n.matches(Regex("^\\d{1,3}$"))) { showToast("Nomor mesin tidak valid"); return }
-        val mesin = state.db[n]
-        if (mesin == null) { showToast("Mc $n tidak ditemukan"); return }
-        form = mesin.copy()
-        loaded = true
-    }
-
     fun loadFrom(mcNo: String, mesin: MesinData) {
-        mcNoInput = mcNo
+        activeMcNo = mcNo
         form = mesin.copy()
-        loaded = true
     }
 
     val entries = remember(state.db, search, filter) {
@@ -161,6 +150,15 @@ private fun MesinTab(
             .sortedBy { (k, _) -> k.toIntOrNull() ?: 0 }
     }
 
+    // A search that's exactly a bare mc number not yet configured (corak masih "-")
+    // gets offered as "configure this new machine" instead of showing up empty-handed.
+    val unconfigured = remember(state.db, search) {
+        val n = search.trim()
+        if (n.matches(Regex("^\\d{1,3}$"))) {
+            state.db[n]?.let { mesin -> if (mesin.corak.isEmpty() || mesin.corak == "-") n to mesin else null }
+        } else null
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -168,27 +166,38 @@ private fun MesinTab(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(
-                value = mcNoInput,
-                onValueChange = { mcNoInput = it; loaded = false },
-                modifier = Modifier.weight(1f),
-                placeholder = { Text("Nomor mesin", color = colors.textFaint) },
-                colors = outlinedFieldColors(),
-                shape = RoundedCornerShape(12.dp),
-                textStyle = TextStyle(color = colors.textPrimary, fontSize = 14.sp),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { doLoad() }),
-                singleLine = true,
-            )
-            Button(
-                onClick = { doLoad() },
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Teal600),
-            ) { Text("Load", fontWeight = FontWeight.SemiBold) }
+        OutlinedTextField(
+            value = search,
+            onValueChange = { search = it },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("Cari nomor / corak, atau ketik nomor baru", color = colors.textFaint) },
+            colors = outlinedFieldColors(),
+            shape = RoundedCornerShape(12.dp),
+            textStyle = TextStyle(color = colors.textPrimary, fontSize = 14.sp),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { unconfigured?.let { (n, m) -> loadFrom(n, m) } }),
+            singleLine = true,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            ChipBtn("Semua", filter == null) { filter = null }
+            MesinTipe.entries.forEach { t ->
+                ChipBtn(t.name, filter == t) { filter = t }
+            }
         }
 
-        if (loaded && form != null) {
+        if (unconfigured != null) {
+            val (n, m) = unconfigured
+            OutlinedButton(
+                onClick = { loadFrom(n, m) },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Teal500),
+                border = BorderStroke(1.dp, Teal500),
+            ) { Text("Konfigurasi Mc $n (belum diatur)") }
+        }
+
+        if (activeMcNo != null && form != null) {
+            val mcNo = activeMcNo!!
             val f = form!!
 
             FieldLabel("Tipe")
@@ -265,9 +274,9 @@ private fun MesinTab(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(
                     onClick = {
-                        onResetMesin(mcNoInput.trim())
-                        showToast("Mc $mcNoInput direset ke default")
-                        loaded = false; form = null
+                        onResetMesin(mcNo)
+                        showToast("Mc $mcNo direset ke default")
+                        activeMcNo = null; form = null
                     },
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
@@ -276,9 +285,9 @@ private fun MesinTab(
                 Button(
                     onClick = {
                         val corak = f.corak.trim().ifEmpty { "-" }
-                        onSetMesin(mcNoInput.trim(), f.copy(corak = corak))
-                        showToast("Mc $mcNoInput disimpan ✓")
-                        loaded = false; form = null; mcNoInput = ""
+                        onSetMesin(mcNo, f.copy(corak = corak))
+                        showToast("Mc $mcNo disimpan ✓")
+                        activeMcNo = null; form = null; search = ""
                     },
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(12.dp),
@@ -289,22 +298,6 @@ private fun MesinTab(
 
         HorizontalDivider(color = colors.border)
 
-        OutlinedTextField(
-            value = search,
-            onValueChange = { search = it },
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Cari nomor / corak...", color = colors.textFaint) },
-            colors = outlinedFieldColors(),
-            shape = RoundedCornerShape(12.dp),
-            textStyle = TextStyle(color = colors.textPrimary, fontSize = 14.sp),
-            singleLine = true,
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            ChipBtn("Semua", filter == null) { filter = null }
-            MesinTipe.entries.forEach { t ->
-                ChipBtn(t.name, filter == t) { filter = t }
-            }
-        }
         Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             entries.forEach { (k, v) ->
                 Row(
