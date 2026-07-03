@@ -190,4 +190,12 @@ class DoffViewModel(app: Application) : AndroidViewModel(app) {
     fun setThemeMode(mode: String) = updateState { s ->
         s.copy(themeMode = mode)
     }
+
+    /** Full-state backup JSON of the current state. */
+    fun exportJson(): String = repo.exportJson(_state.value)
+
+    /** Restore from a backup JSON. [onResult] receives the imported state (null if invalid). */
+    fun importJson(json: String, onResult: (DoffState?) -> Unit) {
+        viewModelScope.launch { onResult(repo.importJson(json)) }
+    }
 }

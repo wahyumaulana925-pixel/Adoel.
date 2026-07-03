@@ -641,6 +641,24 @@ fun MainScreen(
                     doffVm.resetDb()
                 },
                 onSetThemeMode = { mode -> doffVm.setThemeMode(mode.name) },
+                onExportJson = { doffVm.exportJson() },
+                onImport = { json ->
+                    uiVm.showConfirm("Pulihkan data dari file ini? Semua data saat ini akan diganti.") {
+                        val oldKeys = state.estimasi.keys.toList()
+                        doffVm.importJson(json) { imported ->
+                            if (imported != null) {
+                                NotificationHelper.cancelAll(context, oldKeys)
+                                val now = nowAbsMin()
+                                imported.estimasi.values
+                                    .filter { it.estAbsMin > now }
+                                    .forEach { NotificationHelper.scheduleNotif(context, it.mcNo, it.estAbsMin) }
+                                uiVm.showToast("Data dipulihkan ✓")
+                            } else {
+                                uiVm.showToast("⚠ File cadangan tidak valid")
+                            }
+                        }
+                    }
+                },
                 showToast = { uiVm.showToast(it) },
                 showConfirm = { msg, fn -> uiVm.showConfirm(msg, onConfirm = fn) },
             )

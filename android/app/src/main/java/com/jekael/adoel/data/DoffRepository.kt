@@ -55,10 +55,15 @@ private data class SerialAktual(
 class DoffRepository(private val context: Context) {
     private val gson: Gson = GsonBuilder().create()
 
-    private fun parseState(prefs: Preferences): DoffState {
+    private fun parseState(prefs: Preferences): DoffState =
+        prefs[STATE_KEY]?.let { parseJson(it) } ?: DoffState(db = buildDefaultDb())
+
+    /** Parse a persisted or backup JSON snapshot into a [DoffState], or null if it is not a valid
+     * Adoel backup (malformed JSON, wrong shape, or missing the machine database). */
+    fun parseJson(json: String): DoffState? {
         return try {
-            val json = prefs[STATE_KEY] ?: return DoffState(db = buildDefaultDb())
-            val serial = gson.fromJson(json, SerialState::class.java) ?: return DoffState(db = buildDefaultDb())
+            val serial = gson.fromJson(json, SerialState::class.java) ?: return null
+            if (serial.db.isEmpty()) return null
             DoffState(
                 db = serial.db.mapValues { (_, v) ->
                     MesinData(
@@ -77,7 +82,7 @@ class DoffRepository(private val context: Context) {
                 themeMode = serial.themeMode ?: "SYSTEM",
             )
         } catch (e: Exception) {
-            DoffState(db = buildDefaultDb())
+            null
         }
     }
 
@@ -165,5 +170,16 @@ class DoffRepository(private val context: Context) {
             )
         }
         return recorded
+    }
+
+    /** Full-state backup as a JSON string (machine db + estimasi + doff history + theme). */
+    fun exportJson(state: DoffState): String = serialize(state)
+
+    /** Restore state from a backup produced by [exportJson]. Returns the imported state, or null
+     * if the JSON is not a valid Adoel backup. Writes atomically like any other mutation. */
+    suspend fun importJson(json: String): DoffState? {
+        val parsed = parseJson(json) ?: return null
+        update { parsed }
+        return parsed
     }
 }
