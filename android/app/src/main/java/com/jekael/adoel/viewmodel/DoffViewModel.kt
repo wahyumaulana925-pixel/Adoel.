@@ -67,6 +67,7 @@ class DoffViewModel(app: Application) : AndroidViewModel(app) {
                 val target = existing?.yardOverride ?: mesin.targetYard
                     ?: return ProsesResult.Err("Data target kosong")
                 val speed = mesin.speed ?: return ProsesResult.Err("Data speed kosong")
+                if (speed <= 0.0) return ProsesResult.Err("Speed harus > 0")
                 val sisaMin = ((target - yardBerjalan) / speed).roundToInt()
                 nowAbsMin + sisaMin
             }

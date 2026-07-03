@@ -495,7 +495,7 @@ private fun DataTab(
                     type = "text/plain"
                     putExtra(Intent.EXTRA_TEXT, data)
                 }
-                context.startActivity(Intent.createChooser(intent, "Export data"))
+                runCatching { context.startActivity(Intent.createChooser(intent, "Export data")) }
             },
             modifier = Modifier.fillMaxWidth().height(52.dp),
             shape = RoundedCornerShape(16.dp),

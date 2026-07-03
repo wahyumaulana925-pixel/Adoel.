@@ -273,7 +273,7 @@ fun MainScreen(
                                     val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
                                         data = Uri.parse("package:${context.packageName}")
                                     }
-                                    context.startActivity(intent)
+                                    runCatching { context.startActivity(intent) }
                                 }
                             },
                             modifier = Modifier.fillMaxWidth().animateItem(),
@@ -296,7 +296,7 @@ fun MainScreen(
                                 val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
                                     data = Uri.parse("package:${context.packageName}")
                                 }
-                                context.startActivity(intent)
+                                runCatching { context.startActivity(intent) }
                             },
                             modifier = Modifier.fillMaxWidth().animateItem(),
                             shape = RoundedCornerShape(12.dp),
@@ -902,5 +902,5 @@ private fun shareHistory(context: Context, state: DoffState) {
         type = "text/plain"
         putExtra(Intent.EXTRA_TEXT, text)
     }
-    context.startActivity(Intent.createChooser(intent, "Bagikan riwayat"))
+    runCatching { context.startActivity(Intent.createChooser(intent, "Bagikan riwayat")) }
 }

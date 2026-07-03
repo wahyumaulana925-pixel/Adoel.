@@ -4,14 +4,16 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
-import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import java.io.IOException
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore("adoel_v5")
 
@@ -70,10 +72,8 @@ class DoffRepository(private val context: Context) {
                 estimasi = serial.estimasi.mapValues { (_, v) ->
                     Estimasi(v.mcNo, v.estAbsMin, v.startAbsMin, v.corakOverride, v.yardOverride)
                 },
-                aktual = serial.aktual.map { a ->
-                    AktualEntry(a.id, a.mcNo, a.jam, a.ket, a.corakOverride, a.customYard)
-                },
-                nextId = serial.nextId,
+                aktual = dedupeIds(serial.aktual),
+                nextId = maxOf(serial.nextId, (serial.aktual.maxOfOrNull { it.id } ?: 0) + 1),
                 themeMode = serial.themeMode ?: "SYSTEM",
             )
         } catch (e: Exception) {
@@ -81,11 +81,31 @@ class DoffRepository(private val context: Context) {
         }
     }
 
-    suspend fun load(): DoffState = parseState(context.dataStore.data.first())
+    /** Guarantees unique entry ids. Data written before writes became atomic could contain
+     * duplicate ids from a race; LazyColumn crashes on duplicate keys, so reassign collisions. */
+    private fun dedupeIds(raw: List<SerialAktual>): List<AktualEntry> {
+        var nextFree = (raw.maxOfOrNull { it.id } ?: 0) + 1
+        val used = HashSet<Int>()
+        return raw.map { a ->
+            var id = a.id
+            if (!used.add(id)) {
+                id = nextFree++
+                used.add(id)
+            }
+            AktualEntry(id, a.mcNo, a.jam, a.ket, a.corakOverride, a.customYard)
+        }
+    }
+
+    // DataStore reads can surface transient IOExceptions; recover to a default snapshot instead of
+    // letting the exception cancel the collector (which would silently freeze all state updates).
+    private fun DataStore<Preferences>.safeData(): Flow<Preferences> =
+        data.catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
+
+    suspend fun load(): DoffState = parseState(context.dataStore.safeData().first())
 
     /** Reactive state — reflects any write, including ones from outside this ViewModel/process
      * lifecycle (e.g. the notification action button). */
-    fun observeState(): Flow<DoffState> = context.dataStore.data.map(::parseState)
+    fun observeState(): Flow<DoffState> = context.dataStore.safeData().map(::parseState)
 
     private fun serialize(state: DoffState): String {
         val serial = SerialState(
