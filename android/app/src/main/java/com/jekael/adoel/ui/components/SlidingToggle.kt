@@ -110,21 +110,25 @@ fun SlidingToggle(
                             val frac = (change.position.x / widthPx).coerceIn(0f, 1f)
                             scope.launch { position.snapTo(frac) }
                         }
-                        dragging = false
                         val velocityPxPerSec = tracker.calculateVelocity().x
                         val nearest = when {
                             velocityPxPerSec > flingThresholdPxPerSec -> 1
                             velocityPxPerSec < -flingThresholdPxPerSec -> 0
                             else -> position.value.roundToInt().coerceIn(0, 1)
                         }
+                        // dragging stays true through the momentum settle below — onSelect (called
+                        // right after) changes selectedIndex, which reruns LaunchedEffect(selectedIndex);
+                        // if dragging had already flipped false, that effect's plain non-bouncy spring
+                        // would immediately cancel and replace this fling animation before it's visible.
+                        if (nearest != currentSelected.value) currentOnSelect.value(nearest)
                         scope.launch {
                             position.animateTo(
                                 targetValue = nearest.toFloat(),
                                 animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
                                 initialVelocity = velocityPxPerSec / widthPx,
                             )
+                            dragging = false
                         }
-                        if (nearest != currentSelected.value) currentOnSelect.value(nearest)
                     }
                 },
         ) {
