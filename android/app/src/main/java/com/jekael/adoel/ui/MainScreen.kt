@@ -16,11 +16,13 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -102,7 +104,6 @@ fun MainScreen(
     var exactAlarmGranted by remember { mutableStateOf(true) }
     var batteryUnrestricted by remember { mutableStateOf(true) }
 
-    var historyOpen by remember { mutableStateOf(false) }
     var settingsOpen by remember { mutableStateOf(false) }
     var editAktId by remember { mutableStateOf<Int?>(null) }
     var showRemaining by remember { mutableStateOf(false) }
@@ -310,87 +311,126 @@ fun MainScreen(
                     }
                 }
 
-                item {
-                    SectionHeader(title = "Mesin Siap", count = radarList.size)
-                }
-
-                if (radarList.isEmpty()) {
-                    item {
-                        EmptyState(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp))
-                    }
-                } else {
-                    if (segeraList.isNotEmpty()) {
-                        item {
-                            UrgencyBandHeader(
-                                label = "Segera", count = segeraList.size, color = Red400,
-                                expanded = segeraExpanded, onToggle = { segeraExpanded = !segeraExpanded },
-                            )
+                // The console's mode toggle doubles as a page switcher: ESTIMASI shows the
+                // estimate rows, DOFFING shows the recorded-doff rows.
+                when (mode) {
+                    Mode.ESTIMASI -> {
+                        item(key = "est_header") {
+                            SectionHeader(title = "Estimasi", count = radarList.size)
                         }
-                        if (segeraList.size <= 1 || segeraExpanded) {
-                            items(segeraList, key = { it.mcNo }) { est ->
-                                RadarCard(
-                                    est = est,
-                                    mesin = state.db[est.mcNo],
-                                    nowAbs = nowAbs,
-                                    onDoff = { handleDoff(est.mcNo) },
-                                    onHapus = { handleHapusEst(est.mcNo) },
+                        if (radarList.isEmpty()) {
+                            item(key = "est_empty") {
+                                EmptyState(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp))
+                            }
+                        } else {
+                            if (segeraList.isNotEmpty()) {
+                                item(key = "segera_head") {
+                                    UrgencyBandHeader(
+                                        label = "Segera", count = segeraList.size, color = Red400,
+                                        expanded = segeraExpanded, onToggle = { segeraExpanded = !segeraExpanded },
+                                    )
+                                }
+                                if (segeraList.size <= 1 || segeraExpanded) {
+                                    items(segeraList, key = { it.mcNo }) { est ->
+                                        RadarCard(
+                                            est = est,
+                                            mesin = state.db[est.mcNo],
+                                            nowAbs = nowAbs,
+                                            onDoff = { handleDoff(est.mcNo) },
+                                            onHapus = { handleHapusEst(est.mcNo) },
+                                            modifier = Modifier.animateItem(),
+                                        )
+                                    }
+                                } else {
+                                    item(key = "segera_stack") {
+                                        val front = segeraList.first()
+                                        RadarStackedPeek(
+                                            front = front,
+                                            mesin = state.db[front.mcNo],
+                                            nowAbs = nowAbs,
+                                            peekCount = segeraList.size - 1,
+                                            accent = Red400,
+                                            onDoff = { handleDoff(front.mcNo) },
+                                            onHapus = { handleHapusEst(front.mcNo) },
+                                            onExpand = { segeraExpanded = true },
+                                        )
+                                    }
+                                }
+                            }
+                            if (menungguList.isNotEmpty()) {
+                                item(key = "menunggu_head") {
+                                    UrgencyBandHeader(
+                                        label = "Menunggu", count = menungguList.size, color = Cyan400,
+                                        expanded = menungguExpanded, onToggle = { menungguExpanded = !menungguExpanded },
+                                    )
+                                }
+                                if (menungguList.size <= 1 || menungguExpanded) {
+                                    items(menungguList, key = { it.mcNo }) { est ->
+                                        RadarCard(
+                                            est = est,
+                                            mesin = state.db[est.mcNo],
+                                            nowAbs = nowAbs,
+                                            onDoff = { handleDoff(est.mcNo) },
+                                            onHapus = { handleHapusEst(est.mcNo) },
+                                            modifier = Modifier.animateItem(),
+                                        )
+                                    }
+                                } else {
+                                    item(key = "menunggu_stack") {
+                                        val front = menungguList.first()
+                                        RadarStackedPeek(
+                                            front = front,
+                                            mesin = state.db[front.mcNo],
+                                            nowAbs = nowAbs,
+                                            peekCount = menungguList.size - 1,
+                                            accent = Cyan400,
+                                            onDoff = { handleDoff(front.mcNo) },
+                                            onHapus = { handleHapusEst(front.mcNo) },
+                                            onExpand = { menungguExpanded = true },
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Mode.AKTUAL -> {
+                        item(key = "doff_header") {
+                            SectionHeader(title = "Doffing", count = state.aktual.size)
+                        }
+                        if (state.aktual.isEmpty()) {
+                            item(key = "doff_empty") {
+                                Box(
+                                    Modifier.fillMaxWidth().padding(vertical = 40.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text("Belum ada doff", color = colors.textFaint, style = TextStyle(fontSize = 14.sp))
+                                }
+                            }
+                        } else {
+                            item(key = "doff_actions") {
+                                DoffingActions(
+                                    onShare = { shareHistory(context, state) },
+                                    onFinish = {
+                                        uiVm.showConfirm("Akhiri shift? ${state.aktual.size} doff & ${state.estimasi.size} estimasi akan dihapus.") {
+                                            NotificationHelper.cancelAll(context, state.estimasi.keys.toList())
+                                            doffVm.finishShift()
+                                            uiVm.showToast("Shift selesai ✓")
+                                        }
+                                    },
+                                )
+                            }
+                            itemsIndexed(state.aktual, key = { _, e -> e.id }) { idx, entry ->
+                                DoffingRow(
+                                    entry = entry,
+                                    mesin = state.db[entry.mcNo],
+                                    num = state.aktual.size - idx,
+                                    onClick = { editAktId = entry.id },
                                     modifier = Modifier.animateItem(),
                                 )
                             }
-                        } else {
-                            item(key = "segera_stack") {
-                                val front = segeraList.first()
-                                RadarStackedPeek(
-                                    front = front,
-                                    mesin = state.db[front.mcNo],
-                                    nowAbs = nowAbs,
-                                    peekCount = segeraList.size - 1,
-                                    accent = Red400,
-                                    onDoff = { handleDoff(front.mcNo) },
-                                    onHapus = { handleHapusEst(front.mcNo) },
-                                    onExpand = { segeraExpanded = true },
-                                )
-                            }
-                        }
-                    }
-                    if (menungguList.isNotEmpty()) {
-                        item {
-                            UrgencyBandHeader(
-                                label = "Menunggu", count = menungguList.size, color = Cyan400,
-                                expanded = menungguExpanded, onToggle = { menungguExpanded = !menungguExpanded },
-                            )
-                        }
-                        if (menungguList.size <= 1 || menungguExpanded) {
-                            items(menungguList, key = { it.mcNo }) { est ->
-                                RadarCard(
-                                    est = est,
-                                    mesin = state.db[est.mcNo],
-                                    nowAbs = nowAbs,
-                                    onDoff = { handleDoff(est.mcNo) },
-                                    onHapus = { handleHapusEst(est.mcNo) },
-                                    modifier = Modifier.animateItem(),
-                                )
-                            }
-                        } else {
-                            item(key = "menunggu_stack") {
-                                val front = menungguList.first()
-                                RadarStackedPeek(
-                                    front = front,
-                                    mesin = state.db[front.mcNo],
-                                    nowAbs = nowAbs,
-                                    peekCount = menungguList.size - 1,
-                                    accent = Cyan400,
-                                    onDoff = { handleDoff(front.mcNo) },
-                                    onHapus = { handleHapusEst(front.mcNo) },
-                                    onExpand = { menungguExpanded = true },
-                                )
-                            }
                         }
                     }
                 }
-
-                // Riwayat dipusatkan ke panel (tombol Riwayat di konsol) — tidak lagi
-                // dipratinjau di layar utama agar fokus ke "Mesin Siap".
             }
         }
 
@@ -574,16 +614,6 @@ fun MainScreen(
                             if (showCheck) CheckIcon() else SendIcon()
                         }
                     }
-                    // History button
-                    Button(
-                        onClick = { historyOpen = true },
-                        modifier = Modifier
-                            .size(56.dp)
-                            .shadow(elevation = 4.dp, shape = CircleShape, ambientColor = Color.Black.copy(alpha = 0.3f)),
-                        shape = CircleShape,
-                        colors = ButtonDefaults.buttonColors(containerColor = colors.bgElevated2, contentColor = colors.textSecondary),
-                        contentPadding = PaddingValues(0.dp),
-                    ) { HistoryIcon() }
                 }
             }
         }
@@ -618,23 +648,6 @@ fun MainScreen(
     }
 
     // Overlays
-    if (historyOpen) {
-        HistoryDrawer(
-            state = state,
-            onClose = { historyOpen = false },
-            onEditAkt = { id -> historyOpen = false; editAktId = id },
-            onShare = { shareHistory(context, state) },
-            onFinishShift = {
-                uiVm.showConfirm("Akhiri shift? Riwayat ${state.aktual.size} doff dan ${state.estimasi.size} estimasi akan dihapus.") {
-                    NotificationHelper.cancelAll(context, state.estimasi.keys.toList())
-                    doffVm.finishShift()
-                    historyOpen = false
-                    uiVm.showToast("Shift selesai ✓")
-                }
-            },
-        )
-    }
-
     if (editAktId != null) {
         EditAktSheet(
             aktualId = editAktId,
@@ -674,6 +687,87 @@ private fun SectionHeader(title: String, count: Int) {
                 style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = colors.textFaint),
             )
         }
+    }
+}
+
+@Composable
+private fun DoffingActions(onShare: () -> Unit, onFinish: () -> Unit) {
+    val colors = LocalAppColors.current
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        OutlinedButton(
+            onClick = onShare,
+            modifier = Modifier.weight(1f).height(44.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
+            border = BorderStroke(1.dp, colors.border),
+        ) { Text("Bagikan", style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold)) }
+        OutlinedButton(
+            onClick = onFinish,
+            modifier = Modifier.weight(1f).height(44.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = Red400),
+            border = BorderStroke(1.dp, Red700.copy(alpha = 0.5f)),
+        ) { Text("Selesai Shift", style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold)) }
+    }
+}
+
+@Composable
+private fun DoffingRow(
+    entry: AktualEntry,
+    mesin: MesinData?,
+    num: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = LocalAppColors.current
+    val corak = entry.corakOverride ?: mesin?.corak ?: "—"
+    val sub = when {
+        entry.customYard != null -> "$corak · ${formatYard(entry.customYard)}y"
+        mesin?.targetYard != null -> "$corak · ${formatYard(mesin.targetYard)}y"
+        else -> corak
+    }
+    val dotColor = when (mesin?.tipe) {
+        MesinTipe.TAPPET -> Teal500
+        MesinTipe.CAM -> Violet500
+        MesinTipe.D405 -> Amber500
+        MesinTipe.D408 -> Sky500
+        null -> colors.textFaint
+    }
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .shadow(elevation = 3.dp, shape = RoundedCornerShape(14.dp), ambientColor = Color.Black.copy(alpha = 0.3f))
+            .clip(RoundedCornerShape(14.dp))
+            .background(colors.bgElevated)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 11.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            text = "$num",
+            style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Black, color = colors.textMuted),
+            modifier = Modifier.width(22.dp),
+        )
+        Box(Modifier.size(8.dp).clip(CircleShape).background(dotColor))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = entry.mcNo,
+                style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Black, color = Cyan500, letterSpacing = (-1).sp),
+            )
+            Text(
+                text = sub,
+                style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = colors.textMuted),
+                maxLines = 1,
+            )
+        }
+        Text(
+            text = entry.ket,
+            style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary),
+        )
     }
 }
 
