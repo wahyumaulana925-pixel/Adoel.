@@ -2,9 +2,9 @@
 <!--
   Notification status-bar icon. Android renders small icons as a monochrome alpha silhouette
   (white on transparent) and strips all color, so this is the launcher's "A." monogram reduced to
-  its silhouette: the exact tilted "A" letterform (Liberation Sans Bold, -9 deg) plus the accent
-  dot. The cyan background and amber dot color of the launcher cannot appear here -- Android forbids
-  color in status-bar icons by design.
+  its silhouette: the exact tilted "A" letterform (Liberation Sans Bold, tilted 9 degrees) plus the
+  accent dot. The cyan background and amber dot color of the launcher cannot appear here; Android
+  forbids color in status-bar icons by design.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
