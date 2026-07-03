@@ -431,11 +431,11 @@ fun MainScreen(
                                     },
                                 )
                             }
-                            itemsIndexed(state.aktual, key = { _, e -> e.id }) { idx, entry ->
+                            itemsIndexed(state.aktual.asReversed(), key = { _, e -> e.id }) { idx, entry ->
                                 DoffingRow(
                                     entry = entry,
                                     mesin = state.db[entry.mcNo],
-                                    num = state.aktual.size - idx,
+                                    num = idx + 1,
                                     onClick = { editAktId = entry.id },
                                     modifier = Modifier.animateItem(),
                                 )
@@ -925,7 +925,7 @@ private fun shareHistory(context: Context, state: DoffState) {
         cal.get(Calendar.MONTH) + 1,
         cal.get(Calendar.YEAR),
     )
-    val lines = state.aktual.mapIndexed { i, a ->
+    val lines = state.aktual.asReversed().mapIndexed { i, a ->
         val mesin = state.db[a.mcNo]
         val corak = a.corakOverride ?: mesin?.corak ?: "—"
         val suffix = if (a.customYard != null) " [${a.customYard}y]" else ""
