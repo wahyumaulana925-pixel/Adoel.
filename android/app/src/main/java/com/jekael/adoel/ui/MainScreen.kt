@@ -474,7 +474,7 @@ fun MainScreen(
                     )
                     Text(
                         text = ".",
-                        style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Black, color = Cyan400),
+                        style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Black, color = Amber500),
                     )
                 }
 
