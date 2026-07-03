@@ -31,6 +31,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -87,23 +88,41 @@ fun SlidingToggle(
                 .height(height)
                 .pointerInput(widthPx) {
                     if (widthPx <= 0f) return@pointerInput
+                    // A fast flick should carry momentum toward the side it was thrown, like a
+                    // real toggle — not just snap to whichever half the finger happened to be
+                    // over when it lifted. VelocityTracker measures that throw speed, and the
+                    // settle spring is given it as its initial velocity so the indicator keeps
+                    // moving on release instead of stopping dead.
+                    val flingThresholdPxPerSec = 900.dp.toPx()
                     awaitEachGesture {
                         val down = awaitFirstDown()
                         dragging = true
                         val pointerId = down.id
+                        val tracker = VelocityTracker()
+                        tracker.addPosition(down.uptimeMillis, down.position)
                         scope.launch { position.snapTo((down.position.x / widthPx).coerceIn(0f, 1f)) }
                         while (true) {
                             val event = awaitPointerEvent()
                             val change = event.changes.firstOrNull { it.id == pointerId } ?: break
                             if (!change.pressed) break
                             change.consume()
+                            tracker.addPosition(change.uptimeMillis, change.position)
                             val frac = (change.position.x / widthPx).coerceIn(0f, 1f)
                             scope.launch { position.snapTo(frac) }
                         }
                         dragging = false
-                        val nearest = position.value.roundToInt().coerceIn(0, 1)
+                        val velocityPxPerSec = tracker.calculateVelocity().x
+                        val nearest = when {
+                            velocityPxPerSec > flingThresholdPxPerSec -> 1
+                            velocityPxPerSec < -flingThresholdPxPerSec -> 0
+                            else -> position.value.roundToInt().coerceIn(0, 1)
+                        }
                         scope.launch {
-                            position.animateTo(nearest.toFloat(), animationSpec = spring(stiffness = Spring.StiffnessMediumLow))
+                            position.animateTo(
+                                targetValue = nearest.toFloat(),
+                                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+                                initialVelocity = velocityPxPerSec / widthPx,
+                            )
                         }
                         if (nearest != currentSelected.value) currentOnSelect.value(nearest)
                     }

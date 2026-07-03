@@ -293,10 +293,22 @@ fun MainScreen(
                     item {
                         TextButton(
                             onClick = {
-                                val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                                    data = Uri.parse("package:${context.packageName}")
+                                // On some OEM skins (e.g. OriginOS), tapping "Tetapkan sekarang" on
+                                // the system dialog doesn't grant the exemption directly — it drops
+                                // the user onto an app-battery-usage page where the real toggle is
+                                // one tap deeper and defaults back to "Dioptimalkan". Walk the user
+                                // through it explicitly instead of assuming the dialog alone works.
+                                uiVm.showConfirm(
+                                    "Supaya notifikasi tidak telat, ikuti langkah ini (cukup sekali saja):\n\n" +
+                                        "1. Pada dialog berikutnya, ketuk \"Tetapkan sekarang\".\n" +
+                                        "2. Di halaman \"Penggunaan baterai aplikasi\", KETUK baris \"Izinkan penggunaan latar belakang\" (walau kelihatan sudah aktif).\n" +
+                                        "3. Pilih \"Tidak dibatasi\" (bukan \"Dioptimalkan\").",
+                                ) {
+                                    val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                                        data = Uri.parse("package:${context.packageName}")
+                                    }
+                                    runCatching { context.startActivity(intent) }
                                 }
-                                runCatching { context.startActivity(intent) }
                             },
                             modifier = Modifier.fillMaxWidth().animateItem(),
                             shape = RoundedCornerShape(12.dp),
@@ -419,11 +431,11 @@ fun MainScreen(
                                     },
                                 )
                             }
-                            itemsIndexed(state.aktual, key = { _, e -> e.id }) { idx, entry ->
+                            itemsIndexed(state.aktual.asReversed(), key = { _, e -> e.id }) { idx, entry ->
                                 DoffingRow(
                                     entry = entry,
                                     mesin = state.db[entry.mcNo],
-                                    num = state.aktual.size - idx,
+                                    num = idx + 1,
                                     onClick = { editAktId = entry.id },
                                     modifier = Modifier.animateItem(),
                                 )
@@ -913,7 +925,7 @@ private fun shareHistory(context: Context, state: DoffState) {
         cal.get(Calendar.MONTH) + 1,
         cal.get(Calendar.YEAR),
     )
-    val lines = state.aktual.mapIndexed { i, a ->
+    val lines = state.aktual.asReversed().mapIndexed { i, a ->
         val mesin = state.db[a.mcNo]
         val corak = a.corakOverride ?: mesin?.corak ?: "—"
         val suffix = if (a.customYard != null) " [${a.customYard}y]" else ""
