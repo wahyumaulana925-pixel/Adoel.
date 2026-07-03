@@ -8,6 +8,11 @@ android/.cxx
 *.apk
 *.aab
 
+# Signing keys — never commit these
+*.keystore
+*.jks
+keystore.b64
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

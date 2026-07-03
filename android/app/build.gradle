@@ -16,6 +16,21 @@ android {
         versionName "5.0"
     }
 
+    // Release signing reads the keystore + passwords from environment variables. In CI these come
+    // from GitHub Secrets (the keystore itself is never committed to the repo). If the env vars are
+    // absent (e.g. a plain local build), the release build is simply left unsigned.
+    signingConfigs {
+        release {
+            def ksPath = System.getenv("KEYSTORE_PATH")
+            if (ksPath != null) {
+                storeFile file(ksPath)
+                storePassword System.getenv("KEYSTORE_PASSWORD")
+                keyAlias System.getenv("KEY_ALIAS")
+                keyPassword System.getenv("KEY_PASSWORD")
+            }
+        }
+    }
+
     buildFeatures {
         compose true
     }
@@ -33,6 +48,9 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (System.getenv("KEYSTORE_PATH") != null) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }
