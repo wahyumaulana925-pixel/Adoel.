@@ -30,3 +30,4 @@ android/app/src/main/java/com/jekael/adoel/
 │   └── theme/       # color palette + MaterialTheme
 ├── MainActivity.kt
 ```
+Trigger workflow reload test.
