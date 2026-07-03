@@ -19,6 +19,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -466,8 +468,24 @@ fun MainScreen(
                     .padding(horizontal = 16.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Branding
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                // Branding — a little squash-and-bounce on tap, purely for delight (no action).
+                val brandInteraction = remember { MutableInteractionSource() }
+                val brandPressed by brandInteraction.collectIsPressedAsState()
+                val brandScale = remember { Animatable(1f) }
+                LaunchedEffect(brandPressed) {
+                    if (brandPressed) {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        brandScale.animateTo(0.85f, animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessHigh))
+                    } else {
+                        brandScale.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+                    }
+                }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .graphicsLayer { scaleX = brandScale.value; scaleY = brandScale.value }
+                        .clickable(interactionSource = brandInteraction, indication = null) {},
+                ) {
                     Text(
                         text = "Adoel",
                         style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Black, color = colors.textPrimary, letterSpacing = (-0.5).sp),
