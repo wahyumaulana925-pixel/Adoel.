@@ -8,8 +8,6 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import androidx.core.content.ContextCompat
-import androidx.core.graphics.drawable.toBitmap
 import com.jekael.adoel.MainActivity
 import com.jekael.adoel.R
 
@@ -109,17 +107,11 @@ object NotificationHelper {
             },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        // Full-color launcher monogram as the large icon — the status-bar small icon is forced
-        // monochrome on stock Android, so this is the reliable way to show the colored "A." brand
-        // in the notification (and many OEM skins surface it prominently).
-        val largeIcon = runCatching {
-            ContextCompat.getDrawable(context, R.mipmap.ic_launcher)?.toBitmap(width = 128, height = 128)
-        }.getOrNull()
-
+        // A single notification icon: the monochrome "A." small icon (the OEM/system tints it with
+        // setColor). No separate large icon — that produced a second, differently-styled "A".
         val notif = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setColor(BRAND_COLOR)
-            .apply { if (largeIcon != null) setLargeIcon(largeIcon) }
             .setContentTitle(if (isReminder) "Mc $mcNo — $REMINDER_LEAD_MIN menit lagi" else "Mc $mcNo — siap doff")
             .setContentText(if (isReminder) "Bersiap, estimasi hampir tiba" else "Estimasi waktu telah tiba")
             .setPriority(NotificationCompat.PRIORITY_HIGH)

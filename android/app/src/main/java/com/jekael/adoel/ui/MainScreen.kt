@@ -487,7 +487,11 @@ fun MainScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             Text(
-                                text = if (showRemaining) "$remainingMc lagi" else "$doffCount/$totalMc",
+                                text = when {
+                                    !showRemaining -> "$doffCount/$totalMc"
+                                    remainingMc <= 0 -> "Selesai"
+                                    else -> "$remainingMc lagi"
+                                },
                                 style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Cyan400),
                             )
                             Spacer(Modifier.height(4.dp))
