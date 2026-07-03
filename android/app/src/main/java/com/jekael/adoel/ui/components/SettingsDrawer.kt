@@ -181,7 +181,7 @@ fun SettingsDrawer(
                 label = "settingsTabContent",
             ) { t ->
                 when (t) {
-                    SettingsTab.MESIN -> MesinTab(state, onSetMesin, onResetMesin, showToast)
+                    SettingsTab.MESIN -> MesinTab(state, onSetMesin, onResetMesin, showToast, showConfirm)
                     SettingsTab.DATA -> DataTab(state, onResetDb, onSetThemeMode, onExportJson, onImport, showToast, showConfirm)
                 }
             }
@@ -195,16 +195,22 @@ private fun MesinTab(
     onSetMesin: (String, MesinData) -> Unit,
     onResetMesin: (String) -> Unit,
     showToast: (String) -> Unit,
+    showConfirm: (String, () -> Unit) -> Unit,
 ) {
     val colors = LocalAppColors.current
     var activeMcNo by remember { mutableStateOf<String?>(null) }
     var form by remember { mutableStateOf<MesinData?>(null) }
+    // Whether this machine already had data configured when the panel was opened — captured
+    // once at open time so it doesn't flicker as the user types into a blank entry. Reset only
+    // makes sense (and is only shown) when there's actually saved data to revert.
+    var hadExistingData by remember { mutableStateOf(false) }
     var search by remember { mutableStateOf("") }
     var showAll by remember { mutableStateOf(false) }
 
     fun loadFrom(mcNo: String, mesin: MesinData) {
         activeMcNo = mcNo
         form = mesin.copy()
+        hadExistingData = mesin.corak.isNotEmpty() && mesin.corak != "-"
     }
 
     val entries = remember(state.db, search, showAll) {
@@ -311,12 +317,16 @@ private fun MesinTab(
         MesinEditPanel(
             mcNo = mcNo,
             form = f,
+            showReset = hadExistingData,
             onFormChange = { form = it },
             onClose = { activeMcNo = null; form = null },
+            onCancel = { activeMcNo = null; form = null },
             onReset = {
-                onResetMesin(mcNo)
-                showToast("Mc $mcNo direset ke default")
-                activeMcNo = null; form = null
+                showConfirm("Reset Mc $mcNo ke default? Corak, target yard, dan pengaturan lain akan dihapus.") {
+                    onResetMesin(mcNo)
+                    showToast("Mc $mcNo direset ke default")
+                    activeMcNo = null; form = null
+                }
             },
             onSave = {
                 val corak = f.corak.trim().ifEmpty { "-" }
@@ -332,13 +342,19 @@ private fun MesinTab(
 private fun MesinEditPanel(
     mcNo: String,
     form: MesinData,
+    showReset: Boolean,
     onFormChange: (MesinData) -> Unit,
     onClose: () -> Unit,
+    onCancel: () -> Unit,
     onReset: () -> Unit,
     onSave: () -> Unit,
 ) {
     val colors = LocalAppColors.current
     val f = form
+    // Kept as raw text (not re-derived from the Double each recomposition) so a whole-number
+    // value like 303 doesn't force an unwanted ".0" suffix, and mid-typing text like "303." isn't
+    // reformatted out from under the user before they finish entering a decimal.
+    var targetYardText by remember(mcNo) { mutableStateOf(f.targetYard?.let { formatYard(it) } ?: "") }
 
     FloatingEditDialog(onDismissRequest = onClose) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -376,8 +392,11 @@ private fun MesinEditPanel(
 
         FieldLabel("Target Yard")
         OutlinedTextField(
-            value = f.targetYard?.toString() ?: "",
-            onValueChange = { onFormChange(f.copy(targetYard = it.toDoubleOrNull())) },
+            value = targetYardText,
+            onValueChange = {
+                targetYardText = it
+                onFormChange(f.copy(targetYard = it.toDoubleOrNull()))
+            },
             modifier = Modifier.fillMaxWidth(),
             placeholder = { Text("opsional", color = colors.textFaint) },
             colors = outlinedFieldColors(),
@@ -423,11 +442,19 @@ private fun MesinEditPanel(
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(
-                onClick = onReset,
+                onClick = onCancel,
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
                 border = BorderStroke(1.dp, colors.border),
-            ) { Text("Reset") }
+            ) { Text("Batal") }
+            if (showReset) {
+                OutlinedButton(
+                    onClick = onReset,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Red400),
+                    border = BorderStroke(1.dp, Red400),
+                ) { Text("Reset") }
+            }
             Button(
                 onClick = onSave,
                 modifier = Modifier.weight(1f),

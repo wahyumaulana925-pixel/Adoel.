@@ -12,6 +12,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -19,6 +21,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -34,6 +37,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
@@ -466,15 +470,57 @@ fun MainScreen(
                     .padding(horizontal = 16.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Branding
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                // Branding — a one-shot ~320ms tap pulse: logo settles to 0.97, the dot hops up
+                // 7dp and a thin glow blooms from it, all finishing on their own (not tied to how
+                // long the finger stays down) so repeated daily taps stay quick and subtle.
+                var brandPulseKey by remember { mutableStateOf(0) }
+                val brandScale = remember { Animatable(1f) }
+                val dotOffsetY = remember { Animatable(0f) }
+                val glowAlpha = remember { Animatable(0f) }
+                val glowScale = remember { Animatable(0.6f) }
+                LaunchedEffect(brandPulseKey) {
+                    if (brandPulseKey == 0) return@LaunchedEffect
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    launch {
+                        brandScale.animateTo(0.97f, tween(90, easing = FastOutSlowInEasing))
+                        brandScale.animateTo(1f, tween(200, easing = FastOutSlowInEasing))
+                    }
+                    launch {
+                        dotOffsetY.animateTo(-7f, tween(120, easing = FastOutSlowInEasing))
+                        dotOffsetY.animateTo(0f, tween(180, easing = FastOutSlowInEasing))
+                    }
+                    launch {
+                        glowScale.snapTo(0.6f)
+                        glowAlpha.snapTo(0.4f)
+                        launch { glowAlpha.animateTo(0f, tween(300, easing = LinearOutSlowInEasing)) }
+                        glowScale.animateTo(2.2f, tween(320, easing = LinearOutSlowInEasing))
+                    }
+                }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .graphicsLayer { scaleX = brandScale.value; scaleY = brandScale.value }
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                        ) { brandPulseKey++ },
+                ) {
                     Text(
                         text = "Adoel",
                         style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Black, color = colors.textPrimary, letterSpacing = (-0.5).sp),
                     )
                     Text(
                         text = ".",
-                        style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Black, color = Cyan400),
+                        modifier = Modifier
+                            .offset(y = dotOffsetY.value.dp)
+                            .drawBehind {
+                                drawCircle(
+                                    color = Amber500.copy(alpha = glowAlpha.value),
+                                    radius = (size.minDimension.coerceAtLeast(20f)) * glowScale.value,
+                                    center = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height / 2f),
+                                )
+                            },
+                        style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Black, color = Amber500),
                     )
                 }
 
