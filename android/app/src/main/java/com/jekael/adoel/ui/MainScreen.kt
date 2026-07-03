@@ -104,6 +104,17 @@ fun MainScreen(
     var exactAlarmGranted by remember { mutableStateOf(true) }
     var batteryUnrestricted by remember { mutableStateOf(true) }
 
+    // Vivo/iQOO (OriginOS/Funtouch) devices have their own "Autostart" background-execution
+    // permission with no public API to check its state, so we can only offer a one-time nudge —
+    // remembered via plain SharedPreferences since this is a device UI preference, not app data.
+    val prefs = remember { context.getSharedPreferences("adoel_prefs", Context.MODE_PRIVATE) }
+    var showAutostartBanner by remember {
+        mutableStateOf(
+            (Build.MANUFACTURER.contains("vivo", ignoreCase = true) || Build.BRAND.contains("iqoo", ignoreCase = true)) &&
+                !prefs.getBoolean("autostart_banner_dismissed", false),
+        )
+    }
+
     var settingsOpen by remember { mutableStateOf(false) }
     var editAktId by remember { mutableStateOf<Int?>(null) }
     var showRemaining by remember { mutableStateOf(false) }
@@ -307,6 +318,49 @@ fun MainScreen(
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
                         ) {
                             Text("Baterai dioptimalkan — ketuk agar notifikasi tidak diblokir sistem", style = TextStyle(fontSize = 12.sp))
+                        }
+                    }
+                }
+
+                if (showAutostartBanner) {
+                    item {
+                        TextButton(
+                            onClick = {
+                                // Vivo/iQOO devices gate background execution behind a proprietary
+                                // "Autostart" screen with no stable public Settings action; try the
+                                // known component first, falling back to the app's own info page
+                                // (Setelan > Setelan Lainnya > Aplikasi > Autostart on newer OriginOS).
+                                val vivoIntent = Intent().setComponent(
+                                    android.content.ComponentName(
+                                        "com.vivo.permissionmanager",
+                                        "com.vivo.permissionmanager.activity.BgStartUpManagerActivity",
+                                    ),
+                                )
+                                val opened = runCatching { context.startActivity(vivoIntent) }.isSuccess
+                                if (!opened) {
+                                    runCatching {
+                                        context.startActivity(
+                                            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                                data = Uri.parse("package:${context.packageName}")
+                                            },
+                                        )
+                                    }
+                                }
+                                showAutostartBanner = false
+                                prefs.edit().putBoolean("autostart_banner_dismissed", true).apply()
+                            },
+                            modifier = Modifier.fillMaxWidth().animateItem(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.textButtonColors(
+                                containerColor = colors.bannerWarnBg,
+                                contentColor = colors.bannerWarnFg,
+                            ),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+                        ) {
+                            Text(
+                                "Ketuk untuk izinkan \"Autostart\" (khusus HP Vivo/iQOO) agar notifikasi tetap jalan saat app ditutup",
+                                style = TextStyle(fontSize = 12.sp),
+                            )
                         }
                     }
                 }

@@ -1,16 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Notification status-bar icon. Android renders small icons as a monochrome alpha silhouette
-  (white on transparent) and strips all color, so this is the launcher's "A." monogram reduced to
-  its silhouette: the exact tilted "A" letterform (Liberation Sans Bold, tilted 9 degrees) plus the
-  accent dot. The cyan background and amber dot color of the launcher cannot appear here; Android
-  forbids color in status-bar icons by design.
+  (white on transparent) and strips all color — the launcher's tilted, dotted "A." reads fine at
+  launcher size but was reported illegible at real 24dp notification scale (misread as crossed
+  arrows). This is a plain upright bold "A" (no tilt, no dot) sized to fill the canvas so it stays
+  unambiguous even after OS anti-aliasing/tinting.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
-    <path android:fillColor="@android:color/white" android:pathData="M14.95 16.92 13.04 13.35 7.39 14.24 6.68 18.23 3.58 18.73 6.63 3.05 10.29 2.47 18.02 16.44ZM8.83 5.05 8.80 5.29Q8.75 5.68 8.68 6.19Q8.61 6.70 7.72 11.80L11.98 11.12L9.84 7.09L9.16 5.74Z" />
-    <path android:fillColor="@android:color/white" android:pathData="M18.4,19.5 a1.7,1.7 0 1,0 3.4,0 a1.7,1.7 0 1,0 -3.4,0 Z" />
+    <path
+        android:fillColor="@android:color/white"
+        android:fillType="nonzero"
+        android:pathData="M16.77 20.50 15.26 16.16H8.78L7.27 20.50H3.71L9.91 3.50H14.11L20.29 20.50ZM12.01 6.12 11.94 6.38Q11.82 6.82 11.65 7.37Q11.48 7.93 9.57 13.48H14.46L12.78 8.59L12.27 6.95Z" />
 </vector>
