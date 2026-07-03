@@ -351,6 +351,10 @@ private fun MesinEditPanel(
 ) {
     val colors = LocalAppColors.current
     val f = form
+    // Kept as raw text (not re-derived from the Double each recomposition) so a whole-number
+    // value like 303 doesn't force an unwanted ".0" suffix, and mid-typing text like "303." isn't
+    // reformatted out from under the user before they finish entering a decimal.
+    var targetYardText by remember(mcNo) { mutableStateOf(f.targetYard?.let { formatYard(it) } ?: "") }
 
     FloatingEditDialog(onDismissRequest = onClose) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -388,8 +392,11 @@ private fun MesinEditPanel(
 
         FieldLabel("Target Yard")
         OutlinedTextField(
-            value = f.targetYard?.toString() ?: "",
-            onValueChange = { onFormChange(f.copy(targetYard = it.toDoubleOrNull())) },
+            value = targetYardText,
+            onValueChange = {
+                targetYardText = it
+                onFormChange(f.copy(targetYard = it.toDoubleOrNull()))
+            },
             modifier = Modifier.fillMaxWidth(),
             placeholder = { Text("opsional", color = colors.textFaint) },
             colors = outlinedFieldColors(),
