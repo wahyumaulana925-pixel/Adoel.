@@ -986,7 +986,8 @@ private fun shareHistory(context: Context, state: DoffState) {
     val lines = state.aktual.asReversed().mapIndexed { i, a ->
         val mesin = state.db[a.mcNo]
         val corak = a.corakOverride ?: mesin?.corak ?: "—"
-        val suffix = if (a.customYard != null) " [${a.customYard}y]" else ""
+        val yard = a.customYard ?: mesin?.targetYard
+        val suffix = if (yard != null) " [${formatYard(yard)}y]" else ""
         "${i + 1}. Mc${a.mcNo} - $corak$suffix - ${a.ket}"
     }
     val text = "Bravo!!!\n$dateStr\n\n${lines.joinToString("\n")}\n\nTotal: ${state.aktual.size} doff"
