@@ -1,6 +1,7 @@
 package com.jekael.adoel.widget
 
 import android.content.Context
+import android.content.Intent
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
@@ -61,7 +62,7 @@ class AdoelWidget : GlanceAppWidget() {
                     .fillMaxSize()
                     .background(bg)
                     .padding(12.dp)
-                    .clickable(actionStartActivity<MainActivity>()),
+                    .clickable(actionStartActivity(Intent(context, MainActivity::class.java))),
             ) {
                 Text(
                     text = "Adoel.",
