@@ -738,6 +738,7 @@ fun MainScreen(
                 uiVm.showToast("Riwayat diperbarui")
                 editAktId = null
             },
+            onInvalidYard = { uiVm.showToast("Yard tidak valid") },
         )
     }
 
