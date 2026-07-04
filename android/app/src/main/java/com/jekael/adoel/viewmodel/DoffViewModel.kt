@@ -10,6 +10,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
+// Caps how many past shifts are kept in DoffState.history, so the DataStore JSON blob (the
+// whole state is one serialized blob, see DoffRepository) doesn't grow unbounded over months of use.
+private const val MAX_HISTORY_SHIFTS = 30
+
 class DoffViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = DoffRepository(app)
 
@@ -144,6 +148,7 @@ class DoffViewModel(app: Application) : AndroidViewModel(app) {
                 ket = ket,
                 corakOverride = if (effectiveCorak != mesin.corak) effectiveCorak else null,
                 customYard = customYard,
+                tsEpochMin = nowAbsMin(),
             )
             s.copy(
                 nextId = entryId + 1,
@@ -183,8 +188,26 @@ class DoffViewModel(app: Application) : AndroidViewModel(app) {
         )
     }
 
+    /** Archives the current shift's doffs/estimasi into [DoffState.history] before clearing them,
+     * so "Selesai Shift" no longer silently discards a shift's data with no way to look back. */
     fun finishShift() = updateState { s ->
-        s.copy(estimasi = emptyMap(), aktual = emptyList())
+        if (s.aktual.isEmpty() && s.estimasi.isEmpty()) return@updateState s
+        val now = nowAbsMin()
+        val started = (s.aktual.mapNotNull { it.tsEpochMin } + s.estimasi.values.map { it.startAbsMin })
+            .minOrNull() ?: now
+        val record = ShiftRecord(
+            id = s.nextShiftId,
+            startedAtEpochMin = started,
+            endedAtEpochMin = now,
+            aktual = s.aktual,
+            estimasiRemaining = s.estimasi,
+        )
+        s.copy(
+            estimasi = emptyMap(),
+            aktual = emptyList(),
+            history = (listOf(record) + s.history).take(MAX_HISTORY_SHIFTS),
+            nextShiftId = s.nextShiftId + 1,
+        )
     }
 
     fun setThemeMode(mode: String) = updateState { s ->

@@ -29,6 +29,7 @@ fun EditAktSheet(
     state: DoffState,
     onClose: () -> Unit,
     onSave: (id: Int, ket: String, corakOverride: String?, customYard: Double?) -> Unit,
+    onInvalidYard: () -> Unit = {},
 ) {
     if (aktualId == null) return
     val entry = state.aktual.find { it.id == aktualId } ?: return
@@ -49,8 +50,11 @@ fun EditAktSheet(
         val corakTrim = corakInput.trim()
         val corakOverride = if (corakTrim.isNotEmpty() && corakTrim != (mesin?.corak ?: "")) corakTrim else null
         val yardTrim = yardInput.trim().replace(',', '.')
-        val customYard = yardTrim.toDoubleOrNull()
-        onSave(entry.id, k, corakOverride, customYard)
+        if (yardTrim.isNotEmpty() && yardTrim.toDoubleOrNull() == null) {
+            onInvalidYard()
+            return
+        }
+        onSave(entry.id, k, corakOverride, yardTrim.toDoubleOrNull())
     }
 
     LaunchedEffect(aktualId) {

@@ -298,7 +298,7 @@ private fun MesinTab(
                     Text(k, style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary), modifier = Modifier.width(32.dp))
                     Text(v.tipe.name, style = TextStyle(fontSize = 11.sp, letterSpacing = 1.sp, color = colors.textMuted), modifier = Modifier.width(56.dp))
                     Text(v.corak, style = TextStyle(fontSize = 14.sp, color = colors.textPrimary), modifier = Modifier.weight(1f), maxLines = 1)
-                    if (v.targetYard != null) Text("${v.targetYard}y", style = TextStyle(fontSize = 11.sp, color = colors.textFaint))
+                    if (v.targetYard != null) Text("${formatYard(v.targetYard)}y", style = TextStyle(fontSize = 11.sp, color = colors.textFaint))
                 }
             }
             if (entries.isEmpty()) {
@@ -355,6 +355,8 @@ private fun MesinEditPanel(
     // value like 303 doesn't force an unwanted ".0" suffix, and mid-typing text like "303." isn't
     // reformatted out from under the user before they finish entering a decimal.
     var targetYardText by remember(mcNo) { mutableStateOf(f.targetYard?.let { formatYard(it) } ?: "") }
+    var speedText by remember(mcNo) { mutableStateOf(f.speed?.let { formatYard(it) } ?: "") }
+    var koreksiText by remember(mcNo) { mutableStateOf(f.koreksi?.let { formatYard(it) } ?: "") }
 
     FloatingEditDialog(onDismissRequest = onClose) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -395,7 +397,7 @@ private fun MesinEditPanel(
             value = targetYardText,
             onValueChange = {
                 targetYardText = it
-                onFormChange(f.copy(targetYard = it.toDoubleOrNull()))
+                onFormChange(f.copy(targetYard = it.replace(',', '.').toDoubleOrNull()))
             },
             modifier = Modifier.fillMaxWidth(),
             placeholder = { Text("opsional", color = colors.textFaint) },
@@ -410,8 +412,11 @@ private fun MesinEditPanel(
             Spacer(Modifier.height(16.dp))
             FieldLabel("Speed (yard/menit)")
             OutlinedTextField(
-                value = f.speed?.toString() ?: "",
-                onValueChange = { onFormChange(f.copy(speed = it.toDoubleOrNull())) },
+                value = speedText,
+                onValueChange = {
+                    speedText = it
+                    onFormChange(f.copy(speed = it.replace(',', '.').toDoubleOrNull()))
+                },
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = { Text("cth: 0.158", color = colors.textFaint) },
                 colors = outlinedFieldColors(),
@@ -426,8 +431,11 @@ private fun MesinEditPanel(
             Spacer(Modifier.height(16.dp))
             FieldLabel("Koreksi (menit)")
             OutlinedTextField(
-                value = f.koreksi?.toString() ?: "",
-                onValueChange = { onFormChange(f.copy(koreksi = it.toDoubleOrNull())) },
+                value = koreksiText,
+                onValueChange = {
+                    koreksiText = it
+                    onFormChange(f.copy(koreksi = it.replace(',', '.').toDoubleOrNull()))
+                },
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = { Text("cth: 18", color = colors.textFaint) },
                 colors = outlinedFieldColors(),
