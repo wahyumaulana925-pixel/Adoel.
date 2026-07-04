@@ -2,6 +2,9 @@ package com.jekael.adoel.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
@@ -133,6 +136,19 @@ fun StatistikScreen(
 @Composable
 private fun AggregateStatsCard(history: List<ShiftRecord>, totalDoff: Int, avgPerShift: Float) {
     val colors = LocalAppColors.current
+    var started by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { started = true }
+    val animatedTotal by animateIntAsState(
+        targetValue = if (started) totalDoff else 0,
+        animationSpec = tween(700, easing = FastOutSlowInEasing),
+        label = "totalDoff",
+    )
+    val animatedShifts by animateIntAsState(
+        targetValue = if (started) history.size else 0,
+        animationSpec = tween(700, easing = FastOutSlowInEasing),
+        label = "shiftCount",
+    )
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -141,8 +157,8 @@ private fun AggregateStatsCard(history: List<ShiftRecord>, totalDoff: Int, avgPe
             .padding(16.dp),
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-            StatFigure(label = "Total doff", value = "$totalDoff")
-            StatFigure(label = "Shift", value = "${history.size}")
+            StatFigure(label = "Total doff", value = "$animatedTotal")
+            StatFigure(label = "Shift", value = "$animatedShifts")
             StatFigure(label = "Rata-rata/shift", value = "%.1f".format(avgPerShift))
         }
         Spacer(Modifier.height(12.dp))
@@ -174,7 +190,13 @@ private fun DoffCountChart(history: List<ShiftRecord>) {
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.Bottom,
         ) {
-            recent.forEach { shift ->
+            recent.forEachIndexed { index, shift ->
+                val targetFraction = shift.aktual.size.toFloat() / maxCount
+                val animatedFraction = remember { Animatable(0f) }
+                LaunchedEffect(shift.id, targetFraction) {
+                    delay(index * 50L)
+                    animatedFraction.animateTo(targetFraction, animationSpec = tween(450, easing = FastOutSlowInEasing))
+                }
                 Column(
                     modifier = Modifier.weight(1f),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -188,7 +210,7 @@ private fun DoffCountChart(history: List<ShiftRecord>) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height((44.dp * (shift.aktual.size.toFloat() / maxCount)).coerceAtLeast(4.dp))
+                            .height((44.dp * animatedFraction.value).coerceAtLeast(4.dp))
                             .clip(RoundedCornerShape(3.dp))
                             .background(Cyan500),
                     )
