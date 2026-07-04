@@ -29,6 +29,20 @@ data class AktualEntry(
     val ket: String,
     val corakOverride: String? = null,
     val customYard: Double? = null,
+    // Null for entries persisted before this field existed (Gson leaves it null on old data).
+    // "jam" is only a display string ("HH.mm") that's ambiguous across a midnight-crossing
+    // shift; this absolute-minute timestamp lets shift-history stats sort/measure durations
+    // correctly regardless of when the entry was recorded relative to midnight.
+    val tsEpochMin: Long? = null,
+)
+
+/** One archived shift, created when "Selesai Shift" is confirmed (see DoffViewModel.finishShift). */
+data class ShiftRecord(
+    val id: Int,
+    val startedAtEpochMin: Long,
+    val endedAtEpochMin: Long,
+    val aktual: List<AktualEntry> = emptyList(),
+    val estimasiRemaining: Map<String, Estimasi> = emptyMap(),
 )
 
 data class DoffState(
@@ -37,6 +51,8 @@ data class DoffState(
     val aktual: List<AktualEntry> = emptyList(),
     val nextId: Int = 1,
     val themeMode: String = "SYSTEM",
+    val history: List<ShiftRecord> = emptyList(),
+    val nextShiftId: Int = 1,
 )
 
 sealed class ProsesResult {

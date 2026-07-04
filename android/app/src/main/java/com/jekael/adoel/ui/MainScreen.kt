@@ -427,7 +427,7 @@ fun MainScreen(
                                 DoffingActions(
                                     onShare = { shareHistory(context, state) },
                                     onFinish = {
-                                        uiVm.showConfirm("Akhiri shift? ${state.aktual.size} doff & ${state.estimasi.size} estimasi akan dihapus.") {
+                                        uiVm.showConfirm("Akhiri shift? ${state.aktual.size} doff & ${state.estimasi.size} estimasi akan diarsipkan ke Riwayat, lalu konsol dikosongkan untuk shift baru.") {
                                             NotificationHelper.cancelAll(context, state.estimasi.keys.toList())
                                             doffVm.finishShift()
                                             uiVm.showToast("Shift selesai ✓")

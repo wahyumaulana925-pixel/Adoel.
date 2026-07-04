@@ -25,6 +25,8 @@ private data class SerialState(
     val aktual: List<SerialAktual>,
     val nextId: Int,
     val themeMode: String?,
+    val history: List<SerialShiftRecord>?,
+    val nextShiftId: Int?,
 )
 
 private data class SerialMesin(
@@ -50,6 +52,15 @@ private data class SerialAktual(
     val ket: String,
     val corakOverride: String?,
     val customYard: Double?,
+    val tsEpochMin: Long?,
+)
+
+private data class SerialShiftRecord(
+    val id: Int,
+    val startedAtEpochMin: Long,
+    val endedAtEpochMin: Long,
+    val aktual: List<SerialAktual>,
+    val estimasiRemaining: Map<String, SerialEstimasi>,
 )
 
 class DoffRepository(private val context: Context) {
@@ -80,11 +91,26 @@ class DoffRepository(private val context: Context) {
                 aktual = dedupeIds(serial.aktual),
                 nextId = maxOf(serial.nextId, (serial.aktual.maxOfOrNull { it.id } ?: 0) + 1),
                 themeMode = serial.themeMode ?: "SYSTEM",
+                history = (serial.history ?: emptyList()).map { r ->
+                    ShiftRecord(
+                        id = r.id,
+                        startedAtEpochMin = r.startedAtEpochMin,
+                        endedAtEpochMin = r.endedAtEpochMin,
+                        aktual = r.aktual.map { toAktualEntry(it) },
+                        estimasiRemaining = r.estimasiRemaining.mapValues { (_, v) ->
+                            Estimasi(v.mcNo, v.estAbsMin, v.startAbsMin, v.corakOverride, v.yardOverride)
+                        },
+                    )
+                },
+                nextShiftId = serial.nextShiftId ?: 1,
             )
         } catch (e: Exception) {
             null
         }
     }
+
+    private fun toAktualEntry(a: SerialAktual): AktualEntry =
+        AktualEntry(a.id, a.mcNo, a.jam, a.ket, a.corakOverride, a.customYard, a.tsEpochMin)
 
     /** Guarantees unique entry ids. Data written before writes became atomic could contain
      * duplicate ids from a race; LazyColumn crashes on duplicate keys, so reassign collisions. */
@@ -97,7 +123,7 @@ class DoffRepository(private val context: Context) {
                 id = nextFree++
                 used.add(id)
             }
-            AktualEntry(id, a.mcNo, a.jam, a.ket, a.corakOverride, a.customYard)
+            toAktualEntry(a.copy(id = id))
         }
     }
 
@@ -112,6 +138,9 @@ class DoffRepository(private val context: Context) {
      * lifecycle (e.g. the notification action button). */
     fun observeState(): Flow<DoffState> = context.dataStore.safeData().map(::parseState)
 
+    private fun toSerialAktual(a: AktualEntry): SerialAktual =
+        SerialAktual(a.id, a.mcNo, a.jam, a.ket, a.corakOverride, a.customYard, a.tsEpochMin)
+
     private fun serialize(state: DoffState): String {
         val serial = SerialState(
             db = state.db.mapValues { (_, v) ->
@@ -120,11 +149,21 @@ class DoffRepository(private val context: Context) {
             estimasi = state.estimasi.mapValues { (_, v) ->
                 SerialEstimasi(v.mcNo, v.estAbsMin, v.startAbsMin, v.corakOverride, v.yardOverride)
             },
-            aktual = state.aktual.map { a ->
-                SerialAktual(a.id, a.mcNo, a.jam, a.ket, a.corakOverride, a.customYard)
-            },
+            aktual = state.aktual.map(::toSerialAktual),
             nextId = state.nextId,
             themeMode = state.themeMode,
+            history = state.history.map { r ->
+                SerialShiftRecord(
+                    id = r.id,
+                    startedAtEpochMin = r.startedAtEpochMin,
+                    endedAtEpochMin = r.endedAtEpochMin,
+                    aktual = r.aktual.map(::toSerialAktual),
+                    estimasiRemaining = r.estimasiRemaining.mapValues { (_, v) ->
+                        SerialEstimasi(v.mcNo, v.estAbsMin, v.startAbsMin, v.corakOverride, v.yardOverride)
+                    },
+                )
+            },
+            nextShiftId = state.nextShiftId,
         )
         return gson.toJson(serial)
     }
@@ -161,6 +200,7 @@ class DoffRepository(private val context: Context) {
                 ket = jam,
                 corakOverride = if (effectiveCorak != mesin.corak) effectiveCorak else null,
                 customYard = null,
+                tsEpochMin = nowAbsMin(),
             )
             recorded = true
             state.copy(
