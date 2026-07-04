@@ -35,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -88,16 +89,29 @@ fun StatistikScreen(
         exit = slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(220)),
     ) {
         Column(modifier = Modifier.fillMaxSize().background(colors.bg)) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+            // Floating header — matches the header/console bar's shadow + rounded-corner look
+            // instead of sitting flat directly on colors.bg like the rest of this full-bleed panel.
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp)
+                    .padding(top = 12.dp)
+                    .shadow(elevation = 16.dp, shape = RoundedCornerShape(28.dp))
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(colors.bgElevated),
             ) {
-                Text("Statistik", style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary))
-                IconButton(onClick = { requestClose() }) {
-                    Text("✕", style = TextStyle(fontSize = 18.sp, color = colors.textMuted))
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("Statistik", style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary))
+                    IconButton(onClick = { requestClose() }) {
+                        Text("✕", style = TextStyle(fontSize = 18.sp, color = colors.textMuted))
+                    }
                 }
             }
+            Spacer(Modifier.height(16.dp))
 
             if (history.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

@@ -138,34 +138,49 @@ fun SettingsDrawer(
             // No systemBarsPadding() here — this panel now lives inside MainScreen's own root
             // Box, which already insets its children from the system bars once.
         ) {
-            // Header
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+            // Header + tab switcher — floating card, matching the header/console bar's look
+            // (shadow + rounded corners lifted off the screen background) instead of sitting
+            // flat directly on colors.bg like the rest of this full-bleed panel.
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp)
+                    .padding(top = 12.dp)
+                    .shadow(elevation = 16.dp, shape = RoundedCornerShape(28.dp))
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(colors.bgElevated),
             ) {
-                Text("Pengaturan", style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary))
-                IconButton(onClick = { requestClose() }) {
-                    Text("✕", style = TextStyle(fontSize = 18.sp, color = colors.textMuted))
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("Pengaturan", style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary))
+                        IconButton(onClick = { requestClose() }) {
+                            Text("✕", style = TextStyle(fontSize = 18.sp, color = colors.textMuted))
+                        }
+                    }
+                    SlidingToggle(
+                        labelLeft = "Mesin",
+                        labelRight = "Data",
+                        selectedIndex = if (tab == SettingsTab.MESIN) 0 else 1,
+                        onSelect = { tab = if (it == 0) SettingsTab.MESIN else SettingsTab.DATA },
+                        containerColor = colors.bgElevated2,
+                        activeColorLeft = Teal500,
+                        activeColorRight = Teal500,
+                        activeTextColorLeft = Zinc950,
+                        activeTextColorRight = Zinc950,
+                        inactiveTextColor = colors.textSecondary,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp)
+                            .padding(bottom = 14.dp),
+                    )
                 }
             }
 
-            // Tab switcher
-            SlidingToggle(
-                labelLeft = "Mesin",
-                labelRight = "Data",
-                selectedIndex = if (tab == SettingsTab.MESIN) 0 else 1,
-                onSelect = { tab = if (it == 0) SettingsTab.MESIN else SettingsTab.DATA },
-                containerColor = colors.bgElevated2,
-                activeColorLeft = Teal500,
-                activeColorRight = Teal500,
-                activeTextColorLeft = Zinc950,
-                activeTextColorRight = Zinc950,
-                inactiveTextColor = colors.textSecondary,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 8.dp),
-            )
+            Spacer(Modifier.height(16.dp))
 
             AnimatedContent(
                 targetState = tab,
