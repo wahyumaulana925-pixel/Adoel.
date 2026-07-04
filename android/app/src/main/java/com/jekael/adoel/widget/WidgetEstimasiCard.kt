@@ -21,24 +21,27 @@ import com.jekael.adoel.data.formatYard
 import com.jekael.adoel.data.urgencyLevel
 import com.jekael.adoel.ui.theme.Amber500
 import com.jekael.adoel.ui.theme.Cyan500
-import com.jekael.adoel.ui.theme.Cyan950
 import com.jekael.adoel.ui.theme.Orange500
 import com.jekael.adoel.ui.theme.Red500
-import com.jekael.adoel.ui.theme.Red900
 import com.jekael.adoel.ui.theme.Zinc50
-import com.jekael.adoel.ui.theme.Zinc950
+import com.jekael.adoel.ui.theme.Zinc900
 
 /** Glance-native, read-only card for one estimasi — no action buttons; the whole row (see
- * AdoelWidget's LazyColumn item wrapper) opens the app on tap instead. */
+ * AdoelWidget's LazyColumn item wrapper) opens the app on tap instead. Neutral card background
+ * (theme-aware) + a colored accent for urgency, mirroring RadarCard's actual in-app pattern
+ * rather than the solid saturated urgency backgrounds this card used to have (which were also
+ * never theme-aware). */
 @Composable
-fun WidgetEstimasiCard(est: Estimasi, mesin: MesinData?, now: Long) {
+fun WidgetEstimasiCard(est: Estimasi, mesin: MesinData?, now: Long, dark: Boolean) {
     val remaining = est.estAbsMin - now
-    val (bg, accent) = when (urgencyLevel(remaining)) {
-        UrgencyLevel.CALM -> Cyan950 to Cyan500
-        UrgencyLevel.SOON -> Zinc950 to Amber500
-        UrgencyLevel.IMMINENT -> Zinc950 to Orange500
-        UrgencyLevel.OVERDUE -> Red900 to Red500
+    val accent = when (urgencyLevel(remaining)) {
+        UrgencyLevel.CALM -> Cyan500
+        UrgencyLevel.SOON -> Amber500
+        UrgencyLevel.IMMINENT -> Orange500
+        UrgencyLevel.OVERDUE -> Red500
     }
+    val bg = if (dark) Zinc900 else Zinc50
+    val textColor = if (dark) Zinc50 else Zinc900
     val corak = est.corakOverride ?: mesin?.corak ?: "—"
     val yard = est.yardOverride ?: mesin?.targetYard
     val corakLine = if (yard != null) "$corak · ${formatYard(yard)}y" else corak
@@ -50,8 +53,8 @@ fun WidgetEstimasiCard(est: Estimasi, mesin: MesinData?, now: Long) {
             .background(bg)
             .padding(12.dp),
     ) {
-        Text("Mc ${est.mcNo}", style = TextStyle(color = ColorProvider(Zinc50), fontSize = 18.sp, fontWeight = FontWeight.Bold))
-        Text(corakLine, style = TextStyle(color = ColorProvider(Zinc50), fontSize = 11.sp), maxLines = 1)
+        Text("Mc ${est.mcNo}", style = TextStyle(color = ColorProvider(textColor), fontSize = 18.sp, fontWeight = FontWeight.Bold))
+        Text(corakLine, style = TextStyle(color = ColorProvider(textColor), fontSize = 11.sp), maxLines = 1)
         Text(
             text = "Siap jam ${absMinToTimeStr(est.estAbsMin)}",
             style = TextStyle(color = ColorProvider(accent), fontSize = 13.sp, fontWeight = FontWeight.Medium),

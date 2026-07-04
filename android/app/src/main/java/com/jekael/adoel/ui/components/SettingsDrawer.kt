@@ -39,9 +39,11 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.jekael.adoel.BuildConfig
 import com.jekael.adoel.data.*
 import com.jekael.adoel.ui.theme.*
 import kotlinx.coroutines.Dispatchers
@@ -158,7 +160,7 @@ fun SettingsDrawer(
                     ) {
                         Text("Pengaturan", style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary))
                         IconButton(onClick = { requestClose() }) {
-                            Text("✕", style = TextStyle(fontSize = 18.sp, color = colors.textMuted))
+                            CloseIcon()
                         }
                     }
                     SlidingToggle(
@@ -302,8 +304,8 @@ private fun MesinTab(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .shadow(elevation = 3.dp, shape = RoundedCornerShape(12.dp), ambientColor = Color.Black.copy(alpha = 0.3f))
-                        .clip(RoundedCornerShape(12.dp))
+                        .shadow(elevation = 3.dp, shape = RoundedCornerShape(14.dp), ambientColor = Color.Black.copy(alpha = 0.3f))
+                        .clip(RoundedCornerShape(14.dp))
                         .background(colors.bgElevated2)
                         .clickable { loadFrom(k, v) }
                         .padding(horizontal = 12.dp, vertical = 10.dp),
@@ -312,7 +314,13 @@ private fun MesinTab(
                 ) {
                     Text(k, style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary), modifier = Modifier.width(32.dp))
                     Text(v.tipe.name, style = TextStyle(fontSize = 11.sp, letterSpacing = 1.sp, color = colors.textMuted), modifier = Modifier.width(56.dp))
-                    Text(v.corak, style = TextStyle(fontSize = 14.sp, color = colors.textPrimary), modifier = Modifier.weight(1f), maxLines = 1)
+                    Text(
+                        v.corak,
+                        style = TextStyle(fontSize = 14.sp, color = colors.textPrimary),
+                        modifier = Modifier.weight(1f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                     if (v.targetYard != null) Text("${formatYard(v.targetYard)}y", style = TextStyle(fontSize = 11.sp, color = colors.textFaint))
                 }
             }
@@ -376,21 +384,17 @@ private fun MesinEditPanel(
     var koreksiText by remember(mcNo) { mutableStateOf(f.koreksi?.let { formatYard(it) } ?: "") }
 
     FloatingEditDialog(onDismissRequest = onClose) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(
-                text = "Mc $mcNo",
-                style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Black, color = colors.textPrimary),
-            )
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(colors.bgElevated2)
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-            ) {
-                Text(
-                    text = f.tipe.name,
-                    style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = colors.textMuted),
-                )
+        Text(
+            text = "Mc $mcNo",
+            style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Black, color = colors.textPrimary),
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        FieldLabel("Tipe Mesin")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            MesinTipe.entries.forEach { t ->
+                ChipBtn(t.name, f.tipe == t) { onFormChange(f.copy(tipe = t)) }
             }
         }
 
@@ -468,6 +472,7 @@ private fun MesinEditPanel(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(
                 onClick = onCancel,
+                modifier = Modifier.height(48.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
                 border = BorderStroke(1.dp, colors.border),
@@ -475,6 +480,7 @@ private fun MesinEditPanel(
             if (showReset) {
                 OutlinedButton(
                     onClick = onReset,
+                    modifier = Modifier.height(48.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = Red400),
                     border = BorderStroke(1.dp, Red400),
@@ -492,7 +498,7 @@ private fun MesinEditPanel(
                         else -> onSave()
                     }
                 },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).height(48.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Teal500),
             ) { Text("Simpan", fontWeight = FontWeight.SemiBold) }
@@ -510,7 +516,7 @@ private fun ChipBtn(label: String, selected: Boolean, onClick: () -> Unit) {
             .background(if (selected) Teal600 else Color.Transparent)
             .border(1.dp, if (selected) Teal500 else colors.border, shape)
             .clickable { onClick() }
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -627,6 +633,57 @@ private fun DataTab(
             border = BorderStroke(1.dp, Red700.copy(alpha = 0.5f)),
         ) { Text("Reset ke Default") }
 
+        Spacer(Modifier.height(4.dp))
+        HorizontalDivider(color = colors.border)
+        Spacer(Modifier.height(4.dp))
+
+        var aboutOpen by remember { mutableStateOf(false) }
+        var helpOpen by remember { mutableStateOf(false) }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                onClick = { helpOpen = true },
+                modifier = Modifier.weight(1f).height(52.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
+                border = BorderStroke(1.dp, colors.border),
+            ) { Text("Bantuan") }
+            OutlinedButton(
+                onClick = { aboutOpen = true },
+                modifier = Modifier.weight(1f).height(52.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
+                border = BorderStroke(1.dp, colors.border),
+            ) { Text("Tentang") }
+        }
+        if (aboutOpen) {
+            AboutDialog(onClose = { aboutOpen = false })
+        }
+        if (helpOpen) {
+            OnboardingDialog(onClose = { helpOpen = false })
+        }
+
         Spacer(Modifier.height(8.dp))
+    }
+}
+
+@Composable
+private fun AboutDialog(onClose: () -> Unit) {
+    val colors = LocalAppColors.current
+    FloatingEditDialog(onDismissRequest = onClose) {
+        Text("Tentang", style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary))
+        Spacer(Modifier.height(16.dp))
+        Text("Adoel.", style = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Black, color = colors.textPrimary))
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "Versi ${BuildConfig.VERSION_NAME} (build ${BuildConfig.VERSION_CODE})",
+            style = TextStyle(fontSize = 13.sp, color = colors.textSecondary),
+        )
+        Spacer(Modifier.height(20.dp))
+        Button(
+            onClick = onClose,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Teal500),
+        ) { Text("Tutup", fontWeight = FontWeight.SemiBold) }
     }
 }

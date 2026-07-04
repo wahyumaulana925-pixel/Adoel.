@@ -122,12 +122,14 @@ fun ConfirmDialog(
                     ) {
                         TextButton(
                             onClick = { requestClose { current.onCancel?.invoke() } },
+                            modifier = Modifier.height(48.dp),
                             colors = ButtonDefaults.textButtonColors(contentColor = colors.textSecondary),
                         ) {
                             Text("Batal")
                         }
                         TextButton(
                             onClick = { requestClose { current.onConfirm() } },
+                            modifier = Modifier.height(48.dp),
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.textButtonColors(contentColor = Red400),
                         ) {

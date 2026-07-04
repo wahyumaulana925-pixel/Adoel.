@@ -53,6 +53,10 @@ data class DoffState(
     val themeMode: String = "SYSTEM",
     val history: List<ShiftRecord> = emptyList(),
     val nextShiftId: Int = 1,
+    // Defaults true (already-seen) so existing users upgrading from a version that predates this
+    // field don't suddenly get the first-run tutorial — it's only explicitly set false in
+    // DoffRepository.parseState()'s genuinely-fresh-install fallback (no persisted state at all).
+    val onboardingSeen: Boolean = true,
 )
 
 sealed class ProsesResult {

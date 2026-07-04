@@ -54,6 +54,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -578,7 +579,6 @@ fun MainScreen(
                 // Gear button
                 IconButton(
                     onClick = { settingsOpen = true },
-                    modifier = Modifier.size(36.dp),
                 ) {
                     GearIcon()
                 }
@@ -756,6 +756,10 @@ fun MainScreen(
         )
     }
 
+    if (!state.onboardingSeen) {
+        OnboardingDialog(onClose = { doffVm.setOnboardingSeen() })
+    }
+
     ConfirmDialog(
         confirm = confirm,
         onDismiss = { uiVm.dismissConfirm() },
@@ -864,6 +868,7 @@ private fun DoffingRow(
                 text = sub,
                 style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = colors.textMuted),
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
         Text(
@@ -883,9 +888,10 @@ private fun UrgencyBandHeader(label: String, count: Int, color: Color, expanded:
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = 44.dp)
             .clip(RoundedCornerShape(10.dp))
             .clickable(enabled = count > 1, onClick = onToggle)
-            .padding(horizontal = 4.dp, vertical = 6.dp),
+            .padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {

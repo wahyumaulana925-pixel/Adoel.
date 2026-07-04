@@ -45,6 +45,7 @@ import com.jekael.adoel.data.MesinData
 import com.jekael.adoel.data.ShiftRecord
 import com.jekael.adoel.data.formatDeltaMin
 import com.jekael.adoel.data.shiftNumberForEpochMin
+import com.jekael.adoel.ui.components.CloseIcon
 import com.jekael.adoel.ui.components.LinearProgressBar
 import com.jekael.adoel.ui.components.TrashIcon
 import com.jekael.adoel.ui.theme.Cyan400
@@ -107,7 +108,7 @@ fun StatistikScreen(
                 ) {
                     Text("Statistik", style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary))
                     IconButton(onClick = { requestClose() }) {
-                        Text("✕", style = TextStyle(fontSize = 18.sp, color = colors.textMuted))
+                        CloseIcon()
                     }
                 }
             }

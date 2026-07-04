@@ -218,6 +218,10 @@ class DoffViewModel(app: Application) : AndroidViewModel(app) {
         s.copy(themeMode = mode)
     }
 
+    fun setOnboardingSeen() = updateState { s ->
+        s.copy(onboardingSeen = true)
+    }
+
     /** Full-state backup JSON of the current state. */
     fun exportJson(): String = repo.exportJson(_state.value)
 
