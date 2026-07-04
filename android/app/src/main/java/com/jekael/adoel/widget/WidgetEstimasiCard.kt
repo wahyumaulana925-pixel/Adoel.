@@ -16,7 +16,7 @@ import androidx.glance.unit.ColorProvider
 import com.jekael.adoel.data.Estimasi
 import com.jekael.adoel.data.MesinData
 import com.jekael.adoel.data.UrgencyLevel
-import com.jekael.adoel.data.formatDeltaMin
+import com.jekael.adoel.data.absMinToTimeStr
 import com.jekael.adoel.data.formatYard
 import com.jekael.adoel.data.urgencyLevel
 import com.jekael.adoel.ui.theme.Amber500
@@ -53,7 +53,7 @@ fun WidgetEstimasiCard(est: Estimasi, mesin: MesinData?, now: Long) {
         Text("Mc ${est.mcNo}", style = TextStyle(color = ColorProvider(Zinc50), fontSize = 18.sp, fontWeight = FontWeight.Bold))
         Text(corakLine, style = TextStyle(color = ColorProvider(Zinc50), fontSize = 11.sp), maxLines = 1)
         Text(
-            text = if (remaining <= 0) "Siap doff" else "${formatDeltaMin(remaining)} lagi",
+            text = "Siap jam ${absMinToTimeStr(est.estAbsMin)}",
             style = TextStyle(color = ColorProvider(accent), fontSize = 13.sp, fontWeight = FontWeight.Medium),
         )
     }
