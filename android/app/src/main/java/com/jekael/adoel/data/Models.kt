@@ -87,6 +87,17 @@ fun formatDeltaMin(deltaMin: Long): String {
 fun formatYard(y: Double): String =
     if (y == y.toLong().toDouble()) y.toLong().toString() else y.toString()
 
+/** Fixed 3-shift schedule: Shift 1 06.00–14.00, Shift 2 14.00–22.00, Shift 3 22.00–06.00
+ * (crosses midnight). Classified by the hour-of-day the shift started. */
+fun shiftNumberForEpochMin(epochMin: Long): Int {
+    val hour = Calendar.getInstance().apply { timeInMillis = epochMin * 60000L }.get(Calendar.HOUR_OF_DAY)
+    return when {
+        hour in 6 until 14 -> 1
+        hour in 14 until 22 -> 2
+        else -> 3
+    }
+}
+
 fun jamKeShiftAbs(jamMin: Int): Long {
     val startOfDay = Calendar.getInstance().apply {
         set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)

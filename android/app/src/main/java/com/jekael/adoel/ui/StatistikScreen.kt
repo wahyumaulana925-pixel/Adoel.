@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jekael.adoel.data.ShiftRecord
 import com.jekael.adoel.data.formatDeltaMin
+import com.jekael.adoel.data.shiftNumberForEpochMin
 import com.jekael.adoel.ui.components.LinearProgressBar
 import com.jekael.adoel.ui.theme.Cyan400
 import com.jekael.adoel.ui.theme.Cyan500
@@ -174,6 +175,7 @@ private fun DoffCountChart(history: List<ShiftRecord>) {
 @Composable
 private fun ShiftRow(shift: ShiftRecord, maxDoffCount: Int, expanded: Boolean, onToggle: () -> Unit) {
     val colors = LocalAppColors.current
+    val shiftNo = remember(shift.startedAtEpochMin) { shiftNumberForEpochMin(shift.startedAtEpochMin) }
     val dateStr = remember(shift.startedAtEpochMin) { formatShiftDate(shift.startedAtEpochMin) }
     val timeRange = remember(shift.startedAtEpochMin, shift.endedAtEpochMin) {
         "${formatShiftTime(shift.startedAtEpochMin)}–${formatShiftTime(shift.endedAtEpochMin)}"
@@ -198,7 +200,10 @@ private fun ShiftRow(shift: ShiftRecord, maxDoffCount: Int, expanded: Boolean, o
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column {
-                Text(dateStr, style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary))
+                Text(
+                    "Shift $shiftNo · $dateStr",
+                    style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary),
+                )
                 Text(timeRange, style = TextStyle(fontSize = 12.sp, color = colors.textFaint))
                 Spacer(Modifier.height(6.dp))
                 LinearProgressBar(
