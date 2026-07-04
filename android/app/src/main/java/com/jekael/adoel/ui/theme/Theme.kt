@@ -77,9 +77,12 @@ private val DarkAppColors = AppColors(
     bgElevated2 = Zinc800,
     border = Zinc700,
     textPrimary = Zinc100,
-    textSecondary = Zinc400,
-    textMuted = Zinc500,
-    textFaint = Zinc600,
+    // Shifted one Zinc step lighter than the original 400/500/600 ladder — textFaint's old
+    // 2.57:1 contrast against Zinc950 fell well short of WCAG AA; this ladder targets
+    // 13.46:1 / 7.76:1 / 4.12:1 respectively while keeping the three tiers visually distinct.
+    textSecondary = Zinc300,
+    textMuted = Zinc400,
+    textFaint = Zinc500,
     bannerWarnBg = Color(0xFF292007),
     bannerWarnFg = Amber400,
     criticalPulseTarget = Color(0xFF3A1414),
@@ -94,7 +97,9 @@ private val LightAppColors = AppColors(
     textPrimary = Zinc900,
     textSecondary = Zinc700,
     textMuted = Zinc600,
-    textFaint = Zinc400,
+    // textFaint alone moved 400→500 (2.33:1 → 4.40:1) — textSecondary/textMuted above were
+    // already well above WCAG AA (9.50:1 / 7.03:1) and don't need to shift.
+    textFaint = Zinc500,
     bannerWarnBg = Color(0xFFFEF3C7),
     bannerWarnFg = Amber700,
     criticalPulseTarget = Color(0xFFFECACA),

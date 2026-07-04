@@ -10,6 +10,7 @@ import androidx.compose.material.icons.outlined.Send
 import androidx.compose.material.icons.outlined.List
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.jekael.adoel.ui.theme.LocalAppColors
 
@@ -23,11 +24,11 @@ fun CheckIcon() {
 }
 
 @Composable
-fun TrashIcon() {
+fun TrashIcon(size: Dp = 18.dp) {
     Icon(
         imageVector = Icons.Outlined.Delete,
         contentDescription = "Hapus",
-        modifier = Modifier.size(18.dp),
+        modifier = Modifier.size(size),
     )
 }
 

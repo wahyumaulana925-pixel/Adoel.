@@ -226,27 +226,27 @@ fun RadarCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp)
+                    .padding(horizontal = 16.dp)
                     .padding(bottom = 10.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 OutlinedButton(
                     onClick = onHapus,
                     enabled = !completing,
-                    modifier = Modifier.weight(1f).height(40.dp),
+                    modifier = Modifier.weight(1f).height(48.dp),
                     shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
                     border = BorderStroke(1.dp, colors.border),
                     contentPadding = PaddingValues(0.dp),
                 ) {
-                    TrashIcon()
+                    TrashIcon(size = 20.dp)
                 }
                 Button(
                     onClick = { triggerDoff() },
                     enabled = !completing,
                     modifier = Modifier
                         .weight(1f)
-                        .height(40.dp)
+                        .height(48.dp)
                         .shadow(elevation = 4.dp, shape = RoundedCornerShape(10.dp), ambientColor = Cyan600.copy(alpha = 0.5f)),
                     shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
