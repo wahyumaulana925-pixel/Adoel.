@@ -311,13 +311,14 @@ private fun MesinTab(
         Spacer(Modifier.height(8.dp))
     }
 
-    if (activeMcNo != null && form != null) {
-        val mcNo = activeMcNo!!
-        val f = form!!
+    val mcNo = activeMcNo
+    val f = form
+    if (mcNo != null && f != null) {
         MesinEditPanel(
             mcNo = mcNo,
             form = f,
             showReset = hadExistingData,
+            showToast = showToast,
             onFormChange = { form = it },
             onClose = { activeMcNo = null; form = null },
             onCancel = { activeMcNo = null; form = null },
@@ -343,6 +344,7 @@ private fun MesinEditPanel(
     mcNo: String,
     form: MesinData,
     showReset: Boolean,
+    showToast: (String) -> Unit,
     onFormChange: (MesinData) -> Unit,
     onClose: () -> Unit,
     onCancel: () -> Unit,
@@ -464,7 +466,17 @@ private fun MesinEditPanel(
                 ) { Text("Reset") }
             }
             Button(
-                onClick = onSave,
+                onClick = {
+                    val targetYardInvalid = targetYardText.isNotBlank() && f.targetYard == null
+                    val speedInvalid = f.tipe == MesinTipe.D405 && speedText.isNotBlank() && f.speed == null
+                    val koreksiInvalid = f.tipe == MesinTipe.D408 && koreksiText.isNotBlank() && f.koreksi == null
+                    when {
+                        targetYardInvalid -> showToast("Target Yard tidak valid, cek kembali")
+                        speedInvalid -> showToast("Speed tidak valid, cek kembali")
+                        koreksiInvalid -> showToast("Koreksi tidak valid, cek kembali")
+                        else -> onSave()
+                    }
+                },
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Teal500),

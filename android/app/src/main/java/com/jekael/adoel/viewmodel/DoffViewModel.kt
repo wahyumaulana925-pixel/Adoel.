@@ -56,7 +56,7 @@ class DoffViewModel(app: Application) : AndroidViewModel(app) {
         if (!mcNo.matches(Regex("^\\d{1,3}$"))) return ProsesResult.Err("Nomor mesin tidak valid")
         val mesin = _state.value.db[mcNo] ?: return ProsesResult.Err("Mc $mcNo tidak ditemukan")
         if (mesin.corak.isBlank() || mesin.corak.trim() == "-")
-            return ProsesResult.Err("Mc $mcNo dilewati (-)")
+            return ProsesResult.Err("Mc $mcNo belum diatur, atur corak dulu di Pengaturan")
 
         val estAbs: Long = when (mesin.tipe) {
             MesinTipe.TAPPET, MesinTipe.CAM -> {

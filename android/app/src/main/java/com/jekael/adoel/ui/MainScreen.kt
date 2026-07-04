@@ -743,6 +743,7 @@ fun MainScreen(
                 editAktId = null
             },
             onInvalidYard = { uiVm.showToast("Yard tidak valid") },
+            onEmptyKet = { uiVm.showToast("Keterangan tidak boleh kosong") },
         )
     }
 
