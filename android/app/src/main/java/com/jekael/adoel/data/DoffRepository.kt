@@ -30,6 +30,7 @@ private data class SerialState(
     val themeMode: String?,
     val history: List<SerialShiftRecord>?,
     val nextShiftId: Int?,
+    val onboardingSeen: Boolean?,
 )
 
 private data class SerialMesin(
@@ -70,7 +71,7 @@ class DoffRepository(private val context: Context) {
     private val gson: Gson = GsonBuilder().create()
 
     private fun parseState(prefs: Preferences): DoffState =
-        prefs[STATE_KEY]?.let { parseJson(it) } ?: DoffState(db = buildDefaultDb())
+        prefs[STATE_KEY]?.let { parseJson(it) } ?: DoffState(db = buildDefaultDb(), onboardingSeen = false)
 
     /** Parse a persisted or backup JSON snapshot into a [DoffState], or null if it is not a valid
      * Adoel backup (malformed JSON, wrong shape, or missing the machine database). */
@@ -106,6 +107,7 @@ class DoffRepository(private val context: Context) {
                     )
                 },
                 nextShiftId = serial.nextShiftId ?: 1,
+                onboardingSeen = serial.onboardingSeen ?: true,
             )
         } catch (e: Exception) {
             null
@@ -167,6 +169,7 @@ class DoffRepository(private val context: Context) {
                 )
             },
             nextShiftId = state.nextShiftId,
+            onboardingSeen = state.onboardingSeen,
         )
         return gson.toJson(serial)
     }

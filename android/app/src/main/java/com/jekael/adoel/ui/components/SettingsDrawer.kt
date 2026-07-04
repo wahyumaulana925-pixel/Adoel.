@@ -629,15 +629,28 @@ private fun DataTab(
         Spacer(Modifier.height(4.dp))
 
         var aboutOpen by remember { mutableStateOf(false) }
-        OutlinedButton(
-            onClick = { aboutOpen = true },
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
-            border = BorderStroke(1.dp, colors.border),
-        ) { Text("Tentang") }
+        var helpOpen by remember { mutableStateOf(false) }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                onClick = { helpOpen = true },
+                modifier = Modifier.weight(1f).height(52.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
+                border = BorderStroke(1.dp, colors.border),
+            ) { Text("Bantuan") }
+            OutlinedButton(
+                onClick = { aboutOpen = true },
+                modifier = Modifier.weight(1f).height(52.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
+                border = BorderStroke(1.dp, colors.border),
+            ) { Text("Tentang") }
+        }
         if (aboutOpen) {
             AboutDialog(onClose = { aboutOpen = false })
+        }
+        if (helpOpen) {
+            OnboardingDialog(onClose = { helpOpen = false })
         }
 
         Spacer(Modifier.height(8.dp))

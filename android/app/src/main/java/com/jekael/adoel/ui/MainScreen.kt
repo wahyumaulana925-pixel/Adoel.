@@ -756,6 +756,10 @@ fun MainScreen(
         )
     }
 
+    if (!state.onboardingSeen) {
+        OnboardingDialog(onClose = { doffVm.setOnboardingSeen() })
+    }
+
     ConfirmDialog(
         confirm = confirm,
         onDismiss = { uiVm.dismissConfirm() },
