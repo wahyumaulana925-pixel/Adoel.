@@ -128,6 +128,7 @@ fun StatistikScreen(
                             onToggle = { expandedShiftId = if (expandedShiftId == shift.id) null else shift.id },
                             onDeleteShift = onDeleteShift,
                             showConfirm = showConfirm,
+                            modifier = Modifier.animateItem(),
                         )
                     }
                 }
@@ -248,6 +249,7 @@ private fun ShiftRow(
     onToggle: () -> Unit,
     onDeleteShift: (Int) -> Unit,
     showConfirm: (String, () -> Unit) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val colors = LocalAppColors.current
     val shiftNo = remember(shift.startedAtEpochMin) { shiftNumberForEpochMin(shift.startedAtEpochMin) }
@@ -262,7 +264,7 @@ private fun ShiftRow(
     }
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
             .background(colors.bgElevated)
