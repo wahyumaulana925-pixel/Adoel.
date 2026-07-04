@@ -180,6 +180,10 @@ class DoffViewModel(app: Application) : AndroidViewModel(app) {
         s.copy(aktual = s.aktual.filter { it.id != id })
     }
 
+    fun hapusShift(id: Int) = updateState { s ->
+        s.copy(history = s.history.filter { it.id != id })
+    }
+
     fun updateAktual(id: Int, ket: String, corakOverride: String?, customYard: Double?) = updateState { s ->
         s.copy(
             aktual = s.aktual.map {

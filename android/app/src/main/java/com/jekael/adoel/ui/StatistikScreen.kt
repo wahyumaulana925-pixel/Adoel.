@@ -42,6 +42,7 @@ import com.jekael.adoel.data.ShiftRecord
 import com.jekael.adoel.data.formatDeltaMin
 import com.jekael.adoel.data.shiftNumberForEpochMin
 import com.jekael.adoel.ui.components.LinearProgressBar
+import com.jekael.adoel.ui.components.TrashIcon
 import com.jekael.adoel.ui.theme.Cyan400
 import com.jekael.adoel.ui.theme.Cyan500
 import com.jekael.adoel.ui.theme.LocalAppColors
@@ -58,6 +59,8 @@ fun StatistikScreen(
     history: List<ShiftRecord>,
     db: Map<String, MesinData>,
     onClose: () -> Unit,
+    onDeleteShift: (Int) -> Unit,
+    showConfirm: (String, () -> Unit) -> Unit,
 ) {
     val colors = LocalAppColors.current
     var visible by remember { mutableStateOf(false) }
@@ -117,6 +120,8 @@ fun StatistikScreen(
                             maxDoffCount = maxDoffCount,
                             expanded = expandedShiftId == shift.id,
                             onToggle = { expandedShiftId = if (expandedShiftId == shift.id) null else shift.id },
+                            onDeleteShift = onDeleteShift,
+                            showConfirm = showConfirm,
                         )
                     }
                 }
@@ -210,7 +215,15 @@ private fun DoffCountChart(history: List<ShiftRecord>) {
 }
 
 @Composable
-private fun ShiftRow(shift: ShiftRecord, db: Map<String, MesinData>, maxDoffCount: Int, expanded: Boolean, onToggle: () -> Unit) {
+private fun ShiftRow(
+    shift: ShiftRecord,
+    db: Map<String, MesinData>,
+    maxDoffCount: Int,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    onDeleteShift: (Int) -> Unit,
+    showConfirm: (String, () -> Unit) -> Unit,
+) {
     val colors = LocalAppColors.current
     val shiftNo = remember(shift.startedAtEpochMin) { shiftNumberForEpochMin(shift.startedAtEpochMin) }
     val dateStr = remember(shift.startedAtEpochMin) { formatShiftDate(shift.startedAtEpochMin) }
@@ -250,13 +263,22 @@ private fun ShiftRow(shift: ShiftRecord, db: Map<String, MesinData>, maxDoffCoun
                     width = 60.dp,
                 )
             }
-            Column(horizontalAlignment = Alignment.End) {
-                Text("${shift.aktual.size} doff", style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Cyan400))
-                if (avgGapMin != null) {
-                    Text(
-                        "±${formatDeltaMin(avgGapMin.toLong())}/doff",
-                        style = TextStyle(fontSize = 11.sp, color = colors.textFaint),
-                    )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("${shift.aktual.size} doff", style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Cyan400))
+                    if (avgGapMin != null) {
+                        Text(
+                            "±${formatDeltaMin(avgGapMin.toLong())}/doff",
+                            style = TextStyle(fontSize = 11.sp, color = colors.textFaint),
+                        )
+                    }
+                }
+                IconButton(onClick = {
+                    showConfirm("Hapus arsip Shift $shiftNo · $dateStr? Data ini tidak bisa dikembalikan.") {
+                        onDeleteShift(shift.id)
+                    }
+                }) {
+                    TrashIcon()
                 }
             }
         }

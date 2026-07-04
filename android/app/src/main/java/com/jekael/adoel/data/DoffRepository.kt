@@ -223,19 +223,6 @@ class DoffRepository(private val context: Context) {
         return recorded
     }
 
-    /** Removes a pending estimasi without recording a doff — used by the widget's "Hapus" action,
-     * which runs outside the Activity/ViewModel scope. Runs as one atomic transaction like
-     * [quickDoff]. Returns whether an estimasi for [mcNo] actually existed to remove. */
-    suspend fun hapusEstimasi(mcNo: String): Boolean {
-        var removed = false
-        update { state ->
-            if (!state.estimasi.containsKey(mcNo)) return@update state
-            removed = true
-            state.copy(estimasi = state.estimasi - mcNo)
-        }
-        return removed
-    }
-
     /** Full-state backup as a JSON string (machine db + estimasi + doff history + theme). */
     fun exportJson(state: DoffState): String = serialize(state)
 

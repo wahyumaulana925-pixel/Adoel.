@@ -725,6 +725,8 @@ fun MainScreen(
                 history = state.history,
                 db = state.db,
                 onClose = { statistikOpen = false },
+                onDeleteShift = { id -> doffVm.hapusShift(id) },
+                showConfirm = { msg, fn -> uiVm.showConfirm(msg, onConfirm = fn) },
             )
         }
     }
