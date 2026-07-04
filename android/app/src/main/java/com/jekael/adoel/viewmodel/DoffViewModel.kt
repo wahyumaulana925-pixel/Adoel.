@@ -1,11 +1,9 @@
 package com.jekael.adoel.viewmodel
 
 import android.app.Application
-import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.jekael.adoel.data.*
-import com.jekael.adoel.widget.AdoelWidget
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -35,10 +33,7 @@ class DoffViewModel(app: Application) : AndroidViewModel(app) {
         // persisted state (DataStore serializes transactions), so a concurrent writer such as the
         // notification action's quickDoff can't clobber it. observeState() then reconciles _state
         // to the merged result.
-        viewModelScope.launch {
-            repo.update(transform)
-            AdoelWidget().updateAll(getApplication())
-        }
+        viewModelScope.launch { repo.update(transform) }
     }
 
     fun setMesin(mcNo: String, data: MesinData) = updateState { s ->

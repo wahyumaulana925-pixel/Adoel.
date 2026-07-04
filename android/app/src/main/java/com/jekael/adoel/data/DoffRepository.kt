@@ -1,14 +1,17 @@
 package com.jekael.adoel.data
 
 import android.content.Context
+import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import androidx.glance.appwidget.updateAll
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import com.jekael.adoel.widget.AdoelWidget
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
@@ -181,6 +184,14 @@ class DoffRepository(private val context: Context) {
             next = transform(parseState(prefs))
             prefs[STATE_KEY] = serialize(next)
         }
+        // Centralized here (the one funnel every mutator passes through) instead of at each call
+        // site, so no future mutator can forget to refresh the widget — and any failure is at
+        // least visible in logcat instead of leaving the widget silently stale.
+        try {
+            AdoelWidget().updateAll(context)
+        } catch (e: Exception) {
+            Log.e("DoffRepository", "widget refresh failed", e)
+        }
         return next
     }
 
@@ -210,6 +221,19 @@ class DoffRepository(private val context: Context) {
             )
         }
         return recorded
+    }
+
+    /** Removes a pending estimasi without recording a doff — used by the widget's "Hapus" action,
+     * which runs outside the Activity/ViewModel scope. Runs as one atomic transaction like
+     * [quickDoff]. Returns whether an estimasi for [mcNo] actually existed to remove. */
+    suspend fun hapusEstimasi(mcNo: String): Boolean {
+        var removed = false
+        update { state ->
+            if (!state.estimasi.containsKey(mcNo)) return@update state
+            removed = true
+            state.copy(estimasi = state.estimasi - mcNo)
+        }
+        return removed
     }
 
     /** Full-state backup as a JSON string (machine db + estimasi + doff history + theme). */
