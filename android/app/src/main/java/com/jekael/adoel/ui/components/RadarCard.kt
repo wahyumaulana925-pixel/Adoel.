@@ -40,8 +40,6 @@ private data class UrgencyStyle(
     val icon: ImageVector?,
 )
 
-private enum class ExitReason { DOFF, HAPUS }
-
 private fun urgency(remaining: Long): UrgencyStyle = when (urgencyLevel(remaining)) {
     UrgencyLevel.CALM -> UrgencyStyle(Cyan500, Cyan500, Cyan400, Cyan700, false, null)
     UrgencyLevel.SOON -> UrgencyStyle(Amber500, Amber400, Amber400, Amber700, false, Icons.Outlined.Schedule)
@@ -80,11 +78,13 @@ fun RadarCard(
     )
     val faceBg = if (clr.pulse) lerp(colors.bgElevated, colors.criticalPulseTarget, pulseFraction) else colors.bgElevated
 
-    // Exit choreography shared by both destructive actions — card slides out before the state is
-    // actually mutated. Doff additionally celebrates with a checkmark pop; Hapus just slides away
-    // (nothing to celebrate about a deletion), but both get the same consistent exit motion.
-    var exitReason by remember(est.mcNo) { mutableStateOf<ExitReason?>(null) }
-    val completing = exitReason != null
+    // Celebrate completion — card slides out + checkmark pops before the state is actually
+    // mutated. Hapus deliberately does NOT get this treatment: it's gated by a ConfirmDialog
+    // (see handleHapusEst in MainScreen.kt), so animating the card away on tap — before the user
+    // has even confirmed — would hide it during the dialog and leave it stuck gone after Batal,
+    // since nothing would ever reset the animation. Hapus instead relies on the LazyColumn's own
+    // Modifier.animateItem() to reflow smoothly once the deletion is actually confirmed.
+    var completing by remember(est.mcNo) { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val exitProgress by animateFloatAsState(
         targetValue = if (completing) 1f else 0f,
@@ -92,21 +92,19 @@ fun RadarCard(
         label = "exitProgress",
     )
     val checkScale by animateFloatAsState(
-        targetValue = if (exitReason == ExitReason.DOFF) 1f else 0f,
+        targetValue = if (completing) 1f else 0f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
         label = "checkScale",
     )
 
-    fun triggerExit(reason: ExitReason, action: () -> Unit) {
+    fun triggerDoff() {
         if (completing) return
-        exitReason = reason
+        completing = true
         scope.launch {
             delay(420)
-            action()
+            onDoff()
         }
     }
-
-    fun triggerDoff() = triggerExit(ExitReason.DOFF, onDoff)
 
     Box(
         modifier = modifier
@@ -233,7 +231,7 @@ fun RadarCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 OutlinedButton(
-                    onClick = { triggerExit(ExitReason.HAPUS, onHapus) },
+                    onClick = onHapus,
                     enabled = !completing,
                     modifier = Modifier.weight(1f).height(40.dp),
                     shape = RoundedCornerShape(10.dp),
