@@ -4,22 +4,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceModifier
-import androidx.glance.action.ActionParameters
 import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.cornerRadius
-import androidx.glance.appwidget.defaultWeight
 import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
-import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
-import androidx.glance.layout.width
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
@@ -40,8 +36,9 @@ import com.jekael.adoel.ui.theme.Zinc50
 import com.jekael.adoel.ui.theme.Zinc950
 
 /** Glance-native card for one estimasi, simplified from the in-app RadarCard (no shadow/animation
- * — Glance's layout primitives are Box/Column/Row/Text only) with Doff/Hapus buttons wired
- * straight to [DoffActionCallback]/[HapusActionCallback]. */
+ * — Glance's layout primitives are Box/Column/Text only) with Doff/Hapus buttons wired straight
+ * to [DoffActionCallback]/[HapusActionCallback]. Stacked vertically throughout (no Row weight
+ * split) since Glance's equal-weight modifier name/package couldn't be pinned down reliably. */
 @Composable
 fun WidgetEstimasiCard(est: Estimasi, mesin: MesinData?, now: Long) {
     val remaining = est.estAbsMin - now
@@ -63,37 +60,31 @@ fun WidgetEstimasiCard(est: Estimasi, mesin: MesinData?, now: Long) {
             .background(bg)
             .padding(12.dp),
     ) {
-        Row(modifier = GlanceModifier.fillMaxWidth()) {
-            Column(modifier = GlanceModifier.defaultWeight()) {
-                Text("Mc ${est.mcNo}", style = TextStyle(color = ColorProvider(Zinc50), fontSize = 18.sp, fontWeight = FontWeight.Bold))
-                Text(corakLine, style = TextStyle(color = ColorProvider(Zinc50), fontSize = 11.sp), maxLines = 1)
-            }
-            Text(
-                text = if (remaining <= 0) "Siap doff" else "${formatDeltaMin(remaining)} lagi",
-                style = TextStyle(color = ColorProvider(accent), fontSize = 13.sp, fontWeight = FontWeight.Medium),
-            )
-        }
+        Text("Mc ${est.mcNo}", style = TextStyle(color = ColorProvider(Zinc50), fontSize = 18.sp, fontWeight = FontWeight.Bold))
+        Text(corakLine, style = TextStyle(color = ColorProvider(Zinc50), fontSize = 11.sp), maxLines = 1)
+        Text(
+            text = if (remaining <= 0) "Siap doff" else "${formatDeltaMin(remaining)} lagi",
+            style = TextStyle(color = ColorProvider(accent), fontSize = 13.sp, fontWeight = FontWeight.Medium),
+        )
         Spacer(modifier = GlanceModifier.height(8.dp))
-        Row(modifier = GlanceModifier.fillMaxWidth()) {
-            Box(
-                modifier = GlanceModifier
-                    .defaultWeight()
-                    .cornerRadius(8.dp)
-                    .background(Zinc50.copy(alpha = 0.15f))
-                    .padding(vertical = 6.dp)
-                    .clickable(actionRunCallback<HapusActionCallback>(params)),
-                contentAlignment = Alignment.Center,
-            ) { Text("Hapus", style = TextStyle(color = ColorProvider(Zinc50), fontSize = 12.sp)) }
-            Spacer(modifier = GlanceModifier.width(8.dp))
-            Box(
-                modifier = GlanceModifier
-                    .defaultWeight()
-                    .cornerRadius(8.dp)
-                    .background(accent)
-                    .padding(vertical = 6.dp)
-                    .clickable(actionRunCallback<DoffActionCallback>(params)),
-                contentAlignment = Alignment.Center,
-            ) { Text("Doff", style = TextStyle(color = ColorProvider(Zinc950), fontSize = 12.sp, fontWeight = FontWeight.Bold)) }
-        }
+        Box(
+            modifier = GlanceModifier
+                .fillMaxWidth()
+                .cornerRadius(8.dp)
+                .background(accent)
+                .padding(vertical = 6.dp)
+                .clickable(actionRunCallback<DoffActionCallback>(params)),
+            contentAlignment = Alignment.Center,
+        ) { Text("Doff", style = TextStyle(color = ColorProvider(Zinc950), fontSize = 12.sp, fontWeight = FontWeight.Bold)) }
+        Spacer(modifier = GlanceModifier.height(6.dp))
+        Box(
+            modifier = GlanceModifier
+                .fillMaxWidth()
+                .cornerRadius(8.dp)
+                .background(Zinc50.copy(alpha = 0.15f))
+                .padding(vertical = 6.dp)
+                .clickable(actionRunCallback<HapusActionCallback>(params)),
+            contentAlignment = Alignment.Center,
+        ) { Text("Hapus", style = TextStyle(color = ColorProvider(Zinc50), fontSize = 12.sp)) }
     }
 }
