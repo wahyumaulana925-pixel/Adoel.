@@ -5,7 +5,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -21,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,12 +32,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.jekael.adoel.data.MesinData
 import com.jekael.adoel.data.ShiftRecord
 import com.jekael.adoel.data.formatDeltaMin
 import com.jekael.adoel.data.shiftNumberForEpochMin
@@ -56,6 +56,7 @@ import java.util.Calendar
 @Composable
 fun StatistikScreen(
     history: List<ShiftRecord>,
+    db: Map<String, MesinData>,
     onClose: () -> Unit,
 ) {
     val colors = LocalAppColors.current
@@ -112,6 +113,7 @@ fun StatistikScreen(
                     items(history, key = { it.id }) { shift ->
                         ShiftRow(
                             shift = shift,
+                            db = db,
                             maxDoffCount = maxDoffCount,
                             expanded = expandedShiftId == shift.id,
                             onToggle = { expandedShiftId = if (expandedShiftId == shift.id) null else shift.id },
@@ -152,28 +154,63 @@ private fun StatFigure(label: String, value: String) {
     }
 }
 
-/** Simple bar chart of doff count for the most recent shifts, oldest on the left. */
+/** Bar chart of doff count for the most recent shifts, oldest on the left — each bar carries its
+ * own count label and a short date underneath, with a baseline so heights read unambiguously. */
 @Composable
 private fun DoffCountChart(history: List<ShiftRecord>) {
-    val recent = history.take(14).asReversed()
+    val colors = LocalAppColors.current
+    val recent = history.take(10).asReversed()
+    if (recent.isEmpty()) return
     val maxCount = (recent.maxOfOrNull { it.aktual.size } ?: 1).coerceAtLeast(1)
-    Canvas(modifier = Modifier.fillMaxWidth().height(56.dp)) {
-        if (recent.isEmpty()) return@Canvas
-        val barWidth = size.width / recent.size
-        val gap = barWidth * 0.25f
-        recent.forEachIndexed { i, shift ->
-            val barHeight = size.height * (shift.aktual.size.toFloat() / maxCount)
-            drawRect(
-                color = Cyan500,
-                topLeft = Offset(i * barWidth + gap / 2f, size.height - barHeight),
-                size = Size((barWidth - gap).coerceAtLeast(1f), barHeight.coerceAtLeast(2f)),
-            )
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().height(60.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            recent.forEach { shift ->
+                Column(
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Bottom,
+                ) {
+                    Text(
+                        "${shift.aktual.size}",
+                        style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Bold, color = colors.textSecondary),
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height((44.dp * (shift.aktual.size.toFloat() / maxCount)).coerceAtLeast(4.dp))
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(Cyan500),
+                    )
+                }
+            }
+        }
+        HorizontalDivider(color = colors.border, thickness = 1.dp)
+        Spacer(Modifier.height(4.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            recent.forEach { shift ->
+                Text(
+                    text = formatShiftShortDate(shift.startedAtEpochMin),
+                    modifier = Modifier.weight(1f),
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    style = TextStyle(fontSize = 9.sp, color = colors.textFaint),
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun ShiftRow(shift: ShiftRecord, maxDoffCount: Int, expanded: Boolean, onToggle: () -> Unit) {
+private fun ShiftRow(shift: ShiftRecord, db: Map<String, MesinData>, maxDoffCount: Int, expanded: Boolean, onToggle: () -> Unit) {
     val colors = LocalAppColors.current
     val shiftNo = remember(shift.startedAtEpochMin) { shiftNumberForEpochMin(shift.startedAtEpochMin) }
     val dateStr = remember(shift.startedAtEpochMin) { formatShiftDate(shift.startedAtEpochMin) }
@@ -227,11 +264,12 @@ private fun ShiftRow(shift: ShiftRecord, maxDoffCount: Int, expanded: Boolean, o
         if (expanded) {
             Spacer(Modifier.height(10.dp))
             chronological.forEach { entry ->
+                val corak = entry.corakOverride ?: db[entry.mcNo]?.corak ?: "—"
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Text("Mc ${entry.mcNo} · ${entry.ket}", style = TextStyle(fontSize = 12.sp, color = colors.textSecondary))
+                    Text("Mc ${entry.mcNo} · $corak · ${entry.ket}", style = TextStyle(fontSize = 12.sp, color = colors.textSecondary))
                     Text(entry.jam, style = TextStyle(fontSize = 12.sp, color = colors.textFaint))
                 }
             }
@@ -242,6 +280,11 @@ private fun ShiftRow(shift: ShiftRecord, maxDoffCount: Int, expanded: Boolean, o
 private fun formatShiftDate(epochMin: Long): String {
     val cal = Calendar.getInstance().apply { timeInMillis = epochMin * 60000L }
     return "%02d/%02d/%04d".format(cal.get(Calendar.DAY_OF_MONTH), cal.get(Calendar.MONTH) + 1, cal.get(Calendar.YEAR))
+}
+
+private fun formatShiftShortDate(epochMin: Long): String {
+    val cal = Calendar.getInstance().apply { timeInMillis = epochMin * 60000L }
+    return "%02d/%02d".format(cal.get(Calendar.DAY_OF_MONTH), cal.get(Calendar.MONTH) + 1)
 }
 
 private fun formatShiftTime(epochMin: Long): String {

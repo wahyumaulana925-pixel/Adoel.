@@ -414,6 +414,21 @@ fun MainScreen(
                         item(key = "doff_header") {
                             SectionHeader(title = "Doffing", count = state.aktual.size)
                         }
+                        // Always shown — Statistik reads state.history, which survives even when
+                        // the live aktual list is empty right after "Selesai Shift".
+                        item(key = "doff_actions") {
+                            DoffingActions(
+                                onShare = { shareHistory(context, state) },
+                                onStatistik = { statistikOpen = true },
+                                onFinish = {
+                                    uiVm.showConfirm("Akhiri shift? ${state.aktual.size} doff & ${state.estimasi.size} estimasi akan diarsipkan ke Riwayat, lalu konsol dikosongkan untuk shift baru.") {
+                                        NotificationHelper.cancelAll(context, state.estimasi.keys.toList())
+                                        doffVm.finishShift()
+                                        uiVm.showToast("Shift selesai ✓")
+                                    }
+                                },
+                            )
+                        }
                         if (state.aktual.isEmpty()) {
                             item(key = "doff_empty") {
                                 Box(
@@ -424,19 +439,6 @@ fun MainScreen(
                                 }
                             }
                         } else {
-                            item(key = "doff_actions") {
-                                DoffingActions(
-                                    onShare = { shareHistory(context, state) },
-                                    onStatistik = { statistikOpen = true },
-                                    onFinish = {
-                                        uiVm.showConfirm("Akhiri shift? ${state.aktual.size} doff & ${state.estimasi.size} estimasi akan diarsipkan ke Riwayat, lalu konsol dikosongkan untuk shift baru.") {
-                                            NotificationHelper.cancelAll(context, state.estimasi.keys.toList())
-                                            doffVm.finishShift()
-                                            uiVm.showToast("Shift selesai ✓")
-                                        }
-                                    },
-                                )
-                            }
                             itemsIndexed(state.aktual.asReversed(), key = { _, e -> e.id }) { idx, entry ->
                                 DoffingRow(
                                     entry = entry,
@@ -721,6 +723,7 @@ fun MainScreen(
         if (statistikOpen) {
             StatistikScreen(
                 history = state.history,
+                db = state.db,
                 onClose = { statistikOpen = false },
             )
         }
