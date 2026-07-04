@@ -109,6 +109,7 @@ fun MainScreen(
     var batteryUnrestricted by remember { mutableStateOf(true) }
 
     var settingsOpen by remember { mutableStateOf(false) }
+    var statistikOpen by remember { mutableStateOf(false) }
     var editAktId by remember { mutableStateOf<Int?>(null) }
     var showRemaining by remember { mutableStateOf(false) }
     var segeraExpanded by remember { mutableStateOf(true) }
@@ -426,6 +427,7 @@ fun MainScreen(
                             item(key = "doff_actions") {
                                 DoffingActions(
                                     onShare = { shareHistory(context, state) },
+                                    onStatistik = { statistikOpen = true },
                                     onFinish = {
                                         uiVm.showConfirm("Akhiri shift? ${state.aktual.size} doff & ${state.estimasi.size} estimasi akan diarsipkan ke Riwayat, lalu konsol dikosongkan untuk shift baru.") {
                                             NotificationHelper.cancelAll(context, state.estimasi.keys.toList())
@@ -553,21 +555,11 @@ fun MainScreen(
                                 style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Cyan400),
                             )
                             Spacer(Modifier.height(4.dp))
-                            Box(
-                                modifier = Modifier
-                                    .width(90.dp)
-                                    .height(4.dp)
-                                    .clip(RoundedCornerShape(2.dp))
-                                    .background(colors.bgElevated2),
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxHeight()
-                                        .fillMaxWidth(animatedFraction)
-                                        .clip(RoundedCornerShape(2.dp))
-                                        .background(Cyan500),
-                                )
-                            }
+                            LinearProgressBar(
+                                fraction = animatedFraction,
+                                trackColor = colors.bgElevated2,
+                                fillColor = Cyan500,
+                            )
                         }
                     }
                 }
@@ -725,6 +717,13 @@ fun MainScreen(
                 showConfirm = { msg, fn -> uiVm.showConfirm(msg, onConfirm = fn) },
             )
         }
+
+        if (statistikOpen) {
+            StatistikScreen(
+                history = state.history,
+                onClose = { statistikOpen = false },
+            )
+        }
     }
 
     // Overlays
@@ -772,7 +771,7 @@ private fun SectionHeader(title: String, count: Int) {
 }
 
 @Composable
-private fun DoffingActions(onShare: () -> Unit, onFinish: () -> Unit) {
+private fun DoffingActions(onShare: () -> Unit, onStatistik: () -> Unit, onFinish: () -> Unit) {
     val colors = LocalAppColors.current
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
@@ -785,6 +784,13 @@ private fun DoffingActions(onShare: () -> Unit, onFinish: () -> Unit) {
             colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
             border = BorderStroke(1.dp, colors.border),
         ) { Text("Bagikan", style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold)) }
+        OutlinedButton(
+            onClick = onStatistik,
+            modifier = Modifier.weight(1f).height(44.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
+            border = BorderStroke(1.dp, colors.border),
+        ) { Text("Statistik", style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold)) }
         OutlinedButton(
             onClick = onFinish,
             modifier = Modifier.weight(1f).height(44.dp),
