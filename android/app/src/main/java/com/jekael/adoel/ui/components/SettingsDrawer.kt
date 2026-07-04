@@ -42,6 +42,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.jekael.adoel.BuildConfig
 import com.jekael.adoel.data.*
 import com.jekael.adoel.ui.theme.*
 import kotlinx.coroutines.Dispatchers
@@ -623,6 +624,44 @@ private fun DataTab(
             border = BorderStroke(1.dp, Red700.copy(alpha = 0.5f)),
         ) { Text("Reset ke Default") }
 
+        Spacer(Modifier.height(4.dp))
+        HorizontalDivider(color = colors.border)
+        Spacer(Modifier.height(4.dp))
+
+        var aboutOpen by remember { mutableStateOf(false) }
+        OutlinedButton(
+            onClick = { aboutOpen = true },
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
+            border = BorderStroke(1.dp, colors.border),
+        ) { Text("Tentang") }
+        if (aboutOpen) {
+            AboutDialog(onClose = { aboutOpen = false })
+        }
+
         Spacer(Modifier.height(8.dp))
+    }
+}
+
+@Composable
+private fun AboutDialog(onClose: () -> Unit) {
+    val colors = LocalAppColors.current
+    FloatingEditDialog(onDismissRequest = onClose) {
+        Text("Tentang", style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary))
+        Spacer(Modifier.height(16.dp))
+        Text("Adoel.", style = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Black, color = colors.textPrimary))
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "Versi ${BuildConfig.VERSION_NAME} (build ${BuildConfig.VERSION_CODE})",
+            style = TextStyle(fontSize = 13.sp, color = colors.textSecondary),
+        )
+        Spacer(Modifier.height(20.dp))
+        Button(
+            onClick = onClose,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Teal500),
+        ) { Text("Tutup", fontWeight = FontWeight.SemiBold) }
     }
 }
