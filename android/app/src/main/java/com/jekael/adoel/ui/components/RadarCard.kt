@@ -40,11 +40,11 @@ private data class UrgencyStyle(
     val icon: ImageVector?,
 )
 
-private fun urgency(remaining: Long): UrgencyStyle = when {
-    remaining > 30 -> UrgencyStyle(Cyan500, Cyan500, Cyan400, Cyan700, false, null)
-    remaining > 10 -> UrgencyStyle(Amber500, Amber400, Amber400, Amber700, false, Icons.Outlined.Schedule)
-    remaining > 0  -> UrgencyStyle(Orange500, Orange500, Orange400, Orange700, false, Icons.Outlined.Warning)
-    else           -> UrgencyStyle(Red500, Red500, Red400, Red700, true, Icons.Filled.Warning)
+private fun urgency(remaining: Long): UrgencyStyle = when (urgencyLevel(remaining)) {
+    UrgencyLevel.CALM -> UrgencyStyle(Cyan500, Cyan500, Cyan400, Cyan700, false, null)
+    UrgencyLevel.SOON -> UrgencyStyle(Amber500, Amber400, Amber400, Amber700, false, Icons.Outlined.Schedule)
+    UrgencyLevel.IMMINENT -> UrgencyStyle(Orange500, Orange500, Orange400, Orange700, false, Icons.Outlined.Warning)
+    UrgencyLevel.OVERDUE -> UrgencyStyle(Red500, Red500, Red400, Red700, true, Icons.Filled.Warning)
 }
 
 @Composable

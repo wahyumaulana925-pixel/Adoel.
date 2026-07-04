@@ -155,10 +155,10 @@ fun MainScreen(
     }
 
     val radarList = remember(state.estimasi) {
-        state.estimasi.values.sortedBy { it.estAbsMin }
+        sortedByNearest(state.estimasi)
     }
     val (segeraList, menungguList) = remember(radarList, nowAbs) {
-        radarList.partition { it.estAbsMin - nowAbs <= 0 }
+        partitionSegeraMenunggu(radarList, nowAbs)
     }
     fun handleCommand() {
         val cmd = input.trim().uppercase()
