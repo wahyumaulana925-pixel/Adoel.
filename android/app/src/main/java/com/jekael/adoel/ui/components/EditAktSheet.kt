@@ -1,5 +1,6 @@
 package com.jekael.adoel.ui.components
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -10,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -21,6 +23,7 @@ import com.jekael.adoel.data.DoffState
 import com.jekael.adoel.data.formatYard
 import com.jekael.adoel.ui.theme.*
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,8 +47,11 @@ fun EditAktSheet(
         mutableStateOf(entry.customYard?.let { formatYard(it) } ?: "")
     }
     val focusRequester = remember { FocusRequester() }
+    val scope = rememberCoroutineScope()
+    var showCheck by remember { mutableStateOf(false) }
 
     fun doSave() {
+        if (showCheck) return
         val k = valInput.trim()
         if (k.isEmpty()) {
             onEmptyKet()
@@ -58,7 +64,12 @@ fun EditAktSheet(
             onInvalidYard()
             return
         }
-        onSave(entry.id, k, corakOverride, yardTrim.toDoubleOrNull())
+        val yardVal = yardTrim.toDoubleOrNull()
+        showCheck = true
+        scope.launch {
+            delay(450)
+            onSave(entry.id, k, corakOverride, yardVal)
+        }
     }
 
     LaunchedEffect(aktualId) {
@@ -146,10 +157,19 @@ fun EditAktSheet(
                 ) { Text("Batal") }
                 Button(
                     onClick = { doSave() },
+                    enabled = !showCheck,
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Teal500),
-                ) { Text("Simpan", fontWeight = FontWeight.SemiBold) }
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Teal500,
+                        disabledContainerColor = Emerald500,
+                        disabledContentColor = Color.White,
+                    ),
+                ) {
+                    Crossfade(targetState = showCheck, label = "saveIcon") { checked ->
+                        if (checked) CheckIcon() else Text("Simpan", fontWeight = FontWeight.SemiBold)
+                    }
+                }
             }
 
             Spacer(Modifier.height(8.dp))
