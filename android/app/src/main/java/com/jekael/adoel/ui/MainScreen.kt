@@ -989,7 +989,7 @@ private fun shareHistory(context: Context, state: DoffState) {
         val suffix = if (a.customYard != null) " [${a.customYard}y]" else ""
         "${i + 1}. Mc${a.mcNo} - $corak$suffix - ${a.ket}"
     }
-    val text = "Adoel V5\n$dateStr\n\n${lines.joinToString("\n")}\n\nTotal: ${state.aktual.size} doff"
+    val text = "Bravo!!!\n$dateStr\n\n${lines.joinToString("\n")}\n\nTotal: ${state.aktual.size} doff"
     val intent = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
         putExtra(Intent.EXTRA_TEXT, text)
