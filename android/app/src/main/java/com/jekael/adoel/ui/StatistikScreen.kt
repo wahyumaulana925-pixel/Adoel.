@@ -101,7 +101,10 @@ fun StatistikScreen(
 
             if (history.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Belum ada riwayat shift", color = colors.textFaint, style = TextStyle(fontSize = 14.sp))
+                    EmptyState(
+                        title = "Belum ada riwayat shift",
+                        subtitle = "Riwayat akan tersimpan otomatis setiap kali kamu tekan Selesai Shift",
+                    )
                 }
             } else {
                 val totalDoff = history.sumOf { it.aktual.size }
