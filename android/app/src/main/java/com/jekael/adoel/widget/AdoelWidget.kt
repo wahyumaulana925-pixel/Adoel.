@@ -2,6 +2,7 @@ package com.jekael.adoel.widget
 
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
@@ -28,7 +29,10 @@ import com.jekael.adoel.data.DoffRepository
 import com.jekael.adoel.data.nowAbsMin
 import com.jekael.adoel.data.sortedByNearest
 import com.jekael.adoel.ui.theme.Amber500
+import com.jekael.adoel.ui.theme.ThemeMode
+import com.jekael.adoel.ui.theme.Zinc100
 import com.jekael.adoel.ui.theme.Zinc50
+import com.jekael.adoel.ui.theme.Zinc900
 import com.jekael.adoel.ui.theme.Zinc950
 
 /**
@@ -47,9 +51,12 @@ class AdoelWidget : GlanceAppWidget() {
         val now = nowAbsMin()
         val sorted = sortedByNearest(state.estimasi)
         val openApp = actionStartActivity(Intent(context, MainActivity::class.java))
+        val dark = resolveWidgetDarkTheme(context, state.themeMode)
+        val bg = if (dark) Zinc950 else Zinc100
+        val textColor = if (dark) Zinc50 else Zinc900
 
         provideContent {
-            Column(modifier = GlanceModifier.fillMaxSize().background(Zinc950)) {
+            Column(modifier = GlanceModifier.fillMaxSize().background(bg)) {
                 Row(
                     modifier = GlanceModifier
                         .fillMaxWidth()
@@ -58,7 +65,7 @@ class AdoelWidget : GlanceAppWidget() {
                 ) {
                     Text(
                         text = "Adoel",
-                        style = TextStyle(color = ColorProvider(Zinc50), fontSize = 15.sp, fontWeight = FontWeight.Bold),
+                        style = TextStyle(color = ColorProvider(textColor), fontSize = 15.sp, fontWeight = FontWeight.Bold),
                     )
                     Text(
                         text = ".",
@@ -69,7 +76,7 @@ class AdoelWidget : GlanceAppWidget() {
                     Box(modifier = GlanceModifier.fillMaxSize().padding(12.dp).clickable(openApp)) {
                         Text(
                             text = "Tidak ada estimasi",
-                            style = TextStyle(color = ColorProvider(Zinc50), fontSize = 13.sp),
+                            style = TextStyle(color = ColorProvider(textColor), fontSize = 13.sp),
                         )
                     }
                 } else {
@@ -81,12 +88,26 @@ class AdoelWidget : GlanceAppWidget() {
                                     .padding(horizontal = 12.dp, vertical = 4.dp)
                                     .clickable(openApp),
                             ) {
-                                WidgetEstimasiCard(est = est, mesin = state.db[est.mcNo], now = now)
+                                WidgetEstimasiCard(est = est, mesin = state.db[est.mcNo], now = now, dark = dark)
                             }
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+/** Mirrors [com.jekael.adoel.ui.theme.resolveDarkTheme] for Glance, which has no Compose
+ * `isSystemInDarkTheme()` — "SYSTEM" mode reads the OS night-mode flag directly instead. */
+private fun resolveWidgetDarkTheme(context: Context, themeModeRaw: String): Boolean {
+    val mode = runCatching { ThemeMode.valueOf(themeModeRaw) }.getOrDefault(ThemeMode.SYSTEM)
+    return when (mode) {
+        ThemeMode.DARK -> true
+        ThemeMode.LIGHT -> false
+        ThemeMode.SYSTEM -> {
+            val night = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+            night == Configuration.UI_MODE_NIGHT_YES
         }
     }
 }
