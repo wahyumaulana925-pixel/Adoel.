@@ -376,21 +376,17 @@ private fun MesinEditPanel(
     var koreksiText by remember(mcNo) { mutableStateOf(f.koreksi?.let { formatYard(it) } ?: "") }
 
     FloatingEditDialog(onDismissRequest = onClose) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(
-                text = "Mc $mcNo",
-                style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Black, color = colors.textPrimary),
-            )
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(colors.bgElevated2)
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-            ) {
-                Text(
-                    text = f.tipe.name,
-                    style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = colors.textMuted),
-                )
+        Text(
+            text = "Mc $mcNo",
+            style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Black, color = colors.textPrimary),
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        FieldLabel("Tipe Mesin")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            MesinTipe.entries.forEach { t ->
+                ChipBtn(t.name, f.tipe == t) { onFormChange(f.copy(tipe = t)) }
             }
         }
 
