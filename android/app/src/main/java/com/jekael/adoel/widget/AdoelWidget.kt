@@ -15,6 +15,7 @@ import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
+import androidx.glance.layout.Row
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.padding
@@ -49,14 +50,21 @@ class AdoelWidget : GlanceAppWidget() {
 
         provideContent {
             Column(modifier = GlanceModifier.fillMaxSize().background(Zinc950)) {
-                Text(
-                    text = "Adoel.",
+                Row(
                     modifier = GlanceModifier
                         .fillMaxWidth()
                         .padding(12.dp)
                         .clickable(openApp),
-                    style = TextStyle(color = ColorProvider(Amber500), fontSize = 11.sp, fontWeight = FontWeight.Bold),
-                )
+                ) {
+                    Text(
+                        text = "Adoel",
+                        style = TextStyle(color = ColorProvider(Zinc50), fontSize = 15.sp, fontWeight = FontWeight.Bold),
+                    )
+                    Text(
+                        text = ".",
+                        style = TextStyle(color = ColorProvider(Amber500), fontSize = 15.sp, fontWeight = FontWeight.Bold),
+                    )
+                }
                 if (sorted.isEmpty()) {
                     Box(modifier = GlanceModifier.fillMaxSize().padding(12.dp).clickable(openApp)) {
                         Text(
