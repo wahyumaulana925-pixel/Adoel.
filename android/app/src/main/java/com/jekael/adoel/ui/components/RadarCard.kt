@@ -114,8 +114,8 @@ fun RadarCard(
                 translationX = exitProgress * size.width
                 alpha = 1f - exitProgress
             }
-            .shadow(elevation = 5.dp, shape = RoundedCornerShape(16.dp), ambientColor = Color.Black.copy(alpha = 0.35f))
-            .clip(RoundedCornerShape(16.dp))
+            .shadow(elevation = 5.dp, shape = RoundedCornerShape(14.dp), ambientColor = Color.Black.copy(alpha = 0.35f))
+            .clip(RoundedCornerShape(14.dp))
             .background(faceBg),
     ) {
         // Decorative full-height overlays — wrapped in matchParentSize() so they resolve

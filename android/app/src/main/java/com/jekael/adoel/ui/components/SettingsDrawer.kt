@@ -160,7 +160,7 @@ fun SettingsDrawer(
                     ) {
                         Text("Pengaturan", style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary))
                         IconButton(onClick = { requestClose() }) {
-                            Text("✕", style = TextStyle(fontSize = 18.sp, color = colors.textMuted))
+                            CloseIcon()
                         }
                     }
                     SlidingToggle(
@@ -304,8 +304,8 @@ private fun MesinTab(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .shadow(elevation = 3.dp, shape = RoundedCornerShape(12.dp), ambientColor = Color.Black.copy(alpha = 0.3f))
-                        .clip(RoundedCornerShape(12.dp))
+                        .shadow(elevation = 3.dp, shape = RoundedCornerShape(14.dp), ambientColor = Color.Black.copy(alpha = 0.3f))
+                        .clip(RoundedCornerShape(14.dp))
                         .background(colors.bgElevated2)
                         .clickable { loadFrom(k, v) }
                         .padding(horizontal = 12.dp, vertical = 10.dp),
