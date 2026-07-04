@@ -12,6 +12,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
 import com.jekael.adoel.MainActivity
 import com.jekael.adoel.R
+import com.jekael.adoel.data.formatYard
 
 // Brand accent (Cyan600 #0891B2) — tints the small icon & app name in the notification shade.
 private const val BRAND_COLOR = 0xFF0891B2.toInt()
@@ -93,8 +94,13 @@ object NotificationHelper {
         mcNos.forEach { cancelNotif(context, it) }
     }
 
-    fun showNotification(context: Context, mcNo: String, isReminder: Boolean) {
+    fun showNotification(context: Context, mcNo: String, isReminder: Boolean, corak: String? = null, targetYard: Double? = null) {
         val notifId = notifIdFor(mcNo, isReminder)
+        val label = buildString {
+            append("Mc $mcNo")
+            if (!corak.isNullOrBlank() && corak != "-") append(" · $corak")
+            if (targetYard != null) append(" · ${formatYard(targetYard)}y")
+        }
         val tapIntent = PendingIntent.getActivity(
             context, notifId,
             Intent(context, MainActivity::class.java).apply {
@@ -120,7 +126,7 @@ object NotificationHelper {
             .setSmallIcon(R.drawable.ic_notification)
             .setColor(BRAND_COLOR)
             .apply { if (largeIcon != null) setLargeIcon(largeIcon) }
-            .setContentTitle(if (isReminder) "Mc $mcNo — $REMINDER_LEAD_MIN menit lagi" else "Mc $mcNo — siap doff")
+            .setContentTitle(if (isReminder) "$label — $REMINDER_LEAD_MIN menit lagi" else "$label — siap doff")
             .setContentText(if (isReminder) "Bersiap, estimasi hampir tiba" else "Estimasi waktu telah tiba")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)

@@ -431,12 +431,11 @@ fun MainScreen(
                         }
                         if (state.aktual.isEmpty()) {
                             item(key = "doff_empty") {
-                                Box(
-                                    Modifier.fillMaxWidth().padding(vertical = 40.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Text("Belum ada doff", color = colors.textFaint, style = TextStyle(fontSize = 14.sp))
-                                }
+                                EmptyState(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                                    title = "Belum ada doff",
+                                    subtitle = "Doff akan muncul di sini setelah kamu proses baris di ESTIMASI/AKTUAL",
+                                )
                             }
                         } else {
                             itemsIndexed(state.aktual.asReversed(), key = { _, e -> e.id }) { idx, entry ->
@@ -500,31 +499,41 @@ fun MainScreen(
                         glowScale.animateTo(2.2f, tween(320, easing = LinearOutSlowInEasing))
                     }
                 }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .graphicsLayer { scaleX = brandScale.value; scaleY = brandScale.value }
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                        ) { brandPulseKey++ },
-                ) {
-                    Text(
-                        text = "Adoel",
-                        style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Black, color = colors.textPrimary, letterSpacing = (-0.5).sp),
-                    )
-                    Text(
-                        text = ".",
+                val shiftLabel = remember(nowAbs) {
+                    val cal = Calendar.getInstance().apply { timeInMillis = nowAbs * 60000L }
+                    "Shift ${shiftNumberForEpochMin(nowAbs)} · %02d/%02d".format(cal.get(Calendar.DAY_OF_MONTH), cal.get(Calendar.MONTH) + 1)
+                }
+                Column {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
-                            .offset(y = dotOffsetY.value.dp)
-                            .drawBehind {
-                                drawCircle(
-                                    color = Amber500.copy(alpha = glowAlpha.value),
-                                    radius = (size.minDimension.coerceAtLeast(20f)) * glowScale.value,
-                                    center = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height / 2f),
-                                )
-                            },
-                        style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Black, color = Amber500),
+                            .graphicsLayer { scaleX = brandScale.value; scaleY = brandScale.value }
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                            ) { brandPulseKey++ },
+                    ) {
+                        Text(
+                            text = "Adoel",
+                            style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Black, color = colors.textPrimary, letterSpacing = (-0.5).sp),
+                        )
+                        Text(
+                            text = ".",
+                            modifier = Modifier
+                                .offset(y = dotOffsetY.value.dp)
+                                .drawBehind {
+                                    drawCircle(
+                                        color = Amber500.copy(alpha = glowAlpha.value),
+                                        radius = (size.minDimension.coerceAtLeast(20f)) * glowScale.value,
+                                        center = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height / 2f),
+                                    )
+                                },
+                            style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Black, color = Amber500),
+                        )
+                    }
+                    Text(
+                        text = shiftLabel,
+                        style = TextStyle(fontSize = 9.sp, color = colors.textFaint),
                     )
                 }
 
@@ -725,6 +734,8 @@ fun MainScreen(
                 history = state.history,
                 db = state.db,
                 onClose = { statistikOpen = false },
+                onDeleteShift = { id -> doffVm.hapusShift(id) },
+                showConfirm = { msg, fn -> uiVm.showConfirm(msg, onConfirm = fn) },
             )
         }
     }
@@ -741,6 +752,7 @@ fun MainScreen(
                 editAktId = null
             },
             onInvalidYard = { uiVm.showToast("Yard tidak valid") },
+            onEmptyKet = { uiVm.showToast("Keterangan tidak boleh kosong") },
         )
     }
 
@@ -947,7 +959,11 @@ private fun RadarStackedPeek(
 }
 
 @Composable
-private fun EmptyState(modifier: Modifier = Modifier) {
+fun EmptyState(
+    modifier: Modifier = Modifier,
+    title: String = "Belum ada mesin yang dipantau",
+    subtitle: String = "Masukkan nomor mesin + estimasi di kolom bawah untuk mulai",
+) {
     val colors = LocalAppColors.current
     Column(
         modifier = modifier,
@@ -962,11 +978,11 @@ private fun EmptyState(modifier: Modifier = Modifier) {
             Box(Modifier.size(12.dp).clip(CircleShape).background(colors.border))
         }
         Text(
-            text = "Belum ada mesin yang dipantau",
+            text = title,
             style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = colors.textSecondary),
         )
         Text(
-            text = "Masukkan nomor mesin + estimasi di kolom bawah untuk mulai",
+            text = subtitle,
             style = TextStyle(fontSize = 12.sp, color = colors.textFaint, lineHeight = 17.sp),
             modifier = Modifier.padding(horizontal = 32.dp),
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -984,10 +1000,11 @@ private fun shareHistory(context: Context, state: DoffState) {
     val lines = state.aktual.asReversed().mapIndexed { i, a ->
         val mesin = state.db[a.mcNo]
         val corak = a.corakOverride ?: mesin?.corak ?: "—"
-        val suffix = if (a.customYard != null) " [${a.customYard}y]" else ""
+        val yard = a.customYard ?: mesin?.targetYard
+        val suffix = if (yard != null) " [${formatYard(yard)}y]" else ""
         "${i + 1}. Mc${a.mcNo} - $corak$suffix - ${a.ket}"
     }
-    val text = "Adoel V5\n$dateStr\n\n${lines.joinToString("\n")}\n\nTotal: ${state.aktual.size} doff"
+    val text = "Bravo!!!\n$dateStr\n\n${lines.joinToString("\n")}\n\nTotal: ${state.aktual.size} doff"
     val intent = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
         putExtra(Intent.EXTRA_TEXT, text)

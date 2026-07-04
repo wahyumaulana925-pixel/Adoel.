@@ -56,7 +56,7 @@ class DoffViewModel(app: Application) : AndroidViewModel(app) {
         if (!mcNo.matches(Regex("^\\d{1,3}$"))) return ProsesResult.Err("Nomor mesin tidak valid")
         val mesin = _state.value.db[mcNo] ?: return ProsesResult.Err("Mc $mcNo tidak ditemukan")
         if (mesin.corak.isBlank() || mesin.corak.trim() == "-")
-            return ProsesResult.Err("Mc $mcNo dilewati (-)")
+            return ProsesResult.Err("Mc $mcNo belum diatur, atur corak dulu di Pengaturan")
 
         val estAbs: Long = when (mesin.tipe) {
             MesinTipe.TAPPET, MesinTipe.CAM -> {
@@ -178,6 +178,10 @@ class DoffViewModel(app: Application) : AndroidViewModel(app) {
 
     fun hapusAktualById(id: Int) = updateState { s ->
         s.copy(aktual = s.aktual.filter { it.id != id })
+    }
+
+    fun hapusShift(id: Int) = updateState { s ->
+        s.copy(history = s.history.filter { it.id != id })
     }
 
     fun updateAktual(id: Int, ket: String, corakOverride: String?, customYard: Double?) = updateState { s ->

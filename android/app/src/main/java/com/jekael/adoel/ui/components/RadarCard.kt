@@ -40,6 +40,8 @@ private data class UrgencyStyle(
     val icon: ImageVector?,
 )
 
+private enum class ExitReason { DOFF, HAPUS }
+
 private fun urgency(remaining: Long): UrgencyStyle = when (urgencyLevel(remaining)) {
     UrgencyLevel.CALM -> UrgencyStyle(Cyan500, Cyan500, Cyan400, Cyan700, false, null)
     UrgencyLevel.SOON -> UrgencyStyle(Amber500, Amber400, Amber400, Amber700, false, Icons.Outlined.Schedule)
@@ -78,8 +80,11 @@ fun RadarCard(
     )
     val faceBg = if (clr.pulse) lerp(colors.bgElevated, colors.criticalPulseTarget, pulseFraction) else colors.bgElevated
 
-    // Celebrate completion — card slides out + checkmark pops before the state is actually mutated
-    var completing by remember(est.mcNo) { mutableStateOf(false) }
+    // Exit choreography shared by both destructive actions — card slides out before the state is
+    // actually mutated. Doff additionally celebrates with a checkmark pop; Hapus just slides away
+    // (nothing to celebrate about a deletion), but both get the same consistent exit motion.
+    var exitReason by remember(est.mcNo) { mutableStateOf<ExitReason?>(null) }
+    val completing = exitReason != null
     val scope = rememberCoroutineScope()
     val exitProgress by animateFloatAsState(
         targetValue = if (completing) 1f else 0f,
@@ -87,19 +92,21 @@ fun RadarCard(
         label = "exitProgress",
     )
     val checkScale by animateFloatAsState(
-        targetValue = if (completing) 1f else 0f,
+        targetValue = if (exitReason == ExitReason.DOFF) 1f else 0f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
         label = "checkScale",
     )
 
-    fun triggerDoff() {
+    fun triggerExit(reason: ExitReason, action: () -> Unit) {
         if (completing) return
-        completing = true
+        exitReason = reason
         scope.launch {
             delay(420)
-            onDoff()
+            action()
         }
     }
+
+    fun triggerDoff() = triggerExit(ExitReason.DOFF, onDoff)
 
     Box(
         modifier = modifier
@@ -226,7 +233,7 @@ fun RadarCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 OutlinedButton(
-                    onClick = onHapus,
+                    onClick = { triggerExit(ExitReason.HAPUS, onHapus) },
                     enabled = !completing,
                     modifier = Modifier.weight(1f).height(40.dp),
                     shape = RoundedCornerShape(10.dp),

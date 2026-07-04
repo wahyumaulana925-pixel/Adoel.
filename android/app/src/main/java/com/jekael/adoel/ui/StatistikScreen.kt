@@ -2,6 +2,9 @@ package com.jekael.adoel.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
@@ -42,6 +45,7 @@ import com.jekael.adoel.data.ShiftRecord
 import com.jekael.adoel.data.formatDeltaMin
 import com.jekael.adoel.data.shiftNumberForEpochMin
 import com.jekael.adoel.ui.components.LinearProgressBar
+import com.jekael.adoel.ui.components.TrashIcon
 import com.jekael.adoel.ui.theme.Cyan400
 import com.jekael.adoel.ui.theme.Cyan500
 import com.jekael.adoel.ui.theme.LocalAppColors
@@ -58,6 +62,8 @@ fun StatistikScreen(
     history: List<ShiftRecord>,
     db: Map<String, MesinData>,
     onClose: () -> Unit,
+    onDeleteShift: (Int) -> Unit,
+    showConfirm: (String, () -> Unit) -> Unit,
 ) {
     val colors = LocalAppColors.current
     var visible by remember { mutableStateOf(false) }
@@ -95,7 +101,10 @@ fun StatistikScreen(
 
             if (history.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Belum ada riwayat shift", color = colors.textFaint, style = TextStyle(fontSize = 14.sp))
+                    EmptyState(
+                        title = "Belum ada riwayat shift",
+                        subtitle = "Riwayat akan tersimpan otomatis setiap kali kamu tekan Selesai Shift",
+                    )
                 }
             } else {
                 val totalDoff = history.sumOf { it.aktual.size }
@@ -117,6 +126,9 @@ fun StatistikScreen(
                             maxDoffCount = maxDoffCount,
                             expanded = expandedShiftId == shift.id,
                             onToggle = { expandedShiftId = if (expandedShiftId == shift.id) null else shift.id },
+                            onDeleteShift = onDeleteShift,
+                            showConfirm = showConfirm,
+                            modifier = Modifier.animateItem(),
                         )
                     }
                 }
@@ -128,6 +140,19 @@ fun StatistikScreen(
 @Composable
 private fun AggregateStatsCard(history: List<ShiftRecord>, totalDoff: Int, avgPerShift: Float) {
     val colors = LocalAppColors.current
+    var started by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { started = true }
+    val animatedTotal by animateIntAsState(
+        targetValue = if (started) totalDoff else 0,
+        animationSpec = tween(700, easing = FastOutSlowInEasing),
+        label = "totalDoff",
+    )
+    val animatedShifts by animateIntAsState(
+        targetValue = if (started) history.size else 0,
+        animationSpec = tween(700, easing = FastOutSlowInEasing),
+        label = "shiftCount",
+    )
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -136,8 +161,8 @@ private fun AggregateStatsCard(history: List<ShiftRecord>, totalDoff: Int, avgPe
             .padding(16.dp),
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-            StatFigure(label = "Total doff", value = "$totalDoff")
-            StatFigure(label = "Shift", value = "${history.size}")
+            StatFigure(label = "Total doff", value = "$animatedTotal")
+            StatFigure(label = "Shift", value = "$animatedShifts")
             StatFigure(label = "Rata-rata/shift", value = "%.1f".format(avgPerShift))
         }
         Spacer(Modifier.height(12.dp))
@@ -169,7 +194,13 @@ private fun DoffCountChart(history: List<ShiftRecord>) {
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.Bottom,
         ) {
-            recent.forEach { shift ->
+            recent.forEachIndexed { index, shift ->
+                val targetFraction = shift.aktual.size.toFloat() / maxCount
+                val animatedFraction = remember { Animatable(0f) }
+                LaunchedEffect(shift.id, targetFraction) {
+                    delay(index * 50L)
+                    animatedFraction.animateTo(targetFraction, animationSpec = tween(450, easing = FastOutSlowInEasing))
+                }
                 Column(
                     modifier = Modifier.weight(1f),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -183,7 +214,7 @@ private fun DoffCountChart(history: List<ShiftRecord>) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height((44.dp * (shift.aktual.size.toFloat() / maxCount)).coerceAtLeast(4.dp))
+                            .height((44.dp * animatedFraction.value).coerceAtLeast(4.dp))
                             .clip(RoundedCornerShape(3.dp))
                             .background(Cyan500),
                     )
@@ -210,7 +241,16 @@ private fun DoffCountChart(history: List<ShiftRecord>) {
 }
 
 @Composable
-private fun ShiftRow(shift: ShiftRecord, db: Map<String, MesinData>, maxDoffCount: Int, expanded: Boolean, onToggle: () -> Unit) {
+private fun ShiftRow(
+    shift: ShiftRecord,
+    db: Map<String, MesinData>,
+    maxDoffCount: Int,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    onDeleteShift: (Int) -> Unit,
+    showConfirm: (String, () -> Unit) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val colors = LocalAppColors.current
     val shiftNo = remember(shift.startedAtEpochMin) { shiftNumberForEpochMin(shift.startedAtEpochMin) }
     val dateStr = remember(shift.startedAtEpochMin) { formatShiftDate(shift.startedAtEpochMin) }
@@ -224,7 +264,7 @@ private fun ShiftRow(shift: ShiftRecord, db: Map<String, MesinData>, maxDoffCoun
     }
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
             .background(colors.bgElevated)
@@ -250,13 +290,22 @@ private fun ShiftRow(shift: ShiftRecord, db: Map<String, MesinData>, maxDoffCoun
                     width = 60.dp,
                 )
             }
-            Column(horizontalAlignment = Alignment.End) {
-                Text("${shift.aktual.size} doff", style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Cyan400))
-                if (avgGapMin != null) {
-                    Text(
-                        "±${formatDeltaMin(avgGapMin.toLong())}/doff",
-                        style = TextStyle(fontSize = 11.sp, color = colors.textFaint),
-                    )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("${shift.aktual.size} doff", style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Cyan400))
+                    if (avgGapMin != null) {
+                        Text(
+                            "±${formatDeltaMin(avgGapMin.toLong())}/doff",
+                            style = TextStyle(fontSize = 11.sp, color = colors.textFaint),
+                        )
+                    }
+                }
+                IconButton(onClick = {
+                    showConfirm("Hapus arsip Shift $shiftNo · $dateStr? Data ini tidak bisa dikembalikan.") {
+                        onDeleteShift(shift.id)
+                    }
+                }) {
+                    TrashIcon()
                 }
             }
         }
