@@ -465,6 +465,7 @@ private fun MesinEditPanel(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(
                 onClick = onCancel,
+                modifier = Modifier.height(48.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
                 border = BorderStroke(1.dp, colors.border),
@@ -472,6 +473,7 @@ private fun MesinEditPanel(
             if (showReset) {
                 OutlinedButton(
                     onClick = onReset,
+                    modifier = Modifier.height(48.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = Red400),
                     border = BorderStroke(1.dp, Red400),
@@ -489,7 +491,7 @@ private fun MesinEditPanel(
                         else -> onSave()
                     }
                 },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).height(48.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Teal500),
             ) { Text("Simpan", fontWeight = FontWeight.SemiBold) }
@@ -507,7 +509,7 @@ private fun ChipBtn(label: String, selected: Boolean, onClick: () -> Unit) {
             .background(if (selected) Teal600 else Color.Transparent)
             .border(1.dp, if (selected) Teal500 else colors.border, shape)
             .clickable { onClick() }
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(

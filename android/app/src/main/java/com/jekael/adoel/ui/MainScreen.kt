@@ -578,7 +578,6 @@ fun MainScreen(
                 // Gear button
                 IconButton(
                     onClick = { settingsOpen = true },
-                    modifier = Modifier.size(36.dp),
                 ) {
                     GearIcon()
                 }
@@ -887,9 +886,10 @@ private fun UrgencyBandHeader(label: String, count: Int, color: Color, expanded:
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = 44.dp)
             .clip(RoundedCornerShape(10.dp))
             .clickable(enabled = count > 1, onClick = onToggle)
-            .padding(horizontal = 4.dp, vertical = 6.dp),
+            .padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
