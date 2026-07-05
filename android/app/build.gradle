@@ -73,6 +73,9 @@ dependencies {
     implementation 'androidx.datastore:datastore-preferences:1.1.1'
     implementation 'com.google.code.gson:gson:2.11.0'
     implementation 'androidx.glance:glance-appwidget:1.1.1'
+    // Backdrop blur for content scrolling behind the floating header/console/panel cards.
+    implementation 'dev.chrisbanes.haze:haze:1.7.2'
+    implementation 'dev.chrisbanes.haze:haze-materials:1.7.2'
     testImplementation 'junit:junit:4.13.2'
     debugImplementation 'androidx.compose.ui:ui-tooling'
 }
