@@ -126,7 +126,8 @@ fun StatistikScreen(
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(
-                        horizontal = 20.dp,
+                        start = 20.dp,
+                        end = 20.dp,
                         top = 10.dp + headerHeight + 16.dp,
                         bottom = 20.dp,
                     ),
