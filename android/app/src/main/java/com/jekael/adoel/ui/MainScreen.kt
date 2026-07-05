@@ -11,6 +11,7 @@ import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
@@ -31,14 +32,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.FreeBreakfast
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -72,6 +72,15 @@ import kotlinx.coroutines.launch
 import java.util.Calendar
 
 private enum class Mode { ESTIMASI, AKTUAL }
+
+/** Gaps at or above this many minutes between two upcoming doffs are worth flagging as a
+ * break window — short enough to still be actionable, long enough to actually leave the floor. */
+private const val BREAK_GAP_THRESHOLD_MIN = 30L
+
+private sealed class MenungguRow {
+    data class CardRow(val est: Estimasi) : MenungguRow()
+    data class GapRow(val afterMcNo: String, val nextMcNo: String, val gapMin: Long, val nextAbsMin: Long) : MenungguRow()
+}
 
 @Composable
 fun MainScreen(
@@ -113,8 +122,6 @@ fun MainScreen(
     var statistikOpen by remember { mutableStateOf(false) }
     var editAktId by remember { mutableStateOf<Int?>(null) }
     var showRemaining by remember { mutableStateOf(false) }
-    var segeraExpanded by remember { mutableStateOf(true) }
-    var menungguExpanded by remember { mutableStateOf(true) }
 
     val inputFocus = remember { FocusRequester() }
     val density = LocalDensity.current
@@ -161,6 +168,32 @@ fun MainScreen(
     }
     val (segeraList, menungguList) = remember(radarList, nowAbs) {
         partitionSegeraMenunggu(radarList, nowAbs)
+    }
+    // Menunggu bucket spans CALM through IMMINENT (Segera already claims OVERDUE) — tint the
+    // band header by its most urgent member so it doesn't read "calm" while cards inside are
+    // already amber/orange.
+    val menungguAccent = remember(menungguList, nowAbs) {
+        when (menungguList.maxOfOrNull { urgencyLevel(it.estAbsMin - nowAbs) }) {
+            UrgencyLevel.IMMINENT -> Orange400
+            UrgencyLevel.SOON -> Amber400
+            else -> Cyan400
+        }
+    }
+    // Flag long idle stretches between two upcoming doffs so the operator knows when it's
+    // actually safe to step away, instead of having to eyeball the gap between two times.
+    val menungguRows = remember(menungguList) {
+        buildList {
+            menungguList.forEachIndexed { index, est ->
+                add(MenungguRow.CardRow(est))
+                val next = menungguList.getOrNull(index + 1)
+                if (next != null) {
+                    val gap = next.estAbsMin - est.estAbsMin
+                    if (gap >= BREAK_GAP_THRESHOLD_MIN) {
+                        add(MenungguRow.GapRow(afterMcNo = est.mcNo, nextMcNo = next.mcNo, gapMin = gap, nextAbsMin = next.estAbsMin))
+                    }
+                }
+            }
+        }
     }
     fun handleCommand() {
         val cmd = input.trim().uppercase()
@@ -343,68 +376,46 @@ fun MainScreen(
                         } else {
                             if (segeraList.isNotEmpty()) {
                                 item(key = "segera_head") {
-                                    UrgencyBandHeader(
-                                        label = "Segera", count = segeraList.size, color = Red400,
-                                        expanded = segeraExpanded, onToggle = { segeraExpanded = !segeraExpanded },
-                                    )
+                                    UrgencyBandHeader(label = "Segera", color = Red400, modifier = Modifier.animateItem())
                                 }
-                                if (segeraList.size <= 1 || segeraExpanded) {
-                                    items(segeraList, key = { it.mcNo }) { est ->
-                                        RadarCard(
-                                            est = est,
-                                            mesin = state.db[est.mcNo],
-                                            nowAbs = nowAbs,
-                                            onDoff = { handleDoff(est.mcNo) },
-                                            onHapus = { handleHapusEst(est.mcNo) },
-                                            modifier = Modifier.animateItem(),
-                                        )
-                                    }
-                                } else {
-                                    item(key = "segera_stack") {
-                                        val front = segeraList.first()
-                                        RadarStackedPeek(
-                                            front = front,
-                                            mesin = state.db[front.mcNo],
-                                            nowAbs = nowAbs,
-                                            peekCount = segeraList.size - 1,
-                                            accent = Red400,
-                                            onDoff = { handleDoff(front.mcNo) },
-                                            onHapus = { handleHapusEst(front.mcNo) },
-                                            onExpand = { segeraExpanded = true },
-                                        )
-                                    }
+                                items(segeraList, key = { it.mcNo }) { est ->
+                                    RadarCard(
+                                        est = est,
+                                        mesin = state.db[est.mcNo],
+                                        nowAbs = nowAbs,
+                                        onDoff = { handleDoff(est.mcNo) },
+                                        onHapus = { handleHapusEst(est.mcNo) },
+                                        modifier = Modifier.animateItem(),
+                                    )
                                 }
                             }
                             if (menungguList.isNotEmpty()) {
                                 item(key = "menunggu_head") {
-                                    UrgencyBandHeader(
-                                        label = "Menunggu", count = menungguList.size, color = Cyan400,
-                                        expanded = menungguExpanded, onToggle = { menungguExpanded = !menungguExpanded },
-                                    )
+                                    UrgencyBandHeader(label = "Menunggu", color = menungguAccent, modifier = Modifier.animateItem())
                                 }
-                                if (menungguList.size <= 1 || menungguExpanded) {
-                                    items(menungguList, key = { it.mcNo }) { est ->
-                                        RadarCard(
-                                            est = est,
-                                            mesin = state.db[est.mcNo],
+                                items(
+                                    menungguRows,
+                                    key = { row ->
+                                        when (row) {
+                                            is MenungguRow.CardRow -> row.est.mcNo
+                                            is MenungguRow.GapRow -> "gap_after_${row.afterMcNo}"
+                                        }
+                                    },
+                                ) { row ->
+                                    when (row) {
+                                        is MenungguRow.CardRow -> RadarCard(
+                                            est = row.est,
+                                            mesin = state.db[row.est.mcNo],
                                             nowAbs = nowAbs,
-                                            onDoff = { handleDoff(est.mcNo) },
-                                            onHapus = { handleHapusEst(est.mcNo) },
+                                            onDoff = { handleDoff(row.est.mcNo) },
+                                            onHapus = { handleHapusEst(row.est.mcNo) },
                                             modifier = Modifier.animateItem(),
                                         )
-                                    }
-                                } else {
-                                    item(key = "menunggu_stack") {
-                                        val front = menungguList.first()
-                                        RadarStackedPeek(
-                                            front = front,
-                                            mesin = state.db[front.mcNo],
-                                            nowAbs = nowAbs,
-                                            peekCount = menungguList.size - 1,
-                                            accent = Cyan400,
-                                            onDoff = { handleDoff(front.mcNo) },
-                                            onHapus = { handleHapusEst(front.mcNo) },
-                                            onExpand = { menungguExpanded = true },
+                                        is MenungguRow.GapRow -> BreakGapCard(
+                                            gapMin = row.gapMin,
+                                            nextMcNo = row.nextMcNo,
+                                            nextAbsMin = row.nextAbsMin,
+                                            modifier = Modifier.animateItem(),
                                         )
                                     }
                                 }
@@ -879,18 +890,12 @@ private fun DoffingRow(
 }
 
 @Composable
-private fun UrgencyBandHeader(label: String, count: Int, color: Color, expanded: Boolean, onToggle: () -> Unit) {
-    val rotation by animateFloatAsState(
-        targetValue = if (expanded) 180f else 0f,
-        animationSpec = tween(200),
-        label = "urgencyChevron",
-    )
+private fun UrgencyBandHeader(label: String, color: Color, modifier: Modifier = Modifier) {
+    val animatedColor by animateColorAsState(color, animationSpec = tween(300), label = "urgencyBandColor")
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .heightIn(min = 44.dp)
-            .clip(RoundedCornerShape(10.dp))
-            .clickable(enabled = count > 1, onClick = onToggle)
             .padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -900,66 +905,45 @@ private fun UrgencyBandHeader(label: String, count: Int, color: Color, expanded:
                 modifier = Modifier
                     .size(6.dp)
                     .clip(CircleShape)
-                    .background(color),
+                    .background(animatedColor),
             )
             Text(
                 text = label,
-                style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = color),
-            )
-        }
-        if (count > 1) {
-            Icon(
-                Icons.Filled.KeyboardArrowDown,
-                contentDescription = if (expanded) "Ciutkan" else "Perluas",
-                tint = color,
-                modifier = Modifier.size(16.dp).rotate(rotation),
+                style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = animatedColor),
             )
         }
     }
 }
 
+/** Sits between two RadarCards in the Menunggu band when the gap to the next doff is long
+ * enough to actually step away — tells the operator how long, and what's next when they're back. */
 @Composable
-private fun PeekBars(count: Int, accent: Color) {
-    val bars = count.coerceIn(0, 2)
-    if (bars == 0) return
-    Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Spacer(Modifier.height(3.dp))
-        for (i in 1..bars) {
-            val widthFraction = (1f - i * 0.05f).coerceIn(0.7f, 1f)
-            val barAlpha = (0.22f - (i - 1) * 0.10f).coerceAtLeast(0.06f)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(widthFraction)
-                    .height(10.dp)
-                    .clip(RoundedCornerShape(bottomStart = 14.dp, bottomEnd = 14.dp))
-                    .background(accent.copy(alpha = barAlpha)),
+private fun BreakGapCard(gapMin: Long, nextMcNo: String, nextAbsMin: Long, modifier: Modifier = Modifier) {
+    val colors = LocalAppColors.current
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(colors.bgElevated2.copy(alpha = 0.5f))
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.FreeBreakfast,
+            contentDescription = null,
+            tint = colors.textMuted,
+            modifier = Modifier.size(18.dp),
+        )
+        Column {
+            Text(
+                text = "Jeda ${formatDeltaMin(gapMin)} — waktu istirahat",
+                style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = colors.textSecondary),
             )
-            if (i != bars) Spacer(Modifier.height(3.dp))
-        }
-    }
-}
-
-@Composable
-private fun RadarStackedPeek(
-    front: Estimasi,
-    mesin: MesinData?,
-    nowAbs: Long,
-    peekCount: Int,
-    accent: Color,
-    onDoff: () -> Unit,
-    onHapus: () -> Unit,
-    onExpand: () -> Unit,
-) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        RadarCard(est = front, mesin = mesin, nowAbs = nowAbs, onDoff = onDoff, onHapus = onHapus)
-        if (peekCount > 0) {
-            PeekBars(count = peekCount, accent = accent)
-            TextButton(onClick = onExpand, modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    "+$peekCount lainnya",
-                    style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = accent),
-                )
-            }
+            Text(
+                text = "Sebelum Mc $nextMcNo · ${absMinToTimeStr(nextAbsMin)}",
+                style = TextStyle(fontSize = 11.sp, color = colors.textFaint),
+            )
         }
     }
 }

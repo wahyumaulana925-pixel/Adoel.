@@ -1,14 +1,16 @@
 package com.jekael.adoel.ui.components
 
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.*
@@ -21,6 +23,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -29,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jekael.adoel.data.*
 import com.jekael.adoel.ui.theme.*
+import kotlin.math.abs
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -107,44 +112,79 @@ fun RadarCard(
         }
     }
 
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .graphicsLayer {
-                translationX = exitProgress * size.width
-                alpha = 1f - exitProgress
+    // Swipe right = doff, swipe left = hapus — the only way to act on a card now that the
+    // always-visible buttons are gone (see SwipeActionBackground for the reveal panel).
+    val density = LocalDensity.current
+    val swipeThresholdPx = with(density) { 88.dp.toPx() }
+    val maxSwipePx = with(density) { 132.dp.toPx() }
+    val offsetX = remember(est.mcNo) { Animatable(0f) }
+
+    fun settleSwipe() {
+        val value = offsetX.value
+        when {
+            value >= swipeThresholdPx -> triggerDoff() // exitProgress takes over the slide-out from here
+            value <= -swipeThresholdPx -> {
+                onHapus()
+                scope.launch { offsetX.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy)) }
             }
-            .shadow(elevation = 5.dp, shape = RoundedCornerShape(14.dp), ambientColor = Color.Black.copy(alpha = 0.35f))
-            .clip(RoundedCornerShape(14.dp))
-            .background(faceBg),
-    ) {
-        // Decorative full-height overlays — wrapped in matchParentSize() so they resolve
-        // against the height the Column below actually ends up with (LazyColumn gives
-        // this Box unbounded height, so a bare fillMaxHeight() here would collapse to 0).
-        Box(modifier = Modifier.matchParentSize()) {
-            // Left accent border
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .width(3.dp)
-                    .background(clr.accent),
-            )
-
-            // Progress fill
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .fillMaxWidth(progress)
-                    .background(clr.barColor.copy(alpha = 0.12f)),
-            )
+            else -> scope.launch { offsetX.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy)) }
         }
+    }
 
-        Column(modifier = Modifier.fillMaxWidth()) {
-            // Content
+    Box(modifier = modifier.fillMaxWidth()) {
+        SwipeActionBackground(offsetX = offsetX.value, thresholdPx = swipeThresholdPx)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .graphicsLayer {
+                    translationX = offsetX.value + exitProgress * size.width
+                    alpha = 1f - exitProgress
+                }
+                .shadow(elevation = 5.dp, shape = RoundedCornerShape(14.dp), ambientColor = Color.Black.copy(alpha = 0.35f))
+                .clip(RoundedCornerShape(14.dp))
+                .background(faceBg)
+                .pointerInput(completing) {
+                    if (completing) return@pointerInput
+                    detectHorizontalDragGestures(
+                        onDragEnd = { settleSwipe() },
+                        onDragCancel = {
+                            scope.launch { offsetX.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy)) }
+                        },
+                        onHorizontalDrag = { change, dragAmount ->
+                            change.consume()
+                            scope.launch {
+                                offsetX.snapTo((offsetX.value + dragAmount).coerceIn(-maxSwipePx, maxSwipePx))
+                            }
+                        },
+                    )
+                },
+        ) {
+            // Decorative full-height overlays — wrapped in matchParentSize() so they resolve
+            // against the height the Column below actually ends up with (LazyColumn gives
+            // this Box unbounded height, so a bare fillMaxHeight() here would collapse to 0).
+            Box(modifier = Modifier.matchParentSize()) {
+                // Left accent border
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(3.dp)
+                        .background(clr.accent),
+                )
+
+                // Progress fill
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(progress)
+                        .background(clr.barColor.copy(alpha = 0.12f)),
+                )
+            }
+
+            // Content — swipe right to doff, swipe left to hapus (see SwipeActionBackground above).
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -224,62 +264,56 @@ fun RadarCard(
                 }
             }
 
-            // Always-visible action buttons — no swipe needed
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .padding(bottom = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                OutlinedButton(
-                    onClick = onHapus,
-                    enabled = !completing,
-                    modifier = Modifier.weight(1f).height(48.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
-                    border = BorderStroke(1.dp, colors.border),
-                    contentPadding = PaddingValues(0.dp),
-                ) {
-                    TrashIcon(size = 20.dp)
-                }
-                Button(
-                    onClick = { triggerDoff() },
-                    enabled = !completing,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(48.dp)
-                        .shadow(elevation = 4.dp, shape = RoundedCornerShape(10.dp), ambientColor = Cyan600.copy(alpha = 0.5f)),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
-                    contentPadding = PaddingValues(0.dp),
-                ) {
-                    CheckIcon()
-                }
-            }
-        }
-
-        // Celebrate completion — checkmark pops in while the card slides/fades out
-        if (checkScale > 0f) {
-            Box(
-                modifier = Modifier.matchParentSize(),
-                contentAlignment = Alignment.Center,
-            ) {
+            // Celebrate completion — checkmark pops in while the card slides/fades out
+            if (checkScale > 0f) {
                 Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .background(Emerald500.copy(alpha = 0.14f)),
-                )
-                Icon(
-                    imageVector = Icons.Filled.CheckCircle,
-                    contentDescription = null,
-                    tint = Emerald500,
-                    modifier = Modifier
-                        .size(56.dp)
-                        .graphicsLayer { scaleX = checkScale; scaleY = checkScale },
-                )
+                    modifier = Modifier.matchParentSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .background(Emerald500.copy(alpha = 0.14f)),
+                    )
+                    Icon(
+                        imageVector = Icons.Filled.CheckCircle,
+                        contentDescription = null,
+                        tint = Emerald500,
+                        modifier = Modifier
+                            .size(56.dp)
+                            .graphicsLayer { scaleX = checkScale; scaleY = checkScale },
+                    )
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun BoxScope.SwipeActionBackground(offsetX: Float, thresholdPx: Float) {
+    if (abs(offsetX) < 1f) return
+    val isDoff = offsetX > 0
+    val progress = (abs(offsetX) / thresholdPx).coerceIn(0f, 1f)
+    val bg = if (isDoff) Emerald500 else Red500
+    Box(
+        modifier = Modifier
+            .matchParentSize()
+            .clip(RoundedCornerShape(14.dp))
+            .background(bg.copy(alpha = 0.18f + 0.6f * progress)),
+        contentAlignment = if (isDoff) Alignment.CenterStart else Alignment.CenterEnd,
+    ) {
+        Icon(
+            imageVector = if (isDoff) Icons.Outlined.Check else Icons.Outlined.Delete,
+            contentDescription = null,
+            tint = Color.White,
+            modifier = Modifier
+                .padding(horizontal = 28.dp)
+                .size(26.dp)
+                .graphicsLayer {
+                    scaleX = 0.6f + 0.4f * progress
+                    scaleY = 0.6f + 0.4f * progress
+                },
+        )
     }
 }
 

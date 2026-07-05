@@ -2,6 +2,7 @@ package com.jekael.adoel.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateIntAsState
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
@@ -31,6 +33,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,6 +55,7 @@ import com.jekael.adoel.ui.theme.Cyan400
 import com.jekael.adoel.ui.theme.Cyan500
 import com.jekael.adoel.ui.theme.LocalAppColors
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.util.Calendar
 
 /**
@@ -125,14 +129,29 @@ fun StatistikScreen(
                 val totalDoff = history.sumOf { it.aktual.size }
                 val avgPerShift = totalDoff.toFloat() / history.size
                 val maxDoffCount = (history.maxOfOrNull { it.aktual.size } ?: 1).coerceAtLeast(1)
+                val listState = rememberLazyListState()
+                val scope = rememberCoroutineScope()
+
+                fun jumpToShift(shift: ShiftRecord) {
+                    expandedShiftId = shift.id
+                    val index = history.indexOfFirst { it.id == shift.id }
+                    if (index >= 0) scope.launch { listState.animateScrollToItem(index + 1) }
+                }
 
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     item {
-                        AggregateStatsCard(history = history, totalDoff = totalDoff, avgPerShift = avgPerShift)
+                        AggregateStatsCard(
+                            history = history,
+                            totalDoff = totalDoff,
+                            avgPerShift = avgPerShift,
+                            selectedShiftId = expandedShiftId,
+                            onBarClick = { jumpToShift(it) },
+                        )
                     }
                     items(history, key = { it.id }) { shift ->
                         ShiftRow(
@@ -153,7 +172,13 @@ fun StatistikScreen(
 }
 
 @Composable
-private fun AggregateStatsCard(history: List<ShiftRecord>, totalDoff: Int, avgPerShift: Float) {
+private fun AggregateStatsCard(
+    history: List<ShiftRecord>,
+    totalDoff: Int,
+    avgPerShift: Float,
+    selectedShiftId: Int?,
+    onBarClick: (ShiftRecord) -> Unit,
+) {
     val colors = LocalAppColors.current
     var started by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { started = true }
@@ -181,7 +206,7 @@ private fun AggregateStatsCard(history: List<ShiftRecord>, totalDoff: Int, avgPe
             StatFigure(label = "Rata-rata/shift", value = "%.1f".format(avgPerShift))
         }
         Spacer(Modifier.height(12.dp))
-        DoffCountChart(history)
+        DoffCountChart(history = history, selectedShiftId = selectedShiftId, onBarClick = onBarClick)
     }
 }
 
@@ -195,9 +220,10 @@ private fun StatFigure(label: String, value: String) {
 }
 
 /** Bar chart of doff count for the most recent shifts, oldest on the left — each bar carries its
- * own count label and a short date underneath, with a baseline so heights read unambiguously. */
+ * own count label and a short date underneath, with a baseline so heights read unambiguously.
+ * Tapping a bar jumps the list below to that shift's row and expands it, bridging chart and detail. */
 @Composable
-private fun DoffCountChart(history: List<ShiftRecord>) {
+private fun DoffCountChart(history: List<ShiftRecord>, selectedShiftId: Int?, onBarClick: (ShiftRecord) -> Unit) {
     val colors = LocalAppColors.current
     val recent = history.take(10).asReversed()
     if (recent.isEmpty()) return
@@ -216,14 +242,26 @@ private fun DoffCountChart(history: List<ShiftRecord>) {
                     delay(index * 50L)
                     animatedFraction.animateTo(targetFraction, animationSpec = tween(450, easing = FastOutSlowInEasing))
                 }
+                val selected = shift.id == selectedShiftId
+                val barColor by animateColorAsState(
+                    if (selected) Cyan400 else Cyan500.copy(alpha = 0.75f),
+                    label = "barColor",
+                )
                 Column(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(6.dp))
+                        .clickable { onBarClick(shift) },
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Bottom,
                 ) {
                     Text(
                         "${shift.aktual.size}",
-                        style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Bold, color = colors.textSecondary),
+                        style = TextStyle(
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (selected) Cyan400 else colors.textSecondary,
+                        ),
                     )
                     Spacer(Modifier.height(2.dp))
                     Box(
@@ -231,7 +269,7 @@ private fun DoffCountChart(history: List<ShiftRecord>) {
                             .fillMaxWidth()
                             .height((44.dp * animatedFraction.value).coerceAtLeast(4.dp))
                             .clip(RoundedCornerShape(3.dp))
-                            .background(Cyan500),
+                            .background(barColor),
                     )
                 }
             }
