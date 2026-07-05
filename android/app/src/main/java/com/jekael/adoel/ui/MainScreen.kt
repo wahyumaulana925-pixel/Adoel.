@@ -26,19 +26,17 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -113,8 +111,6 @@ fun MainScreen(
     var statistikOpen by remember { mutableStateOf(false) }
     var editAktId by remember { mutableStateOf<Int?>(null) }
     var showRemaining by remember { mutableStateOf(false) }
-    var segeraExpanded by remember { mutableStateOf(true) }
-    var menungguExpanded by remember { mutableStateOf(true) }
 
     val inputFocus = remember { FocusRequester() }
     val density = LocalDensity.current
@@ -227,10 +223,26 @@ fun MainScreen(
         }
     }
 
+    // Swipe-to-hapus skips the blocking ConfirmDialog on purpose — the undo toast below is
+    // the safety net instead, so swiping stays a single fast gesture.
+    fun handleHapusEstSwiped(mcNo: String) {
+        val prevEst = state.estimasi[mcNo]
+        doffVm.hapusEstimasi(mcNo)
+        NotificationHelper.cancelNotif(context, mcNo)
+        uiVm.showToast("Mc $mcNo dihapus", undo = {
+            if (prevEst != null) {
+                doffVm.restoreEstimasi(prevEst)
+                NotificationHelper.scheduleNotif(context, prevEst.mcNo, prevEst.estAbsMin)
+            }
+        })
+    }
+
     val doffCount = state.aktual.size
     val totalMc = remember(state.estimasi, state.aktual) {
         (state.estimasi.keys + state.aktual.map { it.mcNo }).toSet().size
     }
+
+    val radarListState = rememberLazyListState()
 
     Box(
         modifier = Modifier
@@ -242,6 +254,7 @@ fun MainScreen(
 
             // Main scrollable content — scrolls behind the floating header & console card
             LazyColumn(
+                state = radarListState,
                 modifier = Modifier.weight(1f).fillMaxWidth(),
                 contentPadding = PaddingValues(
                     start = 12.dp, end = 12.dp,
@@ -343,70 +356,34 @@ fun MainScreen(
                         } else {
                             if (segeraList.isNotEmpty()) {
                                 item(key = "segera_head") {
-                                    UrgencyBandHeader(
-                                        label = "Segera", count = segeraList.size, color = Red400,
-                                        expanded = segeraExpanded, onToggle = { segeraExpanded = !segeraExpanded },
-                                    )
+                                    UrgencyBandHeader(label = "Segera", color = Red400)
                                 }
-                                if (segeraList.size <= 1 || segeraExpanded) {
-                                    items(segeraList, key = { it.mcNo }) { est ->
-                                        RadarCard(
-                                            est = est,
-                                            mesin = state.db[est.mcNo],
-                                            nowAbs = nowAbs,
-                                            onDoff = { handleDoff(est.mcNo) },
-                                            onHapus = { handleHapusEst(est.mcNo) },
-                                            modifier = Modifier.animateItem(),
-                                        )
-                                    }
-                                } else {
-                                    item(key = "segera_stack") {
-                                        val front = segeraList.first()
-                                        RadarStackedPeek(
-                                            front = front,
-                                            mesin = state.db[front.mcNo],
-                                            nowAbs = nowAbs,
-                                            peekCount = segeraList.size - 1,
-                                            accent = Red400,
-                                            onDoff = { handleDoff(front.mcNo) },
-                                            onHapus = { handleHapusEst(front.mcNo) },
-                                            onExpand = { segeraExpanded = true },
-                                        )
-                                    }
+                                items(segeraList, key = { it.mcNo }) { est ->
+                                    RadarCard(
+                                        est = est,
+                                        mesin = state.db[est.mcNo],
+                                        nowAbs = nowAbs,
+                                        onDoff = { handleDoff(est.mcNo) },
+                                        onHapus = { handleHapusEst(est.mcNo) },
+                                        onHapusSwiped = { handleHapusEstSwiped(est.mcNo) },
+                                        modifier = Modifier.animateItem().stackRecede(radarListState, est.mcNo),
+                                    )
                                 }
                             }
                             if (menungguList.isNotEmpty()) {
                                 item(key = "menunggu_head") {
-                                    UrgencyBandHeader(
-                                        label = "Menunggu", count = menungguList.size, color = Cyan400,
-                                        expanded = menungguExpanded, onToggle = { menungguExpanded = !menungguExpanded },
-                                    )
+                                    UrgencyBandHeader(label = "Menunggu", color = Cyan400)
                                 }
-                                if (menungguList.size <= 1 || menungguExpanded) {
-                                    items(menungguList, key = { it.mcNo }) { est ->
-                                        RadarCard(
-                                            est = est,
-                                            mesin = state.db[est.mcNo],
-                                            nowAbs = nowAbs,
-                                            onDoff = { handleDoff(est.mcNo) },
-                                            onHapus = { handleHapusEst(est.mcNo) },
-                                            modifier = Modifier.animateItem(),
-                                        )
-                                    }
-                                } else {
-                                    item(key = "menunggu_stack") {
-                                        val front = menungguList.first()
-                                        RadarStackedPeek(
-                                            front = front,
-                                            mesin = state.db[front.mcNo],
-                                            nowAbs = nowAbs,
-                                            peekCount = menungguList.size - 1,
-                                            accent = Cyan400,
-                                            onDoff = { handleDoff(front.mcNo) },
-                                            onHapus = { handleHapusEst(front.mcNo) },
-                                            onExpand = { menungguExpanded = true },
-                                        )
-                                    }
+                                items(menungguList, key = { it.mcNo }) { est ->
+                                    RadarCard(
+                                        est = est,
+                                        mesin = state.db[est.mcNo],
+                                        nowAbs = nowAbs,
+                                        onDoff = { handleDoff(est.mcNo) },
+                                        onHapus = { handleHapusEst(est.mcNo) },
+                                        onHapusSwiped = { handleHapusEstSwiped(est.mcNo) },
+                                        modifier = Modifier.animateItem().stackRecede(radarListState, est.mcNo),
+                                    )
                                 }
                             }
                         }
@@ -879,88 +856,25 @@ private fun DoffingRow(
 }
 
 @Composable
-private fun UrgencyBandHeader(label: String, count: Int, color: Color, expanded: Boolean, onToggle: () -> Unit) {
-    val rotation by animateFloatAsState(
-        targetValue = if (expanded) 180f else 0f,
-        animationSpec = tween(200),
-        label = "urgencyChevron",
-    )
+private fun UrgencyBandHeader(label: String, color: Color) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 44.dp)
-            .clip(RoundedCornerShape(10.dp))
-            .clickable(enabled = count > 1, onClick = onToggle)
             .padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Box(
-                modifier = Modifier
-                    .size(6.dp)
-                    .clip(CircleShape)
-                    .background(color),
-            )
-            Text(
-                text = label,
-                style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = color),
-            )
-        }
-        if (count > 1) {
-            Icon(
-                Icons.Filled.KeyboardArrowDown,
-                contentDescription = if (expanded) "Ciutkan" else "Perluas",
-                tint = color,
-                modifier = Modifier.size(16.dp).rotate(rotation),
-            )
-        }
-    }
-}
-
-@Composable
-private fun PeekBars(count: Int, accent: Color) {
-    val bars = count.coerceIn(0, 2)
-    if (bars == 0) return
-    Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Spacer(Modifier.height(3.dp))
-        for (i in 1..bars) {
-            val widthFraction = (1f - i * 0.05f).coerceIn(0.7f, 1f)
-            val barAlpha = (0.22f - (i - 1) * 0.10f).coerceAtLeast(0.06f)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(widthFraction)
-                    .height(10.dp)
-                    .clip(RoundedCornerShape(bottomStart = 14.dp, bottomEnd = 14.dp))
-                    .background(accent.copy(alpha = barAlpha)),
-            )
-            if (i != bars) Spacer(Modifier.height(3.dp))
-        }
-    }
-}
-
-@Composable
-private fun RadarStackedPeek(
-    front: Estimasi,
-    mesin: MesinData?,
-    nowAbs: Long,
-    peekCount: Int,
-    accent: Color,
-    onDoff: () -> Unit,
-    onHapus: () -> Unit,
-    onExpand: () -> Unit,
-) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        RadarCard(est = front, mesin = mesin, nowAbs = nowAbs, onDoff = onDoff, onHapus = onHapus)
-        if (peekCount > 0) {
-            PeekBars(count = peekCount, accent = accent)
-            TextButton(onClick = onExpand, modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    "+$peekCount lainnya",
-                    style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = accent),
-                )
-            }
-        }
+        Box(
+            modifier = Modifier
+                .size(6.dp)
+                .clip(CircleShape)
+                .background(color),
+        )
+        Text(
+            text = label,
+            style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = color),
+        )
     }
 }
 

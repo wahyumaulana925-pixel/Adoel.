@@ -48,6 +48,7 @@ private fun urgency(remaining: Long): UrgencyStyle = when (urgencyLevel(remainin
     UrgencyLevel.OVERDUE -> UrgencyStyle(Red500, Red500, Red400, Red700, true, Icons.Filled.Warning)
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RadarCard(
     est: Estimasi,
@@ -55,6 +56,7 @@ fun RadarCard(
     nowAbs: Long,
     onDoff: () -> Unit,
     onHapus: () -> Unit,
+    onHapusSwiped: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val remaining = est.estAbsMin - nowAbs
@@ -107,177 +109,220 @@ fun RadarCard(
         }
     }
 
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .graphicsLayer {
-                translationX = exitProgress * size.width
-                alpha = 1f - exitProgress
+    // Swipe never actually "dismisses" the row — confirmValueChange always vetoes the
+    // settle (returns false), so the box snaps back to Settled on its own. The real removal
+    // from the list happens upstream when the data changes (same as tapping the buttons);
+    // this just gives the swipe gesture a fast path to trigger the same callbacks.
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            when (value) {
+                SwipeToDismissBoxValue.StartToEnd -> { triggerDoff(); false }
+                SwipeToDismissBoxValue.EndToStart -> { onHapusSwiped(); false }
+                SwipeToDismissBoxValue.Settled -> true
             }
-            .shadow(elevation = 5.dp, shape = RoundedCornerShape(14.dp), ambientColor = Color.Black.copy(alpha = 0.35f))
-            .clip(RoundedCornerShape(14.dp))
-            .background(faceBg),
+        },
+    )
+
+    SwipeToDismissBox(
+        state = dismissState,
+        modifier = modifier,
+        backgroundContent = { SwipeActionBackground(dismissState) },
     ) {
-        // Decorative full-height overlays — wrapped in matchParentSize() so they resolve
-        // against the height the Column below actually ends up with (LazyColumn gives
-        // this Box unbounded height, so a bare fillMaxHeight() here would collapse to 0).
-        Box(modifier = Modifier.matchParentSize()) {
-            // Left accent border
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .width(3.dp)
-                    .background(clr.accent),
-            )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .graphicsLayer {
+                    translationX = exitProgress * size.width
+                    alpha = 1f - exitProgress
+                }
+                .shadow(elevation = 5.dp, shape = RoundedCornerShape(14.dp), ambientColor = Color.Black.copy(alpha = 0.35f))
+                .clip(RoundedCornerShape(14.dp))
+                .background(faceBg),
+        ) {
+            // Decorative full-height overlays — wrapped in matchParentSize() so they resolve
+            // against the height the Column below actually ends up with (LazyColumn gives
+            // this Box unbounded height, so a bare fillMaxHeight() here would collapse to 0).
+            Box(modifier = Modifier.matchParentSize()) {
+                // Left accent border
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(3.dp)
+                        .background(clr.accent),
+                )
 
-            // Progress fill
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .fillMaxWidth(progress)
-                    .background(clr.barColor.copy(alpha = 0.12f)),
-            )
-        }
+                // Progress fill
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(progress)
+                        .background(clr.barColor.copy(alpha = 0.12f)),
+                )
+            }
 
-        Column(modifier = Modifier.fillMaxWidth()) {
-            // Content
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                // Left: mc number + type + corak
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                // Content
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    // Left: mc number + type + corak
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                text = est.mcNo,
+                                style = TextStyle(
+                                    fontSize = 40.sp,
+                                    fontWeight = FontWeight.Black,
+                                    letterSpacing = (-2).sp,
+                                    color = colors.textPrimary,
+                                ),
+                            )
+                            Text(
+                                text = tipe,
+                                style = TextStyle(
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 2.sp,
+                                    color = clr.labelColor,
+                                ),
+                                modifier = Modifier.padding(bottom = 4.dp),
+                            )
+                            if (clr.icon != null) {
+                                Icon(
+                                    imageVector = clr.icon,
+                                    contentDescription = null,
+                                    tint = clr.labelColor,
+                                    modifier = Modifier.size(12.dp).padding(bottom = 4.dp),
+                                )
+                            }
+                        }
                         Text(
-                            text = est.mcNo,
+                            text = corakLine,
                             style = TextStyle(
-                                fontSize = 40.sp,
-                                fontWeight = FontWeight.Black,
-                                letterSpacing = (-2).sp,
-                                color = colors.textPrimary,
-                            ),
-                        )
-                        Text(
-                            text = tipe,
-                            style = TextStyle(
-                                fontSize = 10.sp,
+                                fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                letterSpacing = 2.sp,
-                                color = clr.labelColor,
+                                letterSpacing = 1.sp,
+                                color = colors.textMuted,
                             ),
-                            modifier = Modifier.padding(bottom = 4.dp),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
-                        if (clr.icon != null) {
-                            Icon(
-                                imageVector = clr.icon,
-                                contentDescription = null,
-                                tint = clr.labelColor,
-                                modifier = Modifier.size(12.dp).padding(bottom = 4.dp),
+                    }
+
+                    // Right: ping dot + estimated time + remaining
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        if (showDot) {
+                            PingDot(color = if (remaining < 0) Red500 else Emerald500)
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(
+                                text = absMinToTimeStr(est.estAbsMin),
+                                style = TextStyle(
+                                    fontSize = 30.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = (-1).sp,
+                                    fontFamily = FontFamily.Monospace,
+                                    color = clr.textColor,
+                                ),
+                            )
+                            Text(
+                                text = remStr,
+                                style = TextStyle(
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Black,
+                                    letterSpacing = 1.sp,
+                                    color = if (remaining < 0) Red400 else clr.textColor,
+                                ),
                             )
                         }
                     }
-                    Text(
-                        text = corakLine,
-                        style = TextStyle(
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp,
-                            color = colors.textMuted,
-                        ),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
                 }
 
-                // Right: ping dot + estimated time + remaining
+                // Buttons stay as a fallback for discoverability/accessibility (e.g. TalkBack) —
+                // swipe (above) is now the primary fast path for Doff/Hapus.
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    if (showDot) {
-                        PingDot(color = if (remaining < 0) Red500 else Emerald500)
+                    OutlinedButton(
+                        onClick = onHapus,
+                        enabled = !completing,
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
+                        border = BorderStroke(1.dp, colors.border),
+                        contentPadding = PaddingValues(0.dp),
+                    ) {
+                        TrashIcon(size = 20.dp)
                     }
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(
-                            text = absMinToTimeStr(est.estAbsMin),
-                            style = TextStyle(
-                                fontSize = 30.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = (-1).sp,
-                                fontFamily = FontFamily.Monospace,
-                                color = clr.textColor,
-                            ),
-                        )
-                        Text(
-                            text = remStr,
-                            style = TextStyle(
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Black,
-                                letterSpacing = 1.sp,
-                                color = if (remaining < 0) Red400 else clr.textColor,
-                            ),
-                        )
+                    Button(
+                        onClick = { triggerDoff() },
+                        enabled = !completing,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                            .shadow(elevation = 4.dp, shape = RoundedCornerShape(10.dp), ambientColor = Cyan600.copy(alpha = 0.5f)),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
+                        contentPadding = PaddingValues(0.dp),
+                    ) {
+                        CheckIcon()
                     }
                 }
             }
 
-            // Always-visible action buttons — no swipe needed
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .padding(bottom = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                OutlinedButton(
-                    onClick = onHapus,
-                    enabled = !completing,
-                    modifier = Modifier.weight(1f).height(48.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
-                    border = BorderStroke(1.dp, colors.border),
-                    contentPadding = PaddingValues(0.dp),
+            // Celebrate completion — checkmark pops in while the card slides/fades out
+            if (checkScale > 0f) {
+                Box(
+                    modifier = Modifier.matchParentSize(),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    TrashIcon(size = 20.dp)
-                }
-                Button(
-                    onClick = { triggerDoff() },
-                    enabled = !completing,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(48.dp)
-                        .shadow(elevation = 4.dp, shape = RoundedCornerShape(10.dp), ambientColor = Cyan600.copy(alpha = 0.5f)),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
-                    contentPadding = PaddingValues(0.dp),
-                ) {
-                    CheckIcon()
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .background(Emerald500.copy(alpha = 0.14f)),
+                    )
+                    Icon(
+                        imageVector = Icons.Filled.CheckCircle,
+                        contentDescription = null,
+                        tint = Emerald500,
+                        modifier = Modifier
+                            .size(56.dp)
+                            .graphicsLayer { scaleX = checkScale; scaleY = checkScale },
+                    )
                 }
             }
         }
+    }
+}
 
-        // Celebrate completion — checkmark pops in while the card slides/fades out
-        if (checkScale > 0f) {
-            Box(
-                modifier = Modifier.matchParentSize(),
-                contentAlignment = Alignment.Center,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .background(Emerald500.copy(alpha = 0.14f)),
-                )
-                Icon(
-                    imageVector = Icons.Filled.CheckCircle,
-                    contentDescription = null,
-                    tint = Emerald500,
-                    modifier = Modifier
-                        .size(56.dp)
-                        .graphicsLayer { scaleX = checkScale; scaleY = checkScale },
-                )
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SwipeActionBackground(state: SwipeToDismissBoxState) {
+    val direction = state.dismissDirection
+    if (direction == SwipeToDismissBoxValue.Settled) return
+    val bg = if (direction == SwipeToDismissBoxValue.StartToEnd) Emerald500 else Red500
+    val alignment = if (direction == SwipeToDismissBoxValue.StartToEnd) Alignment.CenterStart else Alignment.CenterEnd
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .clip(RoundedCornerShape(14.dp))
+            .background(bg.copy(alpha = state.progress.coerceIn(0f, 1f))),
+        contentAlignment = alignment,
+    ) {
+        CompositionLocalProvider(LocalContentColor provides Color.White) {
+            Box(modifier = Modifier.padding(horizontal = 22.dp)) {
+                if (direction == SwipeToDismissBoxValue.StartToEnd) CheckIcon() else TrashIcon(size = 22.dp)
             }
         }
     }
