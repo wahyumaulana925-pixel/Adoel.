@@ -11,6 +11,7 @@ import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
@@ -157,6 +158,16 @@ fun MainScreen(
     }
     val (segeraList, menungguList) = remember(radarList, nowAbs) {
         partitionSegeraMenunggu(radarList, nowAbs)
+    }
+    // Menunggu bucket spans CALM through IMMINENT (Segera already claims OVERDUE) — tint the
+    // band header by its most urgent member so it doesn't read "calm" while cards inside are
+    // already amber/orange.
+    val menungguAccent = remember(menungguList, nowAbs) {
+        when (menungguList.maxOfOrNull { urgencyLevel(it.estAbsMin - nowAbs) }) {
+            UrgencyLevel.IMMINENT -> Orange400
+            UrgencyLevel.SOON -> Amber400
+            else -> Cyan400
+        }
     }
     fun handleCommand() {
         val cmd = input.trim().uppercase()
@@ -339,7 +350,7 @@ fun MainScreen(
                         } else {
                             if (segeraList.isNotEmpty()) {
                                 item(key = "segera_head") {
-                                    UrgencyBandHeader(label = "Segera", color = Red400)
+                                    UrgencyBandHeader(label = "Segera", color = Red400, modifier = Modifier.animateItem())
                                 }
                                 items(segeraList, key = { it.mcNo }) { est ->
                                     RadarCard(
@@ -354,7 +365,7 @@ fun MainScreen(
                             }
                             if (menungguList.isNotEmpty()) {
                                 item(key = "menunggu_head") {
-                                    UrgencyBandHeader(label = "Menunggu", color = Cyan400)
+                                    UrgencyBandHeader(label = "Menunggu", color = menungguAccent, modifier = Modifier.animateItem())
                                 }
                                 items(menungguList, key = { it.mcNo }) { est ->
                                     RadarCard(
@@ -837,9 +848,10 @@ private fun DoffingRow(
 }
 
 @Composable
-private fun UrgencyBandHeader(label: String, color: Color) {
+private fun UrgencyBandHeader(label: String, color: Color, modifier: Modifier = Modifier) {
+    val animatedColor by animateColorAsState(color, animationSpec = tween(300), label = "urgencyBandColor")
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .heightIn(min = 44.dp)
             .padding(horizontal = 4.dp),
@@ -851,11 +863,11 @@ private fun UrgencyBandHeader(label: String, color: Color) {
                 modifier = Modifier
                     .size(6.dp)
                     .clip(CircleShape)
-                    .background(color),
+                    .background(animatedColor),
             )
             Text(
                 text = label,
-                style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = color),
+                style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = animatedColor),
             )
         }
     }
