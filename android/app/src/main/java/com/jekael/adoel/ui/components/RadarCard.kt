@@ -1,7 +1,6 @@
 package com.jekael.adoel.ui.components
 
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
@@ -113,8 +112,8 @@ fun RadarCard(
         }
     }
 
-    // Swipe left/right is a shortcut on top of the always-visible Doff/Hapus buttons below —
-    // buttons stay for discoverability, swipe is for fast one-handed operation once learned.
+    // Swipe right = doff, swipe left = hapus — the only way to act on a card now that the
+    // always-visible buttons are gone (see SwipeActionBackground for the reveal panel).
     val density = LocalDensity.current
     val swipeThresholdPx = with(density) { 88.dp.toPx() }
     val maxSwipePx = with(density) { 132.dp.toPx() }
@@ -181,123 +180,86 @@ fun RadarCard(
                 )
             }
 
-            Column(modifier = Modifier.fillMaxWidth()) {
-                // Content
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    // Left: mc number + type + corak
-                    Column(modifier = Modifier.weight(1f)) {
-                        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(
-                                text = est.mcNo,
-                                style = TextStyle(
-                                    fontSize = 40.sp,
-                                    fontWeight = FontWeight.Black,
-                                    letterSpacing = (-2).sp,
-                                    color = colors.textPrimary,
-                                ),
-                            )
-                            Text(
-                                text = tipe,
-                                style = TextStyle(
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 2.sp,
-                                    color = clr.labelColor,
-                                ),
-                                modifier = Modifier.padding(bottom = 4.dp),
-                            )
-                            if (clr.icon != null) {
-                                Icon(
-                                    imageVector = clr.icon,
-                                    contentDescription = null,
-                                    tint = clr.labelColor,
-                                    modifier = Modifier.size(12.dp).padding(bottom = 4.dp),
-                                )
-                            }
-                        }
+            // Content — swipe right to doff, swipe left to hapus (see SwipeActionBackground above).
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // Left: mc number + type + corak
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
-                            text = corakLine,
+                            text = est.mcNo,
                             style = TextStyle(
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.sp,
-                                color = colors.textMuted,
+                                fontSize = 40.sp,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = (-2).sp,
+                                color = colors.textPrimary,
                             ),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
                         )
-                    }
-
-                    // Right: ping dot + estimated time + remaining
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        if (showDot) {
-                            PingDot(color = if (remaining < 0) Red500 else Emerald500)
-                        }
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text(
-                                text = absMinToTimeStr(est.estAbsMin),
-                                style = TextStyle(
-                                    fontSize = 30.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = (-1).sp,
-                                    fontFamily = FontFamily.Monospace,
-                                    color = clr.textColor,
-                                ),
-                            )
-                            Text(
-                                text = remStr,
-                                style = TextStyle(
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Black,
-                                    letterSpacing = 1.sp,
-                                    color = if (remaining < 0) Red400 else clr.textColor,
-                                ),
+                        Text(
+                            text = tipe,
+                            style = TextStyle(
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 2.sp,
+                                color = clr.labelColor,
+                            ),
+                            modifier = Modifier.padding(bottom = 4.dp),
+                        )
+                        if (clr.icon != null) {
+                            Icon(
+                                imageVector = clr.icon,
+                                contentDescription = null,
+                                tint = clr.labelColor,
+                                modifier = Modifier.size(12.dp).padding(bottom = 4.dp),
                             )
                         }
                     }
+                    Text(
+                        text = corakLine,
+                        style = TextStyle(
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp,
+                            color = colors.textMuted,
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
 
-                // Always-visible action buttons — kept alongside the swipe gesture above for
-                // discoverability (and for anyone who'd rather tap than drag).
+                // Right: ping dot + estimated time + remaining
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .padding(bottom = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    OutlinedButton(
-                        onClick = onHapus,
-                        enabled = !completing,
-                        modifier = Modifier.weight(1f).height(48.dp),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
-                        border = BorderStroke(1.dp, colors.border),
-                        contentPadding = PaddingValues(0.dp),
-                    ) {
-                        TrashIcon(size = 20.dp)
+                    if (showDot) {
+                        PingDot(color = if (remaining < 0) Red500 else Emerald500)
                     }
-                    Button(
-                        onClick = { triggerDoff() },
-                        enabled = !completing,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp)
-                            .shadow(elevation = 4.dp, shape = RoundedCornerShape(10.dp), ambientColor = Cyan600.copy(alpha = 0.5f)),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
-                        contentPadding = PaddingValues(0.dp),
-                    ) {
-                        CheckIcon()
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = absMinToTimeStr(est.estAbsMin),
+                            style = TextStyle(
+                                fontSize = 30.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = (-1).sp,
+                                fontFamily = FontFamily.Monospace,
+                                color = clr.textColor,
+                            ),
+                        )
+                        Text(
+                            text = remStr,
+                            style = TextStyle(
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 1.sp,
+                                color = if (remaining < 0) Red400 else clr.textColor,
+                            ),
+                        )
                     }
                 }
             }
