@@ -328,7 +328,7 @@ fun RadarCard(
 }
 
 @Composable
-private fun SwipeActionBackground(offsetX: Float, thresholdPx: Float) {
+private fun BoxScope.SwipeActionBackground(offsetX: Float, thresholdPx: Float) {
     if (abs(offsetX) < 1f) return
     val isDoff = offsetX > 0
     val progress = (abs(offsetX) / thresholdPx).coerceIn(0f, 1f)
