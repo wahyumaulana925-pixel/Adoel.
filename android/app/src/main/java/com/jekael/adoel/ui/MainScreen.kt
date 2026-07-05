@@ -50,6 +50,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -125,6 +126,7 @@ fun MainScreen(
     var showRemaining by remember { mutableStateOf(false) }
 
     val inputFocus = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
     val density = LocalDensity.current
     var consoleBarHeight by remember { mutableStateOf(0.dp) }
     var headerHeight by remember { mutableStateOf(0.dp) }
@@ -372,7 +374,14 @@ fun MainScreen(
                         }
                         if (radarList.isEmpty()) {
                             item(key = "est_empty") {
-                                EmptyState(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp))
+                                EmptyState(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                                    ctaLabel = "+ Tambah Estimasi",
+                                    onCtaClick = {
+                                        inputFocus.requestFocus()
+                                        keyboardController?.show()
+                                    },
+                                )
                             }
                         } else {
                             if (segeraList.isNotEmpty()) {
@@ -956,6 +965,8 @@ fun EmptyState(
     modifier: Modifier = Modifier,
     title: String = "Belum ada mesin yang dipantau",
     subtitle: String = "Masukkan nomor mesin + estimasi di kolom bawah untuk mulai",
+    ctaLabel: String? = null,
+    onCtaClick: (() -> Unit)? = null,
 ) {
     val colors = LocalAppColors.current
     Column(
@@ -980,6 +991,20 @@ fun EmptyState(
             modifier = Modifier.padding(horizontal = 32.dp),
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
+        // Optional CTA — lets the empty state itself hand focus straight to the console input
+        // below, instead of just describing where it is and leaving the user to find it.
+        if (ctaLabel != null && onCtaClick != null) {
+            Spacer(Modifier.height(4.dp))
+            Button(
+                onClick = onCtaClick,
+                shape = RoundedCornerShape(50.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
+                contentPadding = PaddingValues(horizontal = 28.dp, vertical = 14.dp),
+                modifier = Modifier.shadow(elevation = 6.dp, shape = RoundedCornerShape(50.dp), ambientColor = Cyan600.copy(alpha = 0.5f)),
+            ) {
+                Text(ctaLabel, style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold))
+            }
+        }
     }
 }
 
