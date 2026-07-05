@@ -68,10 +68,6 @@ import com.jekael.adoel.ui.components.*
 import com.jekael.adoel.ui.theme.*
 import com.jekael.adoel.viewmodel.DoffViewModel
 import com.jekael.adoel.viewmodel.UIViewModel
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.haze
-import dev.chrisbanes.haze.hazeEffect
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Calendar
@@ -132,7 +128,6 @@ fun MainScreen(
     val density = LocalDensity.current
     var consoleBarHeight by remember { mutableStateOf(0.dp) }
     var headerHeight by remember { mutableStateOf(0.dp) }
-    val hazeState = remember { HazeState() }
 
     // Request notification permission launcher
     val notifPermLauncher = rememberLauncherForActivityResult(
@@ -281,7 +276,7 @@ fun MainScreen(
 
             // Main scrollable content — scrolls behind the floating header & console card
             LazyColumn(
-                modifier = Modifier.weight(1f).fillMaxWidth().haze(hazeState),
+                modifier = Modifier.weight(1f).fillMaxWidth(),
                 contentPadding = PaddingValues(
                     start = 12.dp, end = 12.dp,
                     top = 10.dp + headerHeight + 16.dp,
@@ -484,10 +479,7 @@ fun MainScreen(
                 .shadow(elevation = 16.dp, shape = RoundedCornerShape(28.dp))
                 .clip(RoundedCornerShape(28.dp))
                 .border(1.dp, colors.border, RoundedCornerShape(28.dp))
-                .hazeEffect(state = hazeState) {
-                    blurRadius = 20.dp
-                    tints = listOf(HazeTint(colors.bgElevated.copy(alpha = 0.75f)))
-                },
+                .background(colors.bgElevated),
         ) {
             Row(
                 modifier = Modifier
@@ -622,10 +614,7 @@ fun MainScreen(
                 .shadow(elevation = 16.dp, shape = RoundedCornerShape(28.dp))
                 .clip(RoundedCornerShape(28.dp))
                 .border(1.dp, colors.border, RoundedCornerShape(28.dp))
-                .hazeEffect(state = hazeState) {
-                    blurRadius = 20.dp
-                    tints = listOf(HazeTint(colors.bgElevated.copy(alpha = 0.75f)))
-                },
+                .background(colors.bgElevated),
         ) {
             Column(
                 modifier = Modifier

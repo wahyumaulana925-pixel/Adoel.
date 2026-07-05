@@ -57,10 +57,6 @@ import com.jekael.adoel.ui.components.TrashIcon
 import com.jekael.adoel.ui.theme.Cyan400
 import com.jekael.adoel.ui.theme.Cyan500
 import com.jekael.adoel.ui.theme.LocalAppColors
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.haze
-import dev.chrisbanes.haze.hazeEffect
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Calendar
@@ -94,7 +90,6 @@ fun StatistikScreen(
     BackHandler(enabled = visible) { requestClose() }
 
     var expandedShiftId by remember { mutableStateOf<Int?>(null) }
-    val hazeState = remember { HazeState() }
     var headerHeight by remember { mutableStateOf(0.dp) }
     val density = LocalDensity.current
 
@@ -129,7 +124,7 @@ fun StatistikScreen(
 
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxSize().haze(hazeState),
+                    modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(
                         horizontal = 20.dp,
                         top = 10.dp + headerHeight + 16.dp,
@@ -163,8 +158,7 @@ fun StatistikScreen(
 
             // Floating header — overlays the list (list scrolls behind it), matching
             // MainScreen's header/console bar look: shadow + rounded corners + a subtle border
-            // (shadows alone barely read on a near-black dark background) + backdrop blur for
-            // whatever scrolls underneath.
+            // (shadows alone barely read on a near-black dark background).
             Box(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
@@ -177,10 +171,7 @@ fun StatistikScreen(
                     .shadow(elevation = 16.dp, shape = RoundedCornerShape(28.dp))
                     .clip(RoundedCornerShape(28.dp))
                     .border(1.dp, colors.border, RoundedCornerShape(28.dp))
-                    .hazeEffect(state = hazeState) {
-                        blurRadius = 20.dp
-                        tints = listOf(HazeTint(colors.bgElevated.copy(alpha = 0.75f)))
-                    },
+                    .background(colors.bgElevated),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),

@@ -48,10 +48,6 @@ import androidx.compose.ui.unit.sp
 import com.jekael.adoel.BuildConfig
 import com.jekael.adoel.data.*
 import com.jekael.adoel.ui.theme.*
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.haze
-import dev.chrisbanes.haze.hazeEffect
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -104,7 +100,6 @@ fun SettingsDrawer(
 
     BackHandler(enabled = visible) { requestClose() }
 
-    val hazeState = remember { HazeState() }
     var headerHeight by remember { mutableStateOf(0.dp) }
     val density = LocalDensity.current
 
@@ -157,8 +152,7 @@ fun SettingsDrawer(
                 targetState = tab,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 20.dp)
-                    .haze(hazeState),
+                    .padding(horizontal = 20.dp),
                 transitionSpec = {
                     val dir = if (targetState.ordinal > initialState.ordinal) 1 else -1
                     (slideInHorizontally(animationSpec = tween(220)) { w -> dir * w } + fadeIn(tween(180)))
@@ -174,7 +168,7 @@ fun SettingsDrawer(
 
             // Header + tab switcher — floating overlay, matching the header/console bar's look
             // (shadow + rounded corners + a subtle border, since shadows alone barely read on a
-            // near-black dark background) plus backdrop blur for content scrolling underneath.
+            // near-black dark background).
             Box(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
@@ -187,10 +181,7 @@ fun SettingsDrawer(
                     .shadow(elevation = 16.dp, shape = RoundedCornerShape(28.dp))
                     .clip(RoundedCornerShape(28.dp))
                     .border(1.dp, colors.border, RoundedCornerShape(28.dp))
-                    .hazeEffect(state = hazeState) {
-                        blurRadius = 20.dp
-                        tints = listOf(HazeTint(colors.bgElevated.copy(alpha = 0.75f)))
-                    },
+                    .background(colors.bgElevated),
             ) {
                 Column {
                     Row(
