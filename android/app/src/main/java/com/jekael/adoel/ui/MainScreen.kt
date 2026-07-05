@@ -371,6 +371,7 @@ fun MainScreen(
                                             onDoff = { handleDoff(front.mcNo) },
                                             onHapus = { handleHapusEst(front.mcNo) },
                                             onExpand = { segeraExpanded = true },
+                                            modifier = Modifier.animateItem(),
                                         )
                                     }
                                 }
@@ -405,6 +406,7 @@ fun MainScreen(
                                             onDoff = { handleDoff(front.mcNo) },
                                             onHapus = { handleHapusEst(front.mcNo) },
                                             onExpand = { menungguExpanded = true },
+                                            modifier = Modifier.animateItem(),
                                         )
                                     }
                                 }
@@ -918,23 +920,39 @@ private fun UrgencyBandHeader(label: String, count: Int, color: Color, expanded:
     }
 }
 
+/**
+ * Peeking card edges behind the front card — each layer gets its own 14dp bottom corner
+ * radius (matching RadarCard's own shape) plus a touch of shadow, so it reads as a real
+ * card tucked behind rather than a decorative bar. Kept in normal flow below the front
+ * card (not measured/overlapped underneath it) because the front RadarCard's height
+ * varies with font-scale/accessibility text size, so there's no reliable offset to tuck
+ * a layer under it.
+ */
 @Composable
-private fun PeekBars(count: Int, accent: Color) {
-    val bars = count.coerceIn(0, 2)
-    if (bars == 0) return
+private fun StackedCardPeek(count: Int, accent: Color) {
+    val colors = LocalAppColors.current
+    val layers = count.coerceIn(0, 2)
+    if (layers == 0) return
     Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Spacer(Modifier.height(3.dp))
-        for (i in 1..bars) {
-            val widthFraction = (1f - i * 0.05f).coerceIn(0.7f, 1f)
-            val barAlpha = (0.22f - (i - 1) * 0.10f).coerceAtLeast(0.06f)
+        Spacer(Modifier.height(2.dp))
+        for (i in 1..layers) {
+            val widthFraction = (1f - i * 0.06f).coerceIn(0.8f, 1f)
+            val peekHeight = (18 - (i - 1) * 5).dp
+            val tintAlpha = (0.12f - (i - 1) * 0.05f).coerceAtLeast(0.03f)
             Box(
                 modifier = Modifier
                     .fillMaxWidth(widthFraction)
-                    .height(10.dp)
+                    .height(peekHeight)
+                    .shadow(
+                        elevation = (2 - (i - 1)).dp.coerceAtLeast(1.dp),
+                        shape = RoundedCornerShape(bottomStart = 14.dp, bottomEnd = 14.dp),
+                        ambientColor = Color.Black.copy(alpha = 0.3f),
+                    )
                     .clip(RoundedCornerShape(bottomStart = 14.dp, bottomEnd = 14.dp))
-                    .background(accent.copy(alpha = barAlpha)),
+                    .background(colors.bgElevated)
+                    .background(accent.copy(alpha = tintAlpha)),
             )
-            if (i != bars) Spacer(Modifier.height(3.dp))
+            if (i != layers) Spacer(Modifier.height(2.dp))
         }
     }
 }
@@ -949,11 +967,12 @@ private fun RadarStackedPeek(
     onDoff: () -> Unit,
     onHapus: () -> Unit,
     onExpand: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(modifier = modifier.fillMaxWidth()) {
         RadarCard(est = front, mesin = mesin, nowAbs = nowAbs, onDoff = onDoff, onHapus = onHapus)
         if (peekCount > 0) {
-            PeekBars(count = peekCount, accent = accent)
+            StackedCardPeek(count = peekCount, accent = accent)
             TextButton(onClick = onExpand, modifier = Modifier.fillMaxWidth()) {
                 Text(
                     "+$peekCount lainnya",
