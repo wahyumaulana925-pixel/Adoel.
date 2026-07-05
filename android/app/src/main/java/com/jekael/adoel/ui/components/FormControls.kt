@@ -9,15 +9,19 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldColors
@@ -111,7 +115,13 @@ fun FloatingEditDialog(
     ) {
         DisableDialogWindowAnimation()
 
-        Box(modifier = Modifier.fillMaxSize()) {
+        // BoxWithConstraints (not a plain Box) so the card below can cap its own height against
+        // the actual available space — without a cap, a form tall enough (plus the keyboard's
+        // own imePadding inset) could push its bottom Batal/Reset/Simpan row off-screen with no
+        // way to reach it. The heightIn + verticalScroll pair keeps the card fully on-screen and
+        // lets the user scroll to the buttons instead.
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val maxCardHeight = maxHeight * 0.85f
             AnimatedVisibility(
                 visible = visible,
                 enter = fadeIn(tween(200)),
@@ -139,10 +149,12 @@ fun FloatingEditDialog(
                         .imePadding()
                         .navigationBarsPadding()
                         .padding(16.dp)
+                        .heightIn(max = maxCardHeight)
                         .shadow(elevation = 24.dp, shape = RoundedCornerShape(28.dp))
                         .clip(RoundedCornerShape(28.dp))
                         .background(colors.bgElevated)
-                        .padding(20.dp),
+                        .padding(20.dp)
+                        .verticalScroll(rememberScrollState()),
                     content = content,
                 )
             }

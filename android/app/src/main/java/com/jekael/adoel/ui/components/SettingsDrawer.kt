@@ -35,11 +35,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -98,6 +100,9 @@ fun SettingsDrawer(
 
     BackHandler(enabled = visible) { requestClose() }
 
+    var headerHeight by remember { mutableStateOf(0.dp) }
+    val density = LocalDensity.current
+
     // Rendered directly in the caller's own window (no Dialog) so our AnimatedVisibility is the
     // ONLY thing driving the enter/exit motion — a Dialog's own window has a default scale/fade
     // animation that fires before any in-content effect can suppress it, which showed up as a
@@ -107,7 +112,10 @@ fun SettingsDrawer(
         enter = slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(260)),
         exit = slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(220)),
     ) {
-        Column(
+        // Box, not Column: the header floats as an overlay on top of the tab content (which is
+        // laid out full-size from the very top) so the content actually scrolls behind it,
+        // matching MainScreen's header/console concept instead of just sitting above it.
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(colors.bg)
@@ -140,16 +148,39 @@ fun SettingsDrawer(
             // No systemBarsPadding() here — this panel now lives inside MainScreen's own root
             // Box, which already insets its children from the system bars once.
         ) {
-            // Header + tab switcher — floating card, matching the header/console bar's look
-            // (shadow + rounded corners lifted off the screen background) instead of sitting
-            // flat directly on colors.bg like the rest of this full-bleed panel.
+            AnimatedContent(
+                targetState = tab,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 20.dp),
+                transitionSpec = {
+                    val dir = if (targetState.ordinal > initialState.ordinal) 1 else -1
+                    (slideInHorizontally(animationSpec = tween(220)) { w -> dir * w } + fadeIn(tween(180)))
+                        .togetherWith(slideOutHorizontally(animationSpec = tween(220)) { w -> -dir * w } + fadeOut(tween(140)))
+                },
+                label = "settingsTabContent",
+            ) { t ->
+                when (t) {
+                    SettingsTab.MESIN -> MesinTab(state, headerHeight, onSetMesin, onResetMesin, showToast, showConfirm)
+                    SettingsTab.DATA -> DataTab(state, headerHeight, onResetDb, onSetThemeMode, onExportJson, onImport, showToast, showConfirm)
+                }
+            }
+
+            // Header + tab switcher — floating overlay, matching the header/console bar's look
+            // (shadow + rounded corners + a subtle border, since shadows alone barely read on a
+            // near-black dark background).
             Box(
                 modifier = Modifier
+                    .align(Alignment.TopCenter)
                     .fillMaxWidth()
+                    .onGloballyPositioned { coords ->
+                        headerHeight = with(density) { coords.size.height.toDp() }
+                    }
                     .padding(horizontal = 12.dp)
                     .padding(top = 12.dp)
                     .shadow(elevation = 16.dp, shape = RoundedCornerShape(28.dp))
                     .clip(RoundedCornerShape(28.dp))
+                    .border(1.dp, colors.border, RoundedCornerShape(28.dp))
                     .background(colors.bgElevated),
             ) {
                 Column {
@@ -181,27 +212,6 @@ fun SettingsDrawer(
                     )
                 }
             }
-
-            Spacer(Modifier.height(16.dp))
-
-            AnimatedContent(
-                targetState = tab,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .padding(horizontal = 20.dp),
-                transitionSpec = {
-                    val dir = if (targetState.ordinal > initialState.ordinal) 1 else -1
-                    (slideInHorizontally(animationSpec = tween(220)) { w -> dir * w } + fadeIn(tween(180)))
-                        .togetherWith(slideOutHorizontally(animationSpec = tween(220)) { w -> -dir * w } + fadeOut(tween(140)))
-                },
-                label = "settingsTabContent",
-            ) { t ->
-                when (t) {
-                    SettingsTab.MESIN -> MesinTab(state, onSetMesin, onResetMesin, showToast, showConfirm)
-                    SettingsTab.DATA -> DataTab(state, onResetDb, onSetThemeMode, onExportJson, onImport, showToast, showConfirm)
-                }
-            }
         }
     }
 }
@@ -209,6 +219,7 @@ fun SettingsDrawer(
 @Composable
 private fun MesinTab(
     state: DoffState,
+    headerHeight: Dp,
     onSetMesin: (String, MesinData) -> Unit,
     onResetMesin: (String) -> Unit,
     showToast: (String) -> Unit,
@@ -251,11 +262,13 @@ private fun MesinTab(
 
     Column(
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 8.dp)
+            .fillMaxSize()
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        // Scrolls behind the floating header/tab-switcher card above instead of being pushed
+        // down by it — see the Box-overlay comment on SettingsDrawer's root.
+        Spacer(Modifier.height(10.dp + headerHeight + 16.dp))
         OutlinedTextField(
             value = search,
             onValueChange = { search = it },
@@ -533,6 +546,7 @@ private fun ChipBtn(label: String, selected: Boolean, onClick: () -> Unit) {
 @Composable
 private fun DataTab(
     state: DoffState,
+    headerHeight: Dp,
     onResetDb: () -> Unit,
     onSetThemeMode: (ThemeMode) -> Unit,
     onExportJson: () -> String,
@@ -577,7 +591,10 @@ private fun DataTab(
         }
     }
 
-    Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        // Scrolls behind the floating header/tab-switcher card above instead of being pushed
+        // down by it — see the Box-overlay comment on SettingsDrawer's root.
+        Spacer(Modifier.height(10.dp + headerHeight + 16.dp))
         FieldLabel("Tema Aplikasi")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ChipBtn("Sistem", currentTheme == ThemeMode.SYSTEM) { onSetThemeMode(ThemeMode.SYSTEM) }

@@ -21,6 +21,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -477,6 +478,7 @@ fun MainScreen(
                 .padding(top = 12.dp)
                 .shadow(elevation = 16.dp, shape = RoundedCornerShape(28.dp))
                 .clip(RoundedCornerShape(28.dp))
+                .border(1.dp, colors.border, RoundedCornerShape(28.dp))
                 .background(colors.bgElevated),
         ) {
             Row(
@@ -611,6 +613,7 @@ fun MainScreen(
                 .padding(bottom = 12.dp)
                 .shadow(elevation = 16.dp, shape = RoundedCornerShape(28.dp))
                 .clip(RoundedCornerShape(28.dp))
+                .border(1.dp, colors.border, RoundedCornerShape(28.dp))
                 .background(colors.bgElevated),
         ) {
             Column(
