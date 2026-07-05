@@ -32,6 +32,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.FreeBreakfast
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -71,6 +72,15 @@ import kotlinx.coroutines.launch
 import java.util.Calendar
 
 private enum class Mode { ESTIMASI, AKTUAL }
+
+/** Gaps at or above this many minutes between two upcoming doffs are worth flagging as a
+ * break window — short enough to still be actionable, long enough to actually leave the floor. */
+private const val BREAK_GAP_THRESHOLD_MIN = 30L
+
+private sealed class MenungguRow {
+    data class CardRow(val est: Estimasi) : MenungguRow()
+    data class GapRow(val afterMcNo: String, val nextMcNo: String, val gapMin: Long, val nextAbsMin: Long) : MenungguRow()
+}
 
 @Composable
 fun MainScreen(
@@ -167,6 +177,22 @@ fun MainScreen(
             UrgencyLevel.IMMINENT -> Orange400
             UrgencyLevel.SOON -> Amber400
             else -> Cyan400
+        }
+    }
+    // Flag long idle stretches between two upcoming doffs so the operator knows when it's
+    // actually safe to step away, instead of having to eyeball the gap between two times.
+    val menungguRows = remember(menungguList) {
+        buildList {
+            menungguList.forEachIndexed { index, est ->
+                add(MenungguRow.CardRow(est))
+                val next = menungguList.getOrNull(index + 1)
+                if (next != null) {
+                    val gap = next.estAbsMin - est.estAbsMin
+                    if (gap >= BREAK_GAP_THRESHOLD_MIN) {
+                        add(MenungguRow.GapRow(afterMcNo = est.mcNo, nextMcNo = next.mcNo, gapMin = gap, nextAbsMin = next.estAbsMin))
+                    }
+                }
+            }
         }
     }
     fun handleCommand() {
@@ -367,15 +393,31 @@ fun MainScreen(
                                 item(key = "menunggu_head") {
                                     UrgencyBandHeader(label = "Menunggu", color = menungguAccent, modifier = Modifier.animateItem())
                                 }
-                                items(menungguList, key = { it.mcNo }) { est ->
-                                    RadarCard(
-                                        est = est,
-                                        mesin = state.db[est.mcNo],
-                                        nowAbs = nowAbs,
-                                        onDoff = { handleDoff(est.mcNo) },
-                                        onHapus = { handleHapusEst(est.mcNo) },
-                                        modifier = Modifier.animateItem(),
-                                    )
+                                items(
+                                    menungguRows,
+                                    key = { row ->
+                                        when (row) {
+                                            is MenungguRow.CardRow -> row.est.mcNo
+                                            is MenungguRow.GapRow -> "gap_after_${row.afterMcNo}"
+                                        }
+                                    },
+                                ) { row ->
+                                    when (row) {
+                                        is MenungguRow.CardRow -> RadarCard(
+                                            est = row.est,
+                                            mesin = state.db[row.est.mcNo],
+                                            nowAbs = nowAbs,
+                                            onDoff = { handleDoff(row.est.mcNo) },
+                                            onHapus = { handleHapusEst(row.est.mcNo) },
+                                            modifier = Modifier.animateItem(),
+                                        )
+                                        is MenungguRow.GapRow -> BreakGapCard(
+                                            gapMin = row.gapMin,
+                                            nextMcNo = row.nextMcNo,
+                                            nextAbsMin = row.nextAbsMin,
+                                            modifier = Modifier.animateItem(),
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -868,6 +910,39 @@ private fun UrgencyBandHeader(label: String, color: Color, modifier: Modifier = 
             Text(
                 text = label,
                 style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = animatedColor),
+            )
+        }
+    }
+}
+
+/** Sits between two RadarCards in the Menunggu band when the gap to the next doff is long
+ * enough to actually step away — tells the operator how long, and what's next when they're back. */
+@Composable
+private fun BreakGapCard(gapMin: Long, nextMcNo: String, nextAbsMin: Long, modifier: Modifier = Modifier) {
+    val colors = LocalAppColors.current
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(colors.bgElevated2.copy(alpha = 0.5f))
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.FreeBreakfast,
+            contentDescription = null,
+            tint = colors.textMuted,
+            modifier = Modifier.size(18.dp),
+        )
+        Column {
+            Text(
+                text = "Jeda ${formatDeltaMin(gapMin)} — waktu istirahat",
+                style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = colors.textSecondary),
+            )
+            Text(
+                text = "Sebelum Mc $nextMcNo · ${absMinToTimeStr(nextAbsMin)}",
+                style = TextStyle(fontSize = 11.sp, color = colors.textFaint),
             )
         }
     }
