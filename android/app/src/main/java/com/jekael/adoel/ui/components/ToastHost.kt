@@ -11,6 +11,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -27,7 +30,9 @@ fun ToastHost(
     val colors = LocalAppColors.current
     LaunchedEffect(toast?.key) {
         if (toast != null) {
-            delay(3500)
+            // Undo toasts get extra time on screen — reading the message and deciding whether
+            // to tap UNDO takes longer than just acknowledging a plain status message.
+            delay(if (toast.undoAction != null) 5000 else 3500)
             onDismiss()
         }
     }
@@ -46,6 +51,7 @@ fun ToastHost(
             ) {
                 Row(
                     modifier = Modifier
+                        .semantics { liveRegion = LiveRegionMode.Polite }
                         .shadow(elevation = 10.dp, shape = RoundedCornerShape(24.dp), ambientColor = Color.Black.copy(alpha = 0.4f))
                         .background(colors.bgElevated2, RoundedCornerShape(24.dp))
                         .padding(horizontal = 20.dp, vertical = 14.dp),

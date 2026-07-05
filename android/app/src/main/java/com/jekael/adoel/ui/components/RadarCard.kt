@@ -239,9 +239,10 @@ fun RadarCard(
                     shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
                     border = BorderStroke(1.dp, colors.border),
-                    contentPadding = PaddingValues(0.dp),
                 ) {
-                    TrashIcon(size = 20.dp)
+                    TrashIcon(size = 18.dp)
+                    Spacer(Modifier.width(6.dp))
+                    Text("Hapus", style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold))
                 }
                 Button(
                     onClick = { triggerDoff() },
@@ -252,9 +253,10 @@ fun RadarCard(
                         .shadow(elevation = 4.dp, shape = RoundedCornerShape(10.dp), ambientColor = Cyan600.copy(alpha = 0.5f)),
                     shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
-                    contentPadding = PaddingValues(0.dp),
                 ) {
                     CheckIcon()
+                    Spacer(Modifier.width(6.dp))
+                    Text("Doff", style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold))
                 }
             }
         }

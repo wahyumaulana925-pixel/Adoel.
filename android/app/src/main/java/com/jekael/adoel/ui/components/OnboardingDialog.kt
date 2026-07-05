@@ -32,6 +32,8 @@ fun OnboardingDialog(onClose: () -> Unit) {
             "DOFFING: catat mesin yang sudah selesai — nomor mesin + keterangan bebas, mis. \"31 HB\".",
             "Corak = kode motif yang sedang dikerjakan mesin, diatur di Pengaturan > Mesin.",
             "Contoh perintah ESTIMASI: TAPPET/CAM \"31 45\" (sisa menit) · D405 \"31 280\" (yard berjalan) · D408 \"31 12.30\" (jam counter).",
+            "Kalau mesin \"Segera\"/\"Menunggu\" menumpuk, ketuk judul bandnya untuk ciutkan/perluas daftar.",
+            "Di Statistik, ketuk baris sebuah shift untuk melihat rincian doff-nya.",
         )
         bullets.forEach {
             Text(

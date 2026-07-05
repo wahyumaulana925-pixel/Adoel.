@@ -33,6 +33,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -75,6 +80,14 @@ fun SlidingToggle(
 
     BoxWithConstraints(
         modifier = modifier
+            .semantics(mergeDescendants = true) {
+                role = Role.Switch
+                contentDescription = "$labelLeft / $labelRight, dipilih: ${if (selectedIndex == 0) labelLeft else labelRight}"
+                onClick {
+                    currentOnSelect.value(if (currentSelected.value == 0) 1 else 0)
+                    true
+                }
+            }
             .background(containerColor, RoundedCornerShape(50.dp))
             .padding(4.dp),
     ) {
