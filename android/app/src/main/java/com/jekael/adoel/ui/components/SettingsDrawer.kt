@@ -525,6 +525,7 @@ private fun ChipBtn(label: String, selected: Boolean, onClick: () -> Unit) {
     val shape = RoundedCornerShape(12.dp)
     Box(
         modifier = Modifier
+            .heightIn(min = 48.dp)
             .clip(shape)
             .background(if (selected) Cyan600 else Color.Transparent)
             .border(1.dp, if (selected) Cyan500 else colors.border, shape)

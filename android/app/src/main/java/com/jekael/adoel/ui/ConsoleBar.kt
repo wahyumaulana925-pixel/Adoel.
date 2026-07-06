@@ -1,6 +1,8 @@
 package com.jekael.adoel.ui
 
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,6 +15,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,11 +55,21 @@ internal fun ConsoleBar(
     onSend: () -> Unit,
     sendScale: Float,
     sendShowCheck: Boolean,
+    inputErrorFlash: Boolean,
+    inputHint: String?,
     onHeightMeasured: (Dp) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = LocalAppColors.current
     val density = LocalDensity.current
+    // Brief red ring around the input on a rejected command — a toast alone can be missed if the
+    // operator glances back at the machine right after hitting send; this fades out on its own so
+    // it never needs to be dismissed.
+    val errorRingAlpha by animateFloatAsState(
+        targetValue = if (inputErrorFlash) 1f else 0f,
+        animationSpec = tween(if (inputErrorFlash) 60 else 500),
+        label = "inputErrorRing",
+    )
 
     Box(
         modifier = modifier
@@ -116,12 +129,18 @@ internal fun ConsoleBar(
                 OutlinedTextField(
                     value = input,
                     onValueChange = { onInputChange(it.uppercase()) },
-                    modifier = Modifier.weight(1f).focusRequester(inputFocus),
+                    modifier = Modifier
+                        .weight(1f)
+                        .focusRequester(inputFocus)
+                        .border(2.dp, Red500.copy(alpha = errorRingAlpha), RoundedCornerShape(50.dp)),
                     placeholder = {
                         Text(
                             if (mode == Mode.ESTIMASI) "cth: 31 45" else "cth: 31 HB",
                             color = colors.textFaint,
                         )
+                    },
+                    supportingText = inputHint?.let { hint ->
+                        { Text(hint, style = AppType.Caption.copy(color = colors.textFaint)) }
                     },
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Cyan500,
