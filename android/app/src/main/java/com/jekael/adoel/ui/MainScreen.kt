@@ -238,7 +238,7 @@ fun MainScreen(
         }
     }
     fun flashError(msg: String) {
-        haptic.performHapticFeedback(HapticFeedbackType.Reject)
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
         errorFlashKey++
         uiVm.showToast("⚠ $msg")
     }
