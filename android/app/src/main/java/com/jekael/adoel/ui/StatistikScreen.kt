@@ -443,10 +443,10 @@ private fun shareShift(context: Context, shift: ShiftRecord, db: Map<String, Mes
         val mesin = db[a.mcNo]
         val corak = a.corakOverride ?: mesin?.corak ?: "—"
         val yard = a.customYard ?: mesin?.targetYard
-        val suffix = if (yard != null) " [${formatYard(yard)}y]" else ""
-        "${i + 1}. Mc${a.mcNo} - $corak$suffix - ${a.ket}"
+        val suffix = if (yard != null) " · ${formatYard(yard)}y" else ""
+        "${i + 1}. Mc${a.mcNo} · $corak$suffix · ${a.ket}"
     }
-    val text = "Bravo!!!\nShift $shiftNo · $dateStr\n\n${lines.joinToString("\n")}\n\nTotal: ${shift.aktual.size} doff"
+    val text = "Bravo!!!\nShift $shiftNo · $dateStr\n\n*Selesai (${shift.aktual.size} doff)*\n${lines.joinToString("\n")}\n\nTotal: ${shift.aktual.size} doff"
     val intent = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
         putExtra(Intent.EXTRA_TEXT, text)

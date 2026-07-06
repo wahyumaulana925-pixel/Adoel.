@@ -165,8 +165,8 @@ internal fun shareHistory(context: Context, state: DoffState) {
         val mesin = state.db[a.mcNo]
         val corak = a.corakOverride ?: mesin?.corak ?: "—"
         val yard = a.customYard ?: mesin?.targetYard
-        val suffix = if (yard != null) " [${formatYard(yard)}y]" else ""
-        "${i + 1}. Mc${a.mcNo} - $corak$suffix - ${a.ket}"
+        val suffix = if (yard != null) " · ${formatYard(yard)}y" else ""
+        "${i + 1}. Mc${a.mcNo} · $corak$suffix · ${a.ket}"
     }
     // Doff selesai saja tidak cukup buat rekan yang baca pesan ini di lantai produksi — mereka
     // juga perlu tahu mesin mana yang masih ditimer sekarang dan kapan harus di-doff, jadi bagian
@@ -175,15 +175,25 @@ internal fun shareHistory(context: Context, state: DoffState) {
         val mesin = state.db[est.mcNo]
         val corak = est.corakOverride ?: mesin?.corak ?: "—"
         val yard = est.yardOverride ?: mesin?.targetYard
-        val suffix = if (yard != null) " [${formatYard(yard)}y]" else ""
-        "• Mc${est.mcNo} - $corak$suffix - est. ${absMinToTimeStr(est.estAbsMin)}"
+        val suffix = if (yard != null) " · ${formatYard(yard)}y" else ""
+        "• Mc${est.mcNo} · $corak$suffix · est. ${absMinToTimeStr(est.estAbsMin)}"
+    }
+    val selesaiCount = state.aktual.size
+    val berjalanCount = berjalan.size
+    // Spelling the sum out explicitly (bukan cuma "Total: N doff") — tanpa ini, rekan yang baca
+    // sering salah jumlah sendiri antara yang sudah selesai vs. yang masih berjalan (lihat contoh
+    // nyata: seseorang nanya "jadi total 23 mc?" padahal "Total" di pesan cuma menghitung selesai).
+    val totalLine = if (berjalanCount > 0) {
+        "Total: $selesaiCount selesai + $berjalanCount berjalan = ${selesaiCount + berjalanCount} mc"
+    } else {
+        "Total: $selesaiCount doff"
     }
     val berjalanBlock = if (berjalan.isNotEmpty()) {
-        "\n\nSedang Berjalan:\n${berjalan.joinToString("\n")}"
+        "\n\n*Sedang Berjalan ($berjalanCount)*\n${berjalan.joinToString("\n")}"
     } else {
         ""
     }
-    val text = "Bravo!!!\n$dateStr\n\n${lines.joinToString("\n")}\n\nTotal: ${state.aktual.size} doff$berjalanBlock"
+    val text = "Bravo!!!\n$dateStr\n\n*Selesai ($selesaiCount doff)*\n${lines.joinToString("\n")}$berjalanBlock\n\n$totalLine"
     val intent = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
         putExtra(Intent.EXTRA_TEXT, text)
