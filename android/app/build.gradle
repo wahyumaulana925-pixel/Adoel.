@@ -56,6 +56,16 @@ android {
             }
         }
     }
+
+    // DoffViewModelTest constructs a plain android.app.Application and calls no framework
+    // methods on it (the DataStore-backed repo write is never pumped under a StandardTestDispatcher
+    // that's never advanced) — returnDefaultValues avoids the stub jar's "not mocked" exceptions
+    // for any incidental Android API touch, without pulling in Robolectric for this.
+    testOptions {
+        unitTests {
+            returnDefaultValues = true
+        }
+    }
 }
 
 dependencies {
@@ -74,5 +84,6 @@ dependencies {
     implementation 'com.google.code.gson:gson:2.11.0'
     implementation 'androidx.glance:glance-appwidget:1.1.1'
     testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0'
     debugImplementation 'androidx.compose.ui:ui-tooling'
 }

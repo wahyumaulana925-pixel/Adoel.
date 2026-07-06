@@ -2,6 +2,7 @@ package com.jekael.adoel.ui.components
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -25,6 +26,9 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -60,6 +64,7 @@ fun RadarCard(
     nowAbs: Long,
     onDoff: () -> Unit,
     onHapus: () -> Unit,
+    onQuickEdit: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val remaining = est.estAbsMin - nowAbs
@@ -75,14 +80,21 @@ fun RadarCard(
     val showDot = remaining <= 5
     val colors = LocalAppColors.current
 
-    val criticalPulse = rememberInfiniteTransition(label = "criticalPulse")
-    val pulseFraction by criticalPulse.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(800, easing = LinearEasing), RepeatMode.Reverse),
-        label = "pulseFraction",
-    )
-    val faceBg = if (clr.pulse) lerp(colors.bgElevated, colors.criticalPulseTarget, pulseFraction) else colors.bgElevated
+    // Only OVERDUE cards actually render the pulse, so only they should pay for it — an
+    // unconditional rememberInfiniteTransition here would tick a frame-by-frame animation for
+    // every card on screen (CALM/SOON/IMMINENT included) for the entire shift, for no visible effect.
+    val faceBg = if (clr.pulse) {
+        val criticalPulse = rememberInfiniteTransition(label = "criticalPulse")
+        val pulseFraction by criticalPulse.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(tween(800, easing = LinearEasing), RepeatMode.Reverse),
+            label = "pulseFraction",
+        )
+        lerp(colors.bgElevated, colors.criticalPulseTarget, pulseFraction)
+    } else {
+        colors.bgElevated
+    }
 
     // Celebrate completion — card slides out + checkmark pops before the state is actually
     // mutated. Hapus deliberately does NOT get this treatment: it's gated by a ConfirmDialog
@@ -143,6 +155,16 @@ fun RadarCard(
                 .shadow(elevation = 5.dp, shape = RoundedCornerShape(14.dp), ambientColor = Color.Black.copy(alpha = 0.35f))
                 .clip(RoundedCornerShape(14.dp))
                 .background(faceBg)
+                // Swipe is the fast path, but TalkBack intercepts swipe gestures for its own
+                // navigation before they ever reach this card — without this, a screen-reader
+                // user would have no way at all to doff or delete. These custom actions surface
+                // in TalkBack's local context menu as a non-gesture alternative to the swipe above.
+                .semantics(mergeDescendants = true) {
+                    customActions = listOf(
+                        CustomAccessibilityAction("Doff mesin ${est.mcNo}") { triggerDoff(); true },
+                        CustomAccessibilityAction("Hapus estimasi Mc ${est.mcNo}") { onHapus(); true },
+                    )
+                }
                 .pointerInput(completing) {
                     if (completing) return@pointerInput
                     detectHorizontalDragGestures(
@@ -188,8 +210,15 @@ fun RadarCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Left: mc number + type + corak
-                Column(modifier = Modifier.weight(1f)) {
+                // Left: mc number + type + corak — tappable on its own (separate from the
+                // swipe-the-whole-card drag above) as a fast path to correct corak/target yard,
+                // the two fields that actually change often on the floor, without leaving Radar
+                // for the full Pengaturan > Mesin flow.
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable(onClick = onQuickEdit),
+                ) {
                     Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
                             text = est.mcNo,
@@ -203,7 +232,7 @@ fun RadarCard(
                         Text(
                             text = tipe,
                             style = TextStyle(
-                                fontSize = 10.sp,
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 2.sp,
                                 color = clr.labelColor,
@@ -221,12 +250,7 @@ fun RadarCard(
                     }
                     Text(
                         text = corakLine,
-                        style = TextStyle(
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp,
-                            color = colors.textMuted,
-                        ),
+                        style = AppType.LabelBold.copy(color = colors.textMuted),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -254,7 +278,7 @@ fun RadarCard(
                         Text(
                             text = remStr,
                             style = TextStyle(
-                                fontSize = 11.sp,
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.Black,
                                 letterSpacing = 1.sp,
                                 color = if (remaining < 0) Red400 else clr.textColor,

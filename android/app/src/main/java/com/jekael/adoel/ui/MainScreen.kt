@@ -23,8 +23,10 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -72,13 +74,13 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
-private enum class Mode { ESTIMASI, AKTUAL }
+internal enum class Mode { ESTIMASI, AKTUAL }
 
 /** Gaps at or above this many minutes between two upcoming doffs are worth flagging as a
  * break window — short enough to still be actionable, long enough to actually leave the floor. */
 private const val BREAK_GAP_THRESHOLD_MIN = 30L
 
-private sealed class MenungguRow {
+internal sealed class MenungguRow {
     data class CardRow(val est: Estimasi) : MenungguRow()
     data class GapRow(val afterMcNo: String, val nextMcNo: String, val gapMin: Long, val nextAbsMin: Long) : MenungguRow()
 }
@@ -122,10 +124,10 @@ fun MainScreen(
     var settingsOpen by remember { mutableStateOf(false) }
     var statistikOpen by remember { mutableStateOf(false) }
     var editAktId by remember { mutableStateOf<Int?>(null) }
+    var quickEditMcNo by remember { mutableStateOf<String?>(null) }
     var showRemaining by remember { mutableStateOf(false) }
 
     val inputFocus = remember { FocusRequester() }
-    val density = LocalDensity.current
     var consoleBarHeight by remember { mutableStateOf(0.dp) }
     var headerHeight by remember { mutableStateOf(0.dp) }
 
@@ -265,6 +267,7 @@ fun MainScreen(
     val totalMc = remember(state.estimasi, state.aktual) {
         (state.estimasi.keys + state.aktual.map { it.mcNo }).toSet().size
     }
+    val aktualReversed = remember(state.aktual) { state.aktual.asReversed() }
 
     Box(
         modifier = Modifier
@@ -284,418 +287,106 @@ fun MainScreen(
                 ),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                if (!notifGranted) {
-                    item {
-                        TextButton(
-                            onClick = {
-                                if (Build.VERSION.SDK_INT >= 33) {
-                                    notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth().animateItem(),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.textButtonColors(
-                                containerColor = colors.bannerWarnBg,
-                                contentColor = colors.bannerWarnFg,
-                            ),
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
-                        ) {
-                            Text("Notifikasi nonaktif — ketuk untuk izinkan", style = TextStyle(fontSize = 12.sp))
+                permissionBanners(
+                    notifGranted = notifGranted,
+                    exactAlarmGranted = exactAlarmGranted,
+                    batteryUnrestricted = batteryUnrestricted,
+                    onNotifBannerClick = {
+                        if (Build.VERSION.SDK_INT >= 33) {
+                            notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                         }
-                    }
-                }
-
-                if (notifGranted && !exactAlarmGranted) {
-                    item {
-                        TextButton(
-                            onClick = {
-                                if (Build.VERSION.SDK_INT >= 31) {
-                                    val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
-                                        data = Uri.parse("package:${context.packageName}")
-                                    }
-                                    runCatching { context.startActivity(intent) }
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth().animateItem(),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.textButtonColors(
-                                containerColor = colors.bannerWarnBg,
-                                contentColor = colors.bannerWarnFg,
-                            ),
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
-                        ) {
-                            Text("Izin alarm tepat waktu nonaktif — ketuk untuk izinkan (wajib agar notifikasi doff tepat waktu)", style = TextStyle(fontSize = 12.sp))
+                    },
+                    onExactAlarmBannerClick = {
+                        if (Build.VERSION.SDK_INT >= 31) {
+                            val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                                data = Uri.parse("package:${context.packageName}")
+                            }
+                            runCatching { context.startActivity(intent) }
                         }
-                    }
-                }
-
-                if (notifGranted && exactAlarmGranted && !batteryUnrestricted) {
-                    item {
-                        TextButton(
-                            onClick = {
-                                // On some OEM skins (e.g. OriginOS), tapping "Tetapkan sekarang" on
-                                // the system dialog doesn't grant the exemption directly — it drops
-                                // the user onto an app-battery-usage page where the real toggle is
-                                // one tap deeper and defaults back to "Dioptimalkan". Walk the user
-                                // through it explicitly instead of assuming the dialog alone works.
-                                uiVm.showConfirm(
-                                    "Supaya notifikasi tidak telat, ikuti langkah ini (cukup sekali saja):\n\n" +
-                                        "1. Pada dialog berikutnya, ketuk \"Tetapkan sekarang\".\n" +
-                                        "2. Di halaman \"Penggunaan baterai aplikasi\", KETUK baris \"Izinkan penggunaan latar belakang\" (walau kelihatan sudah aktif).\n" +
-                                        "3. Pilih \"Tidak dibatasi\" (bukan \"Dioptimalkan\").",
-                                ) {
-                                    val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                                        data = Uri.parse("package:${context.packageName}")
-                                    }
-                                    runCatching { context.startActivity(intent) }
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth().animateItem(),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.textButtonColors(
-                                containerColor = colors.bannerWarnBg,
-                                contentColor = colors.bannerWarnFg,
-                            ),
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+                    },
+                    onBatteryBannerClick = {
+                        // On some OEM skins (e.g. OriginOS), tapping "Tetapkan sekarang" on
+                        // the system dialog doesn't grant the exemption directly — it drops
+                        // the user onto an app-battery-usage page where the real toggle is
+                        // one tap deeper and defaults back to "Dioptimalkan". Walk the user
+                        // through it explicitly instead of assuming the dialog alone works.
+                        uiVm.showConfirm(
+                            "Supaya notifikasi tidak telat, ikuti langkah ini (cukup sekali saja):\n\n" +
+                                "1. Pada dialog berikutnya, ketuk \"Tetapkan sekarang\".\n" +
+                                "2. Di halaman \"Penggunaan baterai aplikasi\", KETUK baris \"Izinkan penggunaan latar belakang\" (walau kelihatan sudah aktif).\n" +
+                                "3. Pilih \"Tidak dibatasi\" (bukan \"Dioptimalkan\").",
                         ) {
-                            Text("Baterai dioptimalkan — ketuk agar notifikasi tidak diblokir sistem", style = TextStyle(fontSize = 12.sp))
+                            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                                data = Uri.parse("package:${context.packageName}")
+                            }
+                            runCatching { context.startActivity(intent) }
                         }
-                    }
-                }
+                    },
+                )
 
                 // The console's mode toggle doubles as a page switcher: ESTIMASI shows the
                 // estimate rows, DOFFING shows the recorded-doff rows.
                 when (mode) {
                     Mode.ESTIMASI -> {
-                        item(key = "est_header") {
-                            SectionHeader(title = "Estimasi", count = radarList.size)
-                        }
-                        if (radarList.isEmpty()) {
-                            item(key = "est_empty") {
-                                EmptyState(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp))
-                            }
-                        } else {
-                            if (segeraList.isNotEmpty()) {
-                                item(key = "segera_head") {
-                                    UrgencyBandHeader(label = "Segera", color = Red400, modifier = Modifier.animateItem())
-                                }
-                                items(segeraList, key = { it.mcNo }) { est ->
-                                    RadarCard(
-                                        est = est,
-                                        mesin = state.db[est.mcNo],
-                                        nowAbs = nowAbs,
-                                        onDoff = { handleDoff(est.mcNo) },
-                                        onHapus = { handleHapusEst(est.mcNo) },
-                                        modifier = Modifier.animateItem(),
-                                    )
-                                }
-                            }
-                            if (menungguList.isNotEmpty()) {
-                                item(key = "menunggu_head") {
-                                    UrgencyBandHeader(label = "Menunggu", color = menungguAccent, modifier = Modifier.animateItem())
-                                }
-                                items(
-                                    menungguRows,
-                                    key = { row ->
-                                        when (row) {
-                                            is MenungguRow.CardRow -> row.est.mcNo
-                                            is MenungguRow.GapRow -> "gap_after_${row.afterMcNo}"
-                                        }
-                                    },
-                                ) { row ->
-                                    when (row) {
-                                        is MenungguRow.CardRow -> RadarCard(
-                                            est = row.est,
-                                            mesin = state.db[row.est.mcNo],
-                                            nowAbs = nowAbs,
-                                            onDoff = { handleDoff(row.est.mcNo) },
-                                            onHapus = { handleHapusEst(row.est.mcNo) },
-                                            modifier = Modifier.animateItem(),
-                                        )
-                                        is MenungguRow.GapRow -> BreakGapCard(
-                                            gapMin = row.gapMin,
-                                            nextMcNo = row.nextMcNo,
-                                            nextAbsMin = row.nextAbsMin,
-                                            modifier = Modifier.animateItem(),
-                                        )
-                                    }
-                                }
-                            }
-                        }
+                        estimasiSection(
+                            radarList = radarList,
+                            segeraList = segeraList,
+                            menungguList = menungguList,
+                            menungguRows = menungguRows,
+                            menungguAccent = menungguAccent,
+                            db = state.db,
+                            nowAbs = nowAbs,
+                            onDoff = { mcNo -> handleDoff(mcNo) },
+                            onHapus = { mcNo -> handleHapusEst(mcNo) },
+                            onQuickEdit = { mcNo -> quickEditMcNo = mcNo },
+                        )
                     }
                     Mode.AKTUAL -> {
-                        item(key = "doff_header") {
-                            SectionHeader(title = "Doffing", count = state.aktual.size)
-                        }
-                        // Always shown — Statistik reads state.history, which survives even when
-                        // the live aktual list is empty right after "Selesai Shift".
-                        item(key = "doff_actions") {
-                            DoffingActions(
-                                onShare = { shareHistory(context, state) },
-                                onStatistik = { statistikOpen = true },
-                                onFinish = {
-                                    uiVm.showConfirm("Akhiri shift? ${state.aktual.size} doff & ${state.estimasi.size} estimasi akan diarsipkan ke Riwayat, lalu konsol dikosongkan untuk shift baru.") {
-                                        NotificationHelper.cancelAll(context, state.estimasi.keys.toList())
-                                        doffVm.finishShift()
-                                        uiVm.showToast("Shift selesai ✓")
-                                    }
-                                },
-                            )
-                        }
-                        if (state.aktual.isEmpty()) {
-                            item(key = "doff_empty") {
-                                EmptyState(
-                                    modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
-                                    title = "Belum ada doff",
-                                    subtitle = "Doff akan muncul di sini setelah kamu proses baris di ESTIMASI/AKTUAL",
-                                )
-                            }
-                        } else {
-                            itemsIndexed(state.aktual.asReversed(), key = { _, e -> e.id }) { idx, entry ->
-                                DoffingRow(
-                                    entry = entry,
-                                    mesin = state.db[entry.mcNo],
-                                    num = idx + 1,
-                                    onClick = { editAktId = entry.id },
-                                    modifier = Modifier.animateItem(),
-                                )
-                            }
-                        }
+                        doffingSection(
+                            state = state,
+                            aktualReversed = aktualReversed,
+                            onShare = { shareHistory(context, state) },
+                            onStatistik = { statistikOpen = true },
+                            onFinish = {
+                                uiVm.showConfirm("Akhiri shift? ${state.aktual.size} doff & ${state.estimasi.size} estimasi akan diarsipkan ke Riwayat, lalu konsol dikosongkan untuk shift baru.") {
+                                    NotificationHelper.cancelAll(context, state.estimasi.keys.toList())
+                                    doffVm.finishShift()
+                                    uiVm.showToast("Shift selesai ✓")
+                                }
+                            },
+                            onEntryClick = { id -> editAktId = id },
+                        )
                     }
                 }
             }
         }
 
         // Header — floating card, overlays the list (list scrolls behind it)
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .fillMaxWidth()
-                .onGloballyPositioned { coords ->
-                    headerHeight = with(density) { coords.size.height.toDp() }
-                }
-                .padding(horizontal = 12.dp)
-                .padding(top = 12.dp)
-                .shadow(elevation = 16.dp, shape = RoundedCornerShape(28.dp))
-                .clip(RoundedCornerShape(28.dp))
-                .border(1.dp, colors.border, RoundedCornerShape(28.dp))
-                .background(colors.bgElevated),
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                // Branding — a one-shot ~320ms tap pulse: logo settles to 0.97, the dot hops up
-                // 7dp and a thin glow blooms from it, all finishing on their own (not tied to how
-                // long the finger stays down) so repeated daily taps stay quick and subtle.
-                var brandPulseKey by remember { mutableStateOf(0) }
-                val brandScale = remember { Animatable(1f) }
-                val dotOffsetY = remember { Animatable(0f) }
-                val glowAlpha = remember { Animatable(0f) }
-                val glowScale = remember { Animatable(0.6f) }
-                LaunchedEffect(brandPulseKey) {
-                    if (brandPulseKey == 0) return@LaunchedEffect
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    launch {
-                        brandScale.animateTo(0.97f, tween(90, easing = FastOutSlowInEasing))
-                        brandScale.animateTo(1f, tween(200, easing = FastOutSlowInEasing))
-                    }
-                    launch {
-                        dotOffsetY.animateTo(-7f, tween(120, easing = FastOutSlowInEasing))
-                        dotOffsetY.animateTo(0f, tween(180, easing = FastOutSlowInEasing))
-                    }
-                    launch {
-                        glowScale.snapTo(0.6f)
-                        glowAlpha.snapTo(0.4f)
-                        launch { glowAlpha.animateTo(0f, tween(300, easing = LinearOutSlowInEasing)) }
-                        glowScale.animateTo(2.2f, tween(320, easing = LinearOutSlowInEasing))
-                    }
-                }
-                val shiftLabel = remember(nowAbs) {
-                    val cal = Calendar.getInstance().apply { timeInMillis = nowAbs * 60000L }
-                    "Shift ${shiftNumberForEpochMin(nowAbs)} · %02d/%02d".format(cal.get(Calendar.DAY_OF_MONTH), cal.get(Calendar.MONTH) + 1)
-                }
-                Column {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .graphicsLayer { scaleX = brandScale.value; scaleY = brandScale.value }
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                            ) { brandPulseKey++ },
-                    ) {
-                        Text(
-                            text = "Adoel",
-                            style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Black, color = colors.textPrimary, letterSpacing = (-0.5).sp),
-                        )
-                        Text(
-                            text = ".",
-                            modifier = Modifier
-                                .offset(y = dotOffsetY.value.dp)
-                                .drawBehind {
-                                    drawCircle(
-                                        color = Amber500.copy(alpha = glowAlpha.value),
-                                        radius = (size.minDimension.coerceAtLeast(20f)) * glowScale.value,
-                                        center = androidx.compose.ui.geometry.Offset(size.width / 2f, size.height / 2f),
-                                    )
-                                },
-                            style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Black, color = Amber500),
-                        )
-                    }
-                    Text(
-                        text = shiftLabel,
-                        style = TextStyle(fontSize = 9.sp, color = colors.textFaint),
-                    )
-                }
+        MainScreenHeader(
+            nowAbs = nowAbs,
+            totalMc = totalMc,
+            doffCount = doffCount,
+            showRemaining = showRemaining,
+            onToggleShowRemaining = { showRemaining = !showRemaining },
+            onGearClick = { settingsOpen = true },
+            onHeightMeasured = { headerHeight = it },
+            haptic = haptic,
+            modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth(),
+        )
 
-                // Shift progress — centered between branding and the menu icon
-                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                    if (totalMc > 0) {
-                        val remainingMc = totalMc - doffCount
-                        val shiftFraction = doffCount.toFloat() / totalMc
-                        val animatedFraction by animateFloatAsState(
-                            targetValue = shiftFraction.coerceIn(0f, 1f),
-                            animationSpec = tween(400),
-                            label = "shiftProgress",
-                        )
-                        Column(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(10.dp))
-                                .clickable {
-                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    showRemaining = !showRemaining
-                                }
-                                .padding(horizontal = 10.dp, vertical = 4.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            Text(
-                                text = when {
-                                    !showRemaining -> "$doffCount/$totalMc"
-                                    remainingMc <= 0 -> "Selesai"
-                                    else -> "$remainingMc lagi"
-                                },
-                                style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Cyan400),
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            LinearProgressBar(
-                                fraction = animatedFraction,
-                                trackColor = colors.bgElevated2,
-                                fillColor = Cyan500,
-                            )
-                        }
-                    }
-                }
-
-                // Gear button
-                IconButton(
-                    onClick = { settingsOpen = true },
-                ) {
-                    GearIcon()
-                }
-            }
-        }
-
-        // Console command bar — floating card, overlays the list (list scrolls behind it).
-        // imePadding() sits outside the card's own shape/shadow/margin so the whole card
-        // rises above the keyboard as one floating unit instead of fusing flush to it.
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .imePadding()
-                .onGloballyPositioned { coords ->
-                    consoleBarHeight = with(density) { coords.size.height.toDp() }
-                }
-                .padding(horizontal = 12.dp)
-                .padding(bottom = 12.dp)
-                .shadow(elevation = 16.dp, shape = RoundedCornerShape(28.dp))
-                .clip(RoundedCornerShape(28.dp))
-                .border(1.dp, colors.border, RoundedCornerShape(28.dp))
-                .background(colors.bgElevated),
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp)
-                    .padding(top = 10.dp)
-                    .navigationBarsPadding()
-                    .padding(bottom = 10.dp),
-            ) {
-                // Mode toggle
-                SlidingToggle(
-                    labelLeft = "ESTIMASI",
-                    labelRight = "DOFFING",
-                    selectedIndex = if (mode == Mode.ESTIMASI) 0 else 1,
-                    onSelect = { mode = if (it == 0) Mode.ESTIMASI else Mode.AKTUAL },
-                    containerColor = colors.bgElevated2,
-                    activeColorLeft = Amber500,
-                    activeColorRight = Cyan600,
-                    activeTextColorLeft = Zinc950,
-                    activeTextColorRight = Zinc100,
-                    inactiveTextColor = colors.textMuted,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-
-                Spacer(Modifier.height(10.dp))
-
-                // Command row
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    OutlinedTextField(
-                        value = input,
-                        onValueChange = { input = it.uppercase() },
-                        modifier = Modifier.weight(1f).focusRequester(inputFocus),
-                        placeholder = {
-                            Text(
-                                if (mode == Mode.ESTIMASI) "cth: 31 45" else "cth: 31 HB",
-                                color = colors.textFaint,
-                            )
-                        },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Cyan500,
-                            unfocusedBorderColor = colors.border,
-                            cursorColor = Cyan500,
-                            focusedContainerColor = colors.bgElevated2,
-                            unfocusedContainerColor = colors.bgElevated2,
-                        ),
-                        shape = RoundedCornerShape(50.dp),
-                        textStyle = TextStyle(
-                            color = colors.textPrimary,
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Monospace,
-                            letterSpacing = (-0.5).sp,
-                        ),
-                        keyboardOptions = KeyboardOptions(
-                            capitalization = KeyboardCapitalization.Characters,
-                            imeAction = ImeAction.Send,
-                        ),
-                        keyboardActions = KeyboardActions(onSend = { handleCommand() }),
-                        singleLine = true,
-                    )
-                    // Send button — bounces and briefly flashes a checkmark on a successful submit
-                    Button(
-                        onClick = { handleCommand() },
-                        modifier = Modifier
-                            .size(56.dp)
-                            .graphicsLayer { scaleX = sendScale.value; scaleY = sendScale.value }
-                            .shadow(elevation = 8.dp, shape = CircleShape, ambientColor = Cyan600.copy(alpha = 0.6f)),
-                        shape = CircleShape,
-                        colors = ButtonDefaults.buttonColors(containerColor = if (sendShowCheck) Emerald500 else Cyan600),
-                        contentPadding = PaddingValues(0.dp),
-                    ) {
-                        Crossfade(targetState = sendShowCheck, label = "sendIcon") { showCheck ->
-                            if (showCheck) CheckIcon() else SendIcon()
-                        }
-                    }
-                }
-            }
-        }
+        // Console command bar — floating card, overlays the list (list scrolls behind it)
+        ConsoleBar(
+            mode = mode,
+            onModeSelect = { mode = it },
+            input = input,
+            onInputChange = { input = it },
+            inputFocus = inputFocus,
+            onSend = { handleCommand() },
+            sendScale = sendScale.value,
+            sendShowCheck = sendShowCheck,
+            onHeightMeasured = { consoleBarHeight = it },
+            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
+        )
 
         // Toast — floats just above the floating console card, never covers it
         Box(
@@ -770,6 +461,21 @@ fun MainScreen(
         )
     }
 
+    quickEditMcNo?.let { mcNo ->
+        val mesin = state.db[mcNo] ?: MesinData()
+        QuickEditCorakDialog(
+            mcNo = mcNo,
+            corak = mesin.corak,
+            targetYard = mesin.targetYard,
+            onDismiss = { quickEditMcNo = null },
+            onSave = { corak, targetYard ->
+                doffVm.setMesin(mcNo, mesin.copy(corak = corak, targetYard = targetYard))
+                uiVm.showToast("Mc $mcNo disimpan ✓")
+                quickEditMcNo = null
+            },
+        )
+    }
+
     if (!state.onboardingSeen) {
         OnboardingDialog(onClose = { doffVm.setOnboardingSeen() })
     }
@@ -781,7 +487,7 @@ fun MainScreen(
 }
 
 @Composable
-private fun SectionHeader(title: String, count: Int) {
+internal fun SectionHeader(title: String, count: Int) {
     val colors = LocalAppColors.current
     Row(
         modifier = Modifier
@@ -792,160 +498,12 @@ private fun SectionHeader(title: String, count: Int) {
     ) {
         Text(
             text = title,
-            style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp, color = colors.textPrimary),
+            style = AppType.TabLabel.copy(letterSpacing = 0.5.sp, color = colors.textPrimary),
         )
         if (count > 0) {
             Text(
                 text = "$count",
                 style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = colors.textFaint),
-            )
-        }
-    }
-}
-
-@Composable
-private fun DoffingActions(onShare: () -> Unit, onStatistik: () -> Unit, onFinish: () -> Unit) {
-    val colors = LocalAppColors.current
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        OutlinedButton(
-            onClick = onShare,
-            modifier = Modifier.weight(1f).height(44.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
-            border = BorderStroke(1.dp, colors.border),
-        ) { Text("Bagikan", style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold)) }
-        OutlinedButton(
-            onClick = onStatistik,
-            modifier = Modifier.weight(1f).height(44.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
-            border = BorderStroke(1.dp, colors.border),
-        ) { Text("Statistik", style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold)) }
-        OutlinedButton(
-            onClick = onFinish,
-            modifier = Modifier.weight(1f).height(44.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = Red400),
-            border = BorderStroke(1.dp, Red700.copy(alpha = 0.5f)),
-        ) { Text("Selesai Shift", style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold)) }
-    }
-}
-
-@Composable
-private fun DoffingRow(
-    entry: AktualEntry,
-    mesin: MesinData?,
-    num: Int,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val colors = LocalAppColors.current
-    val corak = entry.corakOverride ?: mesin?.corak ?: "—"
-    val sub = when {
-        entry.customYard != null -> "$corak · ${formatYard(entry.customYard)}y"
-        mesin?.targetYard != null -> "$corak · ${formatYard(mesin.targetYard)}y"
-        else -> corak
-    }
-    val dotColor = when (mesin?.tipe) {
-        MesinTipe.TAPPET -> Teal500
-        MesinTipe.CAM -> Violet500
-        MesinTipe.D405 -> Amber500
-        MesinTipe.D408 -> Sky500
-        null -> colors.textFaint
-    }
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .shadow(elevation = 3.dp, shape = RoundedCornerShape(14.dp), ambientColor = Color.Black.copy(alpha = 0.3f))
-            .clip(RoundedCornerShape(14.dp))
-            .background(colors.bgElevated)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 11.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Text(
-            text = "$num",
-            style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Black, color = colors.textMuted),
-            modifier = Modifier.width(22.dp),
-        )
-        Box(Modifier.size(8.dp).clip(CircleShape).background(dotColor))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = entry.mcNo,
-                style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Black, color = Cyan500, letterSpacing = (-1).sp),
-            )
-            Text(
-                text = sub,
-                style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = colors.textMuted),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        Text(
-            text = entry.ket,
-            style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary),
-        )
-    }
-}
-
-@Composable
-private fun UrgencyBandHeader(label: String, color: Color, modifier: Modifier = Modifier) {
-    val animatedColor by animateColorAsState(color, animationSpec = tween(300), label = "urgencyBandColor")
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .heightIn(min = 44.dp)
-            .padding(horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Box(
-                modifier = Modifier
-                    .size(6.dp)
-                    .clip(CircleShape)
-                    .background(animatedColor),
-            )
-            Text(
-                text = label,
-                style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = animatedColor),
-            )
-        }
-    }
-}
-
-/** Sits between two RadarCards in the Menunggu band when the gap to the next doff is long
- * enough to actually step away — tells the operator how long, and what's next when they're back. */
-@Composable
-private fun BreakGapCard(gapMin: Long, nextMcNo: String, nextAbsMin: Long, modifier: Modifier = Modifier) {
-    val colors = LocalAppColors.current
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(colors.bgElevated2.copy(alpha = 0.5f))
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Icon(
-            imageVector = Icons.Outlined.FreeBreakfast,
-            contentDescription = null,
-            tint = colors.textMuted,
-            modifier = Modifier.size(18.dp),
-        )
-        Column {
-            Text(
-                text = "Jeda ${formatDeltaMin(gapMin)} — waktu istirahat",
-                style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = colors.textSecondary),
-            )
-            Text(
-                text = "Sebelum Mc $nextMcNo · ${absMinToTimeStr(nextAbsMin)}",
-                style = TextStyle(fontSize = 11.sp, color = colors.textFaint),
             )
         }
     }
@@ -976,31 +534,9 @@ fun EmptyState(
         )
         Text(
             text = subtitle,
-            style = TextStyle(fontSize = 12.sp, color = colors.textFaint, lineHeight = 17.sp),
+            style = AppType.Caption.copy(color = colors.textFaint, lineHeight = 17.sp),
             modifier = Modifier.padding(horizontal = 32.dp),
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
     }
-}
-
-private fun shareHistory(context: Context, state: DoffState) {
-    val cal = Calendar.getInstance()
-    val dateStr = "%02d/%02d/%04d".format(
-        cal.get(Calendar.DAY_OF_MONTH),
-        cal.get(Calendar.MONTH) + 1,
-        cal.get(Calendar.YEAR),
-    )
-    val lines = state.aktual.asReversed().mapIndexed { i, a ->
-        val mesin = state.db[a.mcNo]
-        val corak = a.corakOverride ?: mesin?.corak ?: "—"
-        val yard = a.customYard ?: mesin?.targetYard
-        val suffix = if (yard != null) " [${formatYard(yard)}y]" else ""
-        "${i + 1}. Mc${a.mcNo} - $corak$suffix - ${a.ket}"
-    }
-    val text = "Bravo!!!\n$dateStr\n\n${lines.joinToString("\n")}\n\nTotal: ${state.aktual.size} doff"
-    val intent = Intent(Intent.ACTION_SEND).apply {
-        type = "text/plain"
-        putExtra(Intent.EXTRA_TEXT, text)
-    }
-    runCatching { context.startActivity(Intent.createChooser(intent, "Bagikan riwayat")) }
 }

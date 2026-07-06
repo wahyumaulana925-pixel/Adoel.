@@ -37,6 +37,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.jekael.adoel.ui.theme.AppType
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -148,11 +149,7 @@ fun SlidingToggle(
                 ) {
                     Text(
                         labelLeft,
-                        style = TextStyle(
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (pos < 0.5f) activeTextColorLeft else inactiveTextColor,
-                        ),
+                        style = AppType.TabLabel.copy(color = if (pos < 0.5f) activeTextColorLeft else inactiveTextColor),
                     )
                 }
                 Box(
@@ -161,11 +158,7 @@ fun SlidingToggle(
                 ) {
                     Text(
                         labelRight,
-                        style = TextStyle(
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (pos >= 0.5f) activeTextColorRight else inactiveTextColor,
-                        ),
+                        style = AppType.TabLabel.copy(color = if (pos >= 0.5f) activeTextColorRight else inactiveTextColor),
                     )
                 }
             }

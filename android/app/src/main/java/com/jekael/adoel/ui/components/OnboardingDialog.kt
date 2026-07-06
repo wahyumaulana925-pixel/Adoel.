@@ -13,8 +13,9 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.jekael.adoel.ui.theme.AppType
+import com.jekael.adoel.ui.theme.Cyan600
 import com.jekael.adoel.ui.theme.LocalAppColors
-import com.jekael.adoel.ui.theme.Teal500
 
 /**
  * Light first-run explainer — also reachable anytime via Pengaturan > Data > Bantuan, so the
@@ -24,7 +25,7 @@ import com.jekael.adoel.ui.theme.Teal500
 fun OnboardingDialog(onClose: () -> Unit) {
     val colors = LocalAppColors.current
     FloatingEditDialog(onDismissRequest = onClose) {
-        Text("Cara Pakai Adoel", style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary))
+        Text("Cara Pakai Adoel", style = AppType.DialogTitle.copy(color = colors.textPrimary))
         Spacer(Modifier.height(16.dp))
 
         val bullets = listOf(
@@ -36,7 +37,7 @@ fun OnboardingDialog(onClose: () -> Unit) {
         bullets.forEach {
             Text(
                 "•  $it",
-                style = TextStyle(fontSize = 13.sp, color = colors.textSecondary, lineHeight = 18.sp),
+                style = AppType.BodySmall.copy(color = colors.textSecondary, lineHeight = 18.sp),
             )
             Spacer(Modifier.height(10.dp))
         }
@@ -46,7 +47,7 @@ fun OnboardingDialog(onClose: () -> Unit) {
             onClick = onClose,
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Teal500),
+            colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
         ) { Text("Mengerti", fontWeight = FontWeight.SemiBold) }
     }
 }

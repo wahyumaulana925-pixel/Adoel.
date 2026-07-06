@@ -1,5 +1,7 @@
 package com.jekael.adoel.ui
 
+import android.content.Context
+import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -42,6 +44,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -50,10 +53,13 @@ import androidx.compose.ui.unit.sp
 import com.jekael.adoel.data.MesinData
 import com.jekael.adoel.data.ShiftRecord
 import com.jekael.adoel.data.formatDeltaMin
+import com.jekael.adoel.data.formatYard
 import com.jekael.adoel.data.shiftNumberForEpochMin
 import com.jekael.adoel.ui.components.CloseIcon
 import com.jekael.adoel.ui.components.LinearProgressBar
+import com.jekael.adoel.ui.components.ShareIcon
 import com.jekael.adoel.ui.components.TrashIcon
+import com.jekael.adoel.ui.theme.AppType
 import com.jekael.adoel.ui.theme.Cyan400
 import com.jekael.adoel.ui.theme.Cyan500
 import com.jekael.adoel.ui.theme.LocalAppColors
@@ -179,7 +185,7 @@ fun StatistikScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("Statistik", style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary))
+                    Text("Statistik", style = AppType.DialogTitle.copy(color = colors.textPrimary))
                     IconButton(onClick = { requestClose() }) {
                         CloseIcon()
                     }
@@ -232,7 +238,7 @@ private fun AggregateStatsCard(
 private fun StatFigure(label: String, value: String) {
     val colors = LocalAppColors.current
     Column {
-        Text(value, style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Black, color = colors.textPrimary))
+        Text(value, style = AppType.NumberLarge.copy(color = colors.textPrimary))
         Text(label, style = TextStyle(fontSize = 11.sp, color = colors.textFaint))
     }
 }
@@ -323,6 +329,7 @@ private fun ShiftRow(
     modifier: Modifier = Modifier,
 ) {
     val colors = LocalAppColors.current
+    val context = LocalContext.current
     val shiftNo = remember(shift.startedAtEpochMin) { shiftNumberForEpochMin(shift.startedAtEpochMin) }
     val dateStr = remember(shift.startedAtEpochMin) { formatShiftDate(shift.startedAtEpochMin) }
     val timeRange = remember(shift.startedAtEpochMin, shift.endedAtEpochMin) {
@@ -352,7 +359,7 @@ private fun ShiftRow(
                     "Shift $shiftNo · $dateStr",
                     style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary),
                 )
-                Text(timeRange, style = TextStyle(fontSize = 12.sp, color = colors.textFaint))
+                Text(timeRange, style = AppType.Caption.copy(color = colors.textFaint))
                 Spacer(Modifier.height(6.dp))
                 LinearProgressBar(
                     fraction = shift.aktual.size.toFloat() / maxDoffCount,
@@ -363,12 +370,20 @@ private fun ShiftRow(
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(horizontalAlignment = Alignment.End) {
-                    Text("${shift.aktual.size} doff", style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Cyan400))
+                    Text("${shift.aktual.size} doff", style = AppType.TabLabel.copy(color = Cyan400))
                     if (avgGapMin != null) {
                         Text(
                             "±${formatDeltaMin(avgGapMin.toLong())}/doff",
                             style = TextStyle(fontSize = 11.sp, color = colors.textFaint),
                         )
+                    }
+                }
+                // Bagikan langsung — bukan salin, supaya tidak perlu ganti aplikasi lalu tempel
+                // manual. Disembunyikan untuk shift tanpa doff (mis. diarsipkan dengan estimasi
+                // yang belum sempat diselesaikan) karena tidak ada yang berarti untuk dibagikan.
+                if (shift.aktual.isNotEmpty()) {
+                    IconButton(onClick = { shareShift(context, shift, db) }) {
+                        ShareIcon()
                     }
                 }
                 IconButton(onClick = {
@@ -385,12 +400,17 @@ private fun ShiftRow(
             Spacer(Modifier.height(10.dp))
             chronological.forEach { entry ->
                 val corak = entry.corakOverride ?: db[entry.mcNo]?.corak ?: "—"
+                // Yard sudah terlihat di layar Doffing sebelum "Selesai Shift" mengarsipkannya ke
+                // sini — datanya tetap tersimpan di AktualEntry, jadi riwayat semestinya tetap
+                // menunjukkannya alih-alih diam-diam menghilang begitu shift diarsipkan.
+                val yard = entry.customYard ?: db[entry.mcNo]?.targetYard
+                val corakLine = if (yard != null) "$corak · ${formatYard(yard)}y" else corak
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Text("Mc ${entry.mcNo} · $corak · ${entry.ket}", style = TextStyle(fontSize = 12.sp, color = colors.textSecondary))
-                    Text(entry.jam, style = TextStyle(fontSize = 12.sp, color = colors.textFaint))
+                    Text("Mc ${entry.mcNo} · $corakLine · ${entry.ket}", style = AppType.Caption.copy(color = colors.textSecondary))
+                    Text(entry.jam, style = AppType.Caption.copy(color = colors.textFaint))
                 }
             }
         }
@@ -410,4 +430,26 @@ private fun formatShiftShortDate(epochMin: Long): String {
 private fun formatShiftTime(epochMin: Long): String {
     val cal = Calendar.getInstance().apply { timeInMillis = epochMin * 60000L }
     return "%02d.%02d".format(cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE))
+}
+
+/** Re-share a single archived shift — mirrors MainScreen's shareHistory format/tone exactly
+ * (same "Bravo!!!" casual register, same audience: rekan kerja), for whenever an operator needs
+ * to resend a specific day's record instead of the whole running total. Opens the share-sheet
+ * directly instead of a copy-then-paste round trip. */
+private fun shareShift(context: Context, shift: ShiftRecord, db: Map<String, MesinData>) {
+    val shiftNo = shiftNumberForEpochMin(shift.startedAtEpochMin)
+    val dateStr = formatShiftDate(shift.startedAtEpochMin)
+    val lines = shift.aktual.asReversed().mapIndexed { i, a ->
+        val mesin = db[a.mcNo]
+        val corak = a.corakOverride ?: mesin?.corak ?: "—"
+        val yard = a.customYard ?: mesin?.targetYard
+        val suffix = if (yard != null) " · ${formatYard(yard)}y" else ""
+        "${i + 1}. Mc${a.mcNo} · $corak$suffix · ${a.ket}"
+    }
+    val text = "Bravo!!!\nShift $shiftNo · $dateStr\n\n*Selesai (${shift.aktual.size} doff)*\n${lines.joinToString("\n")}\n\nTotal: ${shift.aktual.size} doff"
+    val intent = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_TEXT, text)
+    }
+    runCatching { context.startActivity(Intent.createChooser(intent, "Bagikan shift")) }
 }

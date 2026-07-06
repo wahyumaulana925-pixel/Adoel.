@@ -45,8 +45,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
+import com.jekael.adoel.ui.theme.Cyan500
 import com.jekael.adoel.ui.theme.LocalAppColors
-import com.jekael.adoel.ui.theme.Teal500
 
 @Composable
 fun FieldLabel(text: String) {
@@ -67,9 +67,9 @@ fun FieldLabel(text: String) {
 fun outlinedFieldColors(): TextFieldColors {
     val colors = LocalAppColors.current
     return OutlinedTextFieldDefaults.colors(
-        focusedBorderColor = Teal500,
+        focusedBorderColor = Cyan500,
         unfocusedBorderColor = colors.border,
-        cursorColor = Teal500,
+        cursorColor = Cyan500,
         focusedContainerColor = colors.bgElevated2,
         unfocusedContainerColor = colors.bgElevated2,
     )

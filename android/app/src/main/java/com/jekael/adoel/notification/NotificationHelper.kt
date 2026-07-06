@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
@@ -24,6 +25,19 @@ object NotificationHelper {
     // to the alert at the estimate itself, so the operator has time to walk over.
     private const val REMINDER_LEAD_MIN = 5L
     private const val REMINDER_ID_OFFSET = 100_000
+
+    // The launcher bitmap never changes at runtime, so decode+scale it once instead of on every
+    // single notification post — doff alerts can fire dozens of times per shift.
+    @Volatile private var cachedLargeIcon: Bitmap? = null
+
+    private fun largeIcon(context: Context): Bitmap? {
+        cachedLargeIcon?.let { return it }
+        val decoded = runCatching {
+            ContextCompat.getDrawable(context, R.mipmap.ic_launcher)?.toBitmap(width = 128, height = 128)
+        }.getOrNull()
+        cachedLargeIcon = decoded
+        return decoded
+    }
 
     fun createChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -118,9 +132,7 @@ object NotificationHelper {
         // Two icon elements, same as every other app's notifications (WhatsApp, Chrome, etc.):
         // the small icon (status bar, forced monochrome by Android) and the large icon (shown
         // prominently in the notification shade, full color — the actual launcher "A." bitmap).
-        val largeIcon = runCatching {
-            ContextCompat.getDrawable(context, R.mipmap.ic_launcher)?.toBitmap(width = 128, height = 128)
-        }.getOrNull()
+        val largeIcon = largeIcon(context)
 
         val notif = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
