@@ -161,7 +161,7 @@ fun EditAktSheet(
                     modifier = Modifier.weight(1f).height(48.dp),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Teal500,
+                        containerColor = Cyan600,
                         disabledContainerColor = Emerald500,
                         disabledContentColor = Color.White,
                     ),

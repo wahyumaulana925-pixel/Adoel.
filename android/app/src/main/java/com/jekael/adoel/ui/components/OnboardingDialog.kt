@@ -13,8 +13,8 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.jekael.adoel.ui.theme.Cyan600
 import com.jekael.adoel.ui.theme.LocalAppColors
-import com.jekael.adoel.ui.theme.Teal500
 
 /**
  * Light first-run explainer — also reachable anytime via Pengaturan > Data > Bantuan, so the
@@ -46,7 +46,7 @@ fun OnboardingDialog(onClose: () -> Unit) {
             onClick = onClose,
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Teal500),
+            colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
         ) { Text("Mengerti", fontWeight = FontWeight.SemiBold) }
     }
 }

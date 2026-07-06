@@ -1,5 +1,8 @@
 package com.jekael.adoel.ui
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -42,6 +45,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -52,6 +56,7 @@ import com.jekael.adoel.data.ShiftRecord
 import com.jekael.adoel.data.formatDeltaMin
 import com.jekael.adoel.data.shiftNumberForEpochMin
 import com.jekael.adoel.ui.components.CloseIcon
+import com.jekael.adoel.ui.components.CopyIcon
 import com.jekael.adoel.ui.components.LinearProgressBar
 import com.jekael.adoel.ui.components.TrashIcon
 import com.jekael.adoel.ui.theme.Cyan400
@@ -73,8 +78,10 @@ fun StatistikScreen(
     onClose: () -> Unit,
     onDeleteShift: (Int) -> Unit,
     showConfirm: (String, () -> Unit) -> Unit,
+    showToast: (String) -> Unit,
 ) {
     val colors = LocalAppColors.current
+    val context = LocalContext.current
     var visible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { visible = true }
 
@@ -180,8 +187,17 @@ fun StatistikScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text("Statistik", style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary))
-                    IconButton(onClick = { requestClose() }) {
-                        CloseIcon()
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Ini sumber data laporan resmi ke atasan — sebelumnya harus diketik ulang
+                        // manual dari layar; sekarang bisa langsung disalin sebagai teks siap tempel.
+                        if (history.isNotEmpty()) {
+                            IconButton(onClick = { copySummaryToClipboard(context, history, showToast) }) {
+                                CopyIcon()
+                            }
+                        }
+                        IconButton(onClick = { requestClose() }) {
+                            CloseIcon()
+                        }
                     }
                 }
             }
@@ -410,4 +426,29 @@ private fun formatShiftShortDate(epochMin: Long): String {
 private fun formatShiftTime(epochMin: Long): String {
     val cal = Calendar.getInstance().apply { timeInMillis = epochMin * 60000L }
     return "%02d.%02d".format(cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE))
+}
+
+/** Formal-toned text summary of shift history — for pasting into a written report to atasan,
+ * as opposed to MainScreen's shareHistory (casual, WhatsApp-to-rekan tone). */
+private fun buildStatistikSummary(history: List<ShiftRecord>): String {
+    val totalDoff = history.sumOf { it.aktual.size }
+    val avgPerShift = if (history.isNotEmpty()) totalDoff.toFloat() / history.size else 0f
+    val rows = history.asReversed().map { shift ->
+        val shiftNo = shiftNumberForEpochMin(shift.startedAtEpochMin)
+        val dateStr = formatShiftDate(shift.startedAtEpochMin)
+        val timeRange = "${formatShiftTime(shift.startedAtEpochMin)}–${formatShiftTime(shift.endedAtEpochMin)}"
+        "Shift $shiftNo · $dateStr ($timeRange) — ${shift.aktual.size} doff"
+    }
+    return "Laporan Statistik Doffing\n" +
+        "Total shift: ${history.size}\n" +
+        "Total doff: $totalDoff\n" +
+        "Rata-rata/shift: %.1f".format(avgPerShift) +
+        "\n\nRincian per shift:\n${rows.joinToString("\n")}"
+}
+
+private fun copySummaryToClipboard(context: Context, history: List<ShiftRecord>, showToast: (String) -> Unit) {
+    val text = buildStatistikSummary(history)
+    val clipboard = context.getSystemService(ClipboardManager::class.java)
+    clipboard.setPrimaryClip(ClipData.newPlainText("Ringkasan Statistik", text))
+    showToast("Ringkasan disalin ✓")
 }

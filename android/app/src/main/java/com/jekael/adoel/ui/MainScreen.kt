@@ -23,8 +23,10 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -78,6 +80,10 @@ private enum class Mode { ESTIMASI, AKTUAL }
  * break window — short enough to still be actionable, long enough to actually leave the floor. */
 private const val BREAK_GAP_THRESHOLD_MIN = 30L
 
+/** Standard keterangan codes (mirrors standarisasiKeterangan in Models.kt) offered as tap targets
+ * above the console so an operator doesn't have to recall/type the exact spelling from memory. */
+private val KETERANGAN_CHIPS = listOf("HB", "P.LP", "P.SN", "P.OH", "P.EL", "P.Sel")
+
 private sealed class MenungguRow {
     data class CardRow(val est: Estimasi) : MenungguRow()
     data class GapRow(val afterMcNo: String, val nextMcNo: String, val gapMin: Long, val nextAbsMin: Long) : MenungguRow()
@@ -122,6 +128,7 @@ fun MainScreen(
     var settingsOpen by remember { mutableStateOf(false) }
     var statistikOpen by remember { mutableStateOf(false) }
     var editAktId by remember { mutableStateOf<Int?>(null) }
+    var quickEditMcNo by remember { mutableStateOf<String?>(null) }
     var showRemaining by remember { mutableStateOf(false) }
 
     val inputFocus = remember { FocusRequester() }
@@ -265,6 +272,7 @@ fun MainScreen(
     val totalMc = remember(state.estimasi, state.aktual) {
         (state.estimasi.keys + state.aktual.map { it.mcNo }).toSet().size
     }
+    val aktualReversed = remember(state.aktual) { state.aktual.asReversed() }
 
     Box(
         modifier = Modifier
@@ -386,6 +394,7 @@ fun MainScreen(
                                         nowAbs = nowAbs,
                                         onDoff = { handleDoff(est.mcNo) },
                                         onHapus = { handleHapusEst(est.mcNo) },
+                                        onQuickEdit = { quickEditMcNo = est.mcNo },
                                         modifier = Modifier.animateItem(),
                                     )
                                 }
@@ -410,6 +419,7 @@ fun MainScreen(
                                             nowAbs = nowAbs,
                                             onDoff = { handleDoff(row.est.mcNo) },
                                             onHapus = { handleHapusEst(row.est.mcNo) },
+                                            onQuickEdit = { quickEditMcNo = row.est.mcNo },
                                             modifier = Modifier.animateItem(),
                                         )
                                         is MenungguRow.GapRow -> BreakGapCard(
@@ -451,7 +461,7 @@ fun MainScreen(
                                 )
                             }
                         } else {
-                            itemsIndexed(state.aktual.asReversed(), key = { _, e -> e.id }) { idx, entry ->
+                            itemsIndexed(aktualReversed, key = { _, e -> e.id }) { idx, entry ->
                                 DoffingRow(
                                     entry = entry,
                                     mesin = state.db[entry.mcNo],
@@ -547,7 +557,7 @@ fun MainScreen(
                     }
                     Text(
                         text = shiftLabel,
-                        style = TextStyle(fontSize = 9.sp, color = colors.textFaint),
+                        style = TextStyle(fontSize = 12.sp, color = colors.textFaint),
                     )
                 }
 
@@ -577,7 +587,7 @@ fun MainScreen(
                                     remainingMc <= 0 -> "Selesai"
                                     else -> "$remainingMc lagi"
                                 },
-                                style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Cyan400),
+                                style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Cyan400),
                             )
                             Spacer(Modifier.height(4.dp))
                             LinearProgressBar(
@@ -638,6 +648,16 @@ fun MainScreen(
                     inactiveTextColor = colors.textMuted,
                     modifier = Modifier.fillMaxWidth(),
                 )
+
+                // Quick keterangan chips — lets an operator tap a standard code (HB, P.LP, dst.)
+                // instead of having to recall/type its exact spelling from memory every time.
+                if (mode == Mode.AKTUAL) {
+                    Spacer(Modifier.height(8.dp))
+                    KeteranganChips(
+                        onPick = { code -> input = (input.trimEnd() + " " + code).trimStart() },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
 
                 Spacer(Modifier.height(10.dp))
 
@@ -750,6 +770,7 @@ fun MainScreen(
                 onClose = { statistikOpen = false },
                 onDeleteShift = { id -> doffVm.hapusShift(id) },
                 showConfirm = { msg, fn -> uiVm.showConfirm(msg, onConfirm = fn) },
+                showToast = { uiVm.showToast(it) },
             )
         }
     }
@@ -770,6 +791,21 @@ fun MainScreen(
         )
     }
 
+    quickEditMcNo?.let { mcNo ->
+        val mesin = state.db[mcNo] ?: MesinData()
+        QuickEditCorakDialog(
+            mcNo = mcNo,
+            corak = mesin.corak,
+            targetYard = mesin.targetYard,
+            onDismiss = { quickEditMcNo = null },
+            onSave = { corak, targetYard ->
+                doffVm.setMesin(mcNo, mesin.copy(corak = corak, targetYard = targetYard))
+                uiVm.showToast("Mc $mcNo disimpan ✓")
+                quickEditMcNo = null
+            },
+        )
+    }
+
     if (!state.onboardingSeen) {
         OnboardingDialog(onClose = { doffVm.setOnboardingSeen() })
     }
@@ -778,6 +814,31 @@ fun MainScreen(
         confirm = confirm,
         onDismiss = { uiVm.dismissConfirm() },
     )
+}
+
+@Composable
+private fun KeteranganChips(onPick: (String) -> Unit, modifier: Modifier = Modifier) {
+    val colors = LocalAppColors.current
+    Row(
+        modifier = modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        KETERANGAN_CHIPS.forEach { code ->
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50.dp))
+                    .background(colors.bgElevated2)
+                    .clickable { onPick(code) }
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = code,
+                    style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = colors.textSecondary),
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -880,7 +941,7 @@ private fun DoffingRow(
             )
             Text(
                 text = sub,
-                style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = colors.textMuted),
+                style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = colors.textMuted),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -912,7 +973,7 @@ private fun UrgencyBandHeader(label: String, color: Color, modifier: Modifier = 
             )
             Text(
                 text = label,
-                style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = animatedColor),
+                style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = animatedColor),
             )
         }
     }
@@ -945,7 +1006,7 @@ private fun BreakGapCard(gapMin: Long, nextMcNo: String, nextAbsMin: Long, modif
             )
             Text(
                 text = "Sebelum Mc $nextMcNo · ${absMinToTimeStr(nextAbsMin)}",
-                style = TextStyle(fontSize = 11.sp, color = colors.textFaint),
+                style = TextStyle(fontSize = 12.sp, color = colors.textFaint),
             )
         }
     }
@@ -997,7 +1058,22 @@ private fun shareHistory(context: Context, state: DoffState) {
         val suffix = if (yard != null) " [${formatYard(yard)}y]" else ""
         "${i + 1}. Mc${a.mcNo} - $corak$suffix - ${a.ket}"
     }
-    val text = "Bravo!!!\n$dateStr\n\n${lines.joinToString("\n")}\n\nTotal: ${state.aktual.size} doff"
+    // Doff selesai saja tidak cukup buat rekan yang baca pesan ini di lantai produksi — mereka
+    // juga perlu tahu mesin mana yang masih ditimer sekarang dan kapan harus di-doff, jadi bagian
+    // ini ikut disertakan alih-alih cuma riwayat yang sudah selesai.
+    val berjalan = sortedByNearest(state.estimasi).map { est ->
+        val mesin = state.db[est.mcNo]
+        val corak = est.corakOverride ?: mesin?.corak ?: "—"
+        val yard = est.yardOverride ?: mesin?.targetYard
+        val suffix = if (yard != null) " [${formatYard(yard)}y]" else ""
+        "• Mc${est.mcNo} - $corak$suffix - est. ${absMinToTimeStr(est.estAbsMin)}"
+    }
+    val berjalanBlock = if (berjalan.isNotEmpty()) {
+        "\n\nSedang Berjalan:\n${berjalan.joinToString("\n")}"
+    } else {
+        ""
+    }
+    val text = "Bravo!!!\n$dateStr\n\n${lines.joinToString("\n")}\n\nTotal: ${state.aktual.size} doff$berjalanBlock"
     val intent = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
         putExtra(Intent.EXTRA_TEXT, text)

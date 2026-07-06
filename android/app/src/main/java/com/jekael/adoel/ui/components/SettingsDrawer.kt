@@ -200,8 +200,8 @@ fun SettingsDrawer(
                         selectedIndex = if (tab == SettingsTab.MESIN) 0 else 1,
                         onSelect = { tab = if (it == 0) SettingsTab.MESIN else SettingsTab.DATA },
                         containerColor = colors.bgElevated2,
-                        activeColorLeft = Teal500,
-                        activeColorRight = Teal500,
+                        activeColorLeft = Cyan600,
+                        activeColorRight = Cyan600,
                         activeTextColorLeft = Zinc950,
                         activeTextColorRight = Zinc950,
                         inactiveTextColor = colors.textSecondary,
@@ -291,7 +291,7 @@ private fun MesinTab(
             Checkbox(
                 checked = showAll,
                 onCheckedChange = { showAll = it },
-                colors = CheckboxDefaults.colors(checkedColor = Teal500, uncheckedColor = colors.border),
+                colors = CheckboxDefaults.colors(checkedColor = Cyan500, uncheckedColor = colors.border),
             )
             Text(
                 "Tampilkan semua (termasuk corak \"-\")",
@@ -305,8 +305,8 @@ private fun MesinTab(
                 onClick = { loadFrom(n, m) },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Teal500),
-                border = BorderStroke(1.dp, Teal500),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Cyan500),
+                border = BorderStroke(1.dp, Cyan500),
             ) { Text("Konfigurasi Mc $n (belum diatur)") }
         }
 
@@ -513,7 +513,7 @@ private fun MesinEditPanel(
                 },
                 modifier = Modifier.weight(1f).height(48.dp),
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Teal500),
+                colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
             ) { Text("Simpan", fontWeight = FontWeight.SemiBold) }
         }
     }
@@ -526,8 +526,8 @@ private fun ChipBtn(label: String, selected: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .clip(shape)
-            .background(if (selected) Teal600 else Color.Transparent)
-            .border(1.dp, if (selected) Teal500 else colors.border, shape)
+            .background(if (selected) Cyan600 else Color.Transparent)
+            .border(1.dp, if (selected) Cyan500 else colors.border, shape)
             .clickable { onClick() }
             .padding(horizontal = 14.dp, vertical = 12.dp),
         contentAlignment = Alignment.Center,
@@ -628,8 +628,8 @@ private fun DataTab(
                 },
                 modifier = Modifier.weight(1f).height(52.dp),
                 shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Teal500),
-                border = BorderStroke(1.dp, Teal500),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Cyan500),
+                border = BorderStroke(1.dp, Cyan500),
             ) { Text("Pulihkan") }
         }
 
@@ -700,7 +700,7 @@ private fun AboutDialog(onClose: () -> Unit) {
             onClick = onClose,
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Teal500),
+            colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
         ) { Text("Tutup", fontWeight = FontWeight.SemiBold) }
     }
 }
