@@ -183,7 +183,7 @@ private fun KeteranganChips(onPick: (String) -> Unit, modifier: Modifier = Modif
             ) {
                 Text(
                     text = code,
-                    style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = colors.textSecondary),
+                    style = AppType.LabelSmallBold.copy(color = colors.textSecondary),
                 )
             }
         }

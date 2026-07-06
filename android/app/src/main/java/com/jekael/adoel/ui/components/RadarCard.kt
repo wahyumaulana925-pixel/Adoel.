@@ -250,12 +250,7 @@ fun RadarCard(
                     }
                     Text(
                         text = corakLine,
-                        style = TextStyle(
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp,
-                            color = colors.textMuted,
-                        ),
+                        style = AppType.LabelBold.copy(color = colors.textMuted),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )

@@ -59,6 +59,7 @@ import com.jekael.adoel.ui.components.CloseIcon
 import com.jekael.adoel.ui.components.LinearProgressBar
 import com.jekael.adoel.ui.components.ShareIcon
 import com.jekael.adoel.ui.components.TrashIcon
+import com.jekael.adoel.ui.theme.AppType
 import com.jekael.adoel.ui.theme.Cyan400
 import com.jekael.adoel.ui.theme.Cyan500
 import com.jekael.adoel.ui.theme.LocalAppColors
@@ -184,7 +185,7 @@ fun StatistikScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("Statistik", style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary))
+                    Text("Statistik", style = AppType.DialogTitle.copy(color = colors.textPrimary))
                     IconButton(onClick = { requestClose() }) {
                         CloseIcon()
                     }
@@ -237,7 +238,7 @@ private fun AggregateStatsCard(
 private fun StatFigure(label: String, value: String) {
     val colors = LocalAppColors.current
     Column {
-        Text(value, style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Black, color = colors.textPrimary))
+        Text(value, style = AppType.NumberLarge.copy(color = colors.textPrimary))
         Text(label, style = TextStyle(fontSize = 11.sp, color = colors.textFaint))
     }
 }
@@ -358,7 +359,7 @@ private fun ShiftRow(
                     "Shift $shiftNo · $dateStr",
                     style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary),
                 )
-                Text(timeRange, style = TextStyle(fontSize = 12.sp, color = colors.textFaint))
+                Text(timeRange, style = AppType.Caption.copy(color = colors.textFaint))
                 Spacer(Modifier.height(6.dp))
                 LinearProgressBar(
                     fraction = shift.aktual.size.toFloat() / maxDoffCount,
@@ -369,7 +370,7 @@ private fun ShiftRow(
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(horizontalAlignment = Alignment.End) {
-                    Text("${shift.aktual.size} doff", style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Cyan400))
+                    Text("${shift.aktual.size} doff", style = AppType.TabLabel.copy(color = Cyan400))
                     if (avgGapMin != null) {
                         Text(
                             "±${formatDeltaMin(avgGapMin.toLong())}/doff",
@@ -408,8 +409,8 @@ private fun ShiftRow(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Text("Mc ${entry.mcNo} · $corakLine · ${entry.ket}", style = TextStyle(fontSize = 12.sp, color = colors.textSecondary))
-                    Text(entry.jam, style = TextStyle(fontSize = 12.sp, color = colors.textFaint))
+                    Text("Mc ${entry.mcNo} · $corakLine · ${entry.ket}", style = AppType.Caption.copy(color = colors.textSecondary))
+                    Text(entry.jam, style = AppType.Caption.copy(color = colors.textFaint))
                 }
             }
         }

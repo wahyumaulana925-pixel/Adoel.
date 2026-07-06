@@ -25,6 +25,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jekael.adoel.data.formatYard
+import com.jekael.adoel.ui.theme.AppType
 import com.jekael.adoel.ui.theme.Cyan600
 import com.jekael.adoel.ui.theme.LocalAppColors
 
@@ -49,7 +50,7 @@ fun QuickEditCorakDialog(
     FloatingEditDialog(onDismissRequest = onDismiss) {
         Text(
             text = "Ganti Cepat — Mc $mcNo",
-            style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary),
+            style = AppType.DialogTitle.copy(color = colors.textPrimary),
         )
 
         Spacer(Modifier.height(16.dp))
@@ -61,7 +62,7 @@ fun QuickEditCorakDialog(
             modifier = Modifier.fillMaxWidth(),
             colors = outlinedFieldColors(),
             shape = RoundedCornerShape(12.dp),
-            textStyle = TextStyle(color = colors.textPrimary, fontSize = 14.sp),
+            textStyle = AppType.FieldText.copy(color = colors.textPrimary),
             singleLine = true,
         )
 
@@ -75,7 +76,7 @@ fun QuickEditCorakDialog(
             placeholder = { Text("opsional", color = colors.textFaint) },
             colors = outlinedFieldColors(),
             shape = RoundedCornerShape(12.dp),
-            textStyle = TextStyle(color = colors.textPrimary, fontSize = 14.sp),
+            textStyle = AppType.FieldText.copy(color = colors.textPrimary),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             singleLine = true,
         )

@@ -189,7 +189,7 @@ fun SettingsDrawer(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("Pengaturan", style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary))
+                        Text("Pengaturan", style = AppType.DialogTitle.copy(color = colors.textPrimary))
                         IconButton(onClick = { requestClose() }) {
                             CloseIcon()
                         }
@@ -276,7 +276,7 @@ private fun MesinTab(
             placeholder = { Text("Cari nomor / corak, atau ketik nomor baru", color = colors.textFaint) },
             colors = outlinedFieldColors(),
             shape = RoundedCornerShape(12.dp),
-            textStyle = TextStyle(color = colors.textPrimary, fontSize = 14.sp),
+            textStyle = AppType.FieldText.copy(color = colors.textPrimary),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { unconfigured?.let { (n, m) -> loadFrom(n, m) } }),
             singleLine = true,
@@ -295,7 +295,7 @@ private fun MesinTab(
             )
             Text(
                 "Tampilkan semua (termasuk corak \"-\")",
-                style = TextStyle(fontSize = 13.sp, color = colors.textSecondary),
+                style = AppType.BodySmall.copy(color = colors.textSecondary),
             )
         }
 
@@ -329,7 +329,7 @@ private fun MesinTab(
                     Text(v.tipe.name, style = TextStyle(fontSize = 11.sp, letterSpacing = 1.sp, color = colors.textMuted), modifier = Modifier.width(56.dp))
                     Text(
                         v.corak,
-                        style = TextStyle(fontSize = 14.sp, color = colors.textPrimary),
+                        style = AppType.FieldText.copy(color = colors.textPrimary),
                         modifier = Modifier.weight(1f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -339,7 +339,7 @@ private fun MesinTab(
             }
             if (entries.isEmpty()) {
                 Box(Modifier.fillMaxWidth().height(80.dp), contentAlignment = Alignment.Center) {
-                    Text("Tidak ditemukan", color = colors.textFaint, style = TextStyle(fontSize = 14.sp))
+                    Text("Tidak ditemukan", color = colors.textFaint, style = AppType.FieldText)
                 }
             }
         }
@@ -399,7 +399,7 @@ private fun MesinEditPanel(
     FloatingEditDialog(onDismissRequest = onClose) {
         Text(
             text = "Mc $mcNo",
-            style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Black, color = colors.textPrimary),
+            style = AppType.NumberLarge.copy(color = colors.textPrimary),
         )
 
         Spacer(Modifier.height(16.dp))
@@ -420,7 +420,7 @@ private fun MesinEditPanel(
             modifier = Modifier.fillMaxWidth(),
             colors = outlinedFieldColors(),
             shape = RoundedCornerShape(12.dp),
-            textStyle = TextStyle(color = colors.textPrimary, fontSize = 14.sp),
+            textStyle = AppType.FieldText.copy(color = colors.textPrimary),
             singleLine = true,
         )
 
@@ -437,7 +437,7 @@ private fun MesinEditPanel(
             placeholder = { Text("opsional", color = colors.textFaint) },
             colors = outlinedFieldColors(),
             shape = RoundedCornerShape(12.dp),
-            textStyle = TextStyle(color = colors.textPrimary, fontSize = 14.sp),
+            textStyle = AppType.FieldText.copy(color = colors.textPrimary),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             singleLine = true,
         )
@@ -455,7 +455,7 @@ private fun MesinEditPanel(
                 placeholder = { Text("cth: 0.158", color = colors.textFaint) },
                 colors = outlinedFieldColors(),
                 shape = RoundedCornerShape(12.dp),
-                textStyle = TextStyle(color = colors.textPrimary, fontSize = 14.sp),
+                textStyle = AppType.FieldText.copy(color = colors.textPrimary),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 singleLine = true,
             )
@@ -474,7 +474,7 @@ private fun MesinEditPanel(
                 placeholder = { Text("cth: 18", color = colors.textFaint) },
                 colors = outlinedFieldColors(),
                 shape = RoundedCornerShape(12.dp),
-                textStyle = TextStyle(color = colors.textPrimary, fontSize = 14.sp),
+                textStyle = AppType.FieldText.copy(color = colors.textPrimary),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 singleLine = true,
             )
@@ -534,11 +534,7 @@ private fun ChipBtn(label: String, selected: Boolean, onClick: () -> Unit) {
     ) {
         Text(
             label,
-            style = TextStyle(
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (selected) Zinc100 else colors.textSecondary,
-            ),
+            style = AppType.LabelSmallBold.copy(color = if (selected) Zinc100 else colors.textSecondary),
         )
     }
 }
@@ -609,7 +605,7 @@ private fun DataTab(
         FieldLabel("Cadangan Data")
         Text(
             "Cadangkan seluruh data (mesin, estimasi, riwayat doff, tema) ke file, atau pulihkan dari file cadangan.",
-            style = TextStyle(fontSize = 12.sp, color = colors.textMuted),
+            style = AppType.Caption.copy(color = colors.textMuted),
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(
@@ -687,13 +683,13 @@ private fun DataTab(
 private fun AboutDialog(onClose: () -> Unit) {
     val colors = LocalAppColors.current
     FloatingEditDialog(onDismissRequest = onClose) {
-        Text("Tentang", style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary))
+        Text("Tentang", style = AppType.DialogTitle.copy(color = colors.textPrimary))
         Spacer(Modifier.height(16.dp))
         Text("Adoel.", style = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Black, color = colors.textPrimary))
         Spacer(Modifier.height(4.dp))
         Text(
             "Versi ${BuildConfig.VERSION_NAME} (build ${BuildConfig.VERSION_CODE})",
-            style = TextStyle(fontSize = 13.sp, color = colors.textSecondary),
+            style = AppType.BodySmall.copy(color = colors.textSecondary),
         )
         Spacer(Modifier.height(20.dp))
         Button(

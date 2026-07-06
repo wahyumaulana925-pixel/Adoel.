@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.jekael.adoel.ui.theme.AppType
 import com.jekael.adoel.ui.theme.LocalAppColors
 
 /** The three dismissible permission/battery nudges shown above the console list — notification
@@ -37,7 +38,7 @@ fun LazyListScope.permissionBanners(
                 ),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
             ) {
-                Text("Notifikasi nonaktif — ketuk untuk izinkan", style = TextStyle(fontSize = 12.sp))
+                Text("Notifikasi nonaktif — ketuk untuk izinkan", style = AppType.Caption)
             }
         }
     }
@@ -57,7 +58,7 @@ fun LazyListScope.permissionBanners(
             ) {
                 Text(
                     "Izin alarm tepat waktu nonaktif — ketuk untuk izinkan (wajib agar notifikasi doff tepat waktu)",
-                    style = TextStyle(fontSize = 12.sp),
+                    style = AppType.Caption,
                 )
             }
         }
@@ -76,7 +77,7 @@ fun LazyListScope.permissionBanners(
                 ),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
             ) {
-                Text("Baterai dioptimalkan — ketuk agar notifikasi tidak diblokir sistem", style = TextStyle(fontSize = 12.sp))
+                Text("Baterai dioptimalkan — ketuk agar notifikasi tidak diblokir sistem", style = AppType.Caption)
             }
         }
     }

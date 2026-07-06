@@ -133,7 +133,7 @@ fun MainScreenHeader(
                 }
                 Text(
                     text = shiftLabel,
-                    style = TextStyle(fontSize = 12.sp, color = colors.textFaint),
+                    style = AppType.Caption.copy(color = colors.textFaint),
                 )
             }
 
@@ -163,7 +163,7 @@ fun MainScreenHeader(
                                 remainingMc <= 0 -> "Selesai"
                                 else -> "$remainingMc lagi"
                             },
-                            style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Cyan400),
+                            style = AppType.LabelSmallBold.copy(color = Cyan400),
                         )
                         Spacer(Modifier.height(4.dp))
                         LinearProgressBar(

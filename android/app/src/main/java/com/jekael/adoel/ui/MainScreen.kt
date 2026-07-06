@@ -498,7 +498,7 @@ internal fun SectionHeader(title: String, count: Int) {
     ) {
         Text(
             text = title,
-            style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp, color = colors.textPrimary),
+            style = AppType.TabLabel.copy(letterSpacing = 0.5.sp, color = colors.textPrimary),
         )
         if (count > 0) {
             Text(
@@ -534,7 +534,7 @@ fun EmptyState(
         )
         Text(
             text = subtitle,
-            style = TextStyle(fontSize = 12.sp, color = colors.textFaint, lineHeight = 17.sp),
+            style = AppType.Caption.copy(color = colors.textFaint, lineHeight = 17.sp),
             modifier = Modifier.padding(horizontal = 32.dp),
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )

@@ -78,21 +78,21 @@ private fun DoffingActions(onShare: () -> Unit, onStatistik: () -> Unit, onFinis
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
             border = BorderStroke(1.dp, colors.border),
-        ) { Text("Bagikan", style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold)) }
+        ) { Text("Bagikan", style = AppType.ButtonLabel) }
         OutlinedButton(
             onClick = onStatistik,
             modifier = Modifier.weight(1f).height(44.dp),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
             border = BorderStroke(1.dp, colors.border),
-        ) { Text("Statistik", style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold)) }
+        ) { Text("Statistik", style = AppType.ButtonLabel) }
         OutlinedButton(
             onClick = onFinish,
             modifier = Modifier.weight(1f).height(44.dp),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = Red400),
             border = BorderStroke(1.dp, Red700.copy(alpha = 0.5f)),
-        ) { Text("Selesai Shift", style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold)) }
+        ) { Text("Selesai Shift", style = AppType.ButtonLabel) }
     }
 }
 
@@ -138,18 +138,18 @@ private fun DoffingRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = entry.mcNo,
-                style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Black, color = Cyan500, letterSpacing = (-1).sp),
+                style = AppType.NumberLarge.copy(color = Cyan500, letterSpacing = (-1).sp),
             )
             Text(
                 text = sub,
-                style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = colors.textMuted),
+                style = AppType.LabelBold.copy(color = colors.textMuted),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
         Text(
             text = entry.ket,
-            style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary),
+            style = AppType.TabLabel.copy(color = colors.textPrimary),
         )
     }
 }

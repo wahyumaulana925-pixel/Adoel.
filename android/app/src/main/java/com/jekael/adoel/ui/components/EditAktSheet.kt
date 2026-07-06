@@ -85,7 +85,7 @@ fun EditAktSheet(
             ) {
                 Text(
                     text = "Mc ${entry.mcNo}",
-                    style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Black, color = colors.textPrimary),
+                    style = AppType.NumberLarge.copy(color = colors.textPrimary),
                 )
                 Text(
                     text = entry.jam,
@@ -102,7 +102,7 @@ fun EditAktSheet(
                 modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
                 colors = outlinedFieldColors(),
                 shape = RoundedCornerShape(12.dp),
-                textStyle = TextStyle(color = colors.textPrimary, fontSize = 14.sp),
+                textStyle = AppType.FieldText.copy(color = colors.textPrimary),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                 singleLine = true,
             )
@@ -122,7 +122,7 @@ fun EditAktSheet(
                 },
                 colors = outlinedFieldColors(),
                 shape = RoundedCornerShape(12.dp),
-                textStyle = TextStyle(color = colors.textPrimary, fontSize = 14.sp),
+                textStyle = AppType.FieldText.copy(color = colors.textPrimary),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
                 singleLine = true,
             )
@@ -136,7 +136,7 @@ fun EditAktSheet(
                 modifier = Modifier.fillMaxWidth(),
                 colors = outlinedFieldColors(),
                 shape = RoundedCornerShape(12.dp),
-                textStyle = TextStyle(color = colors.textPrimary, fontSize = 14.sp),
+                textStyle = AppType.FieldText.copy(color = colors.textPrimary),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { doSave() }),
                 singleLine = true,

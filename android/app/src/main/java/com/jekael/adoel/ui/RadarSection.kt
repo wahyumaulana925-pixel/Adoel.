@@ -117,7 +117,7 @@ private fun UrgencyBandHeader(label: String, color: Color, modifier: Modifier = 
             )
             Text(
                 text = label,
-                style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = animatedColor),
+                style = AppType.LabelBold.copy(color = animatedColor),
             )
         }
     }
@@ -146,11 +146,11 @@ private fun BreakGapCard(gapMin: Long, nextMcNo: String, nextAbsMin: Long, modif
         Column {
             Text(
                 text = "Jeda ${formatDeltaMin(gapMin)} — waktu istirahat",
-                style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = colors.textSecondary),
+                style = AppType.LabelSmallBold.copy(color = colors.textSecondary),
             )
             Text(
                 text = "Sebelum Mc $nextMcNo · ${absMinToTimeStr(nextAbsMin)}",
-                style = TextStyle(fontSize = 12.sp, color = colors.textFaint),
+                style = AppType.Caption.copy(color = colors.textFaint),
             )
         }
     }
