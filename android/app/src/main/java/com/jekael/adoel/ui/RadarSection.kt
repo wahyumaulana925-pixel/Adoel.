@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.FreeBreakfast
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,7 +26,7 @@ import com.jekael.adoel.ui.components.*
 import com.jekael.adoel.ui.theme.*
 
 /** ESTIMASI mode's list content: header + empty state, or the Segera/Menunggu urgency bands. */
-fun LazyListScope.estimasiSection(
+internal fun LazyListScope.estimasiSection(
     radarList: List<Estimasi>,
     segeraList: List<Estimasi>,
     menungguList: List<Estimasi>,

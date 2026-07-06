@@ -43,7 +43,7 @@ private val KETERANGAN_CHIPS = listOf("HB", "P.LP", "P.SN", "P.OH", "P.EL", "P.S
  * input/send row. Reports its own measured height via [onHeightMeasured] so the scrollable list
  * behind it can pad itself to avoid sitting under the card. */
 @Composable
-fun ConsoleBar(
+internal fun ConsoleBar(
     mode: Mode,
     onModeSelect: (Mode) -> Unit,
     input: String,
