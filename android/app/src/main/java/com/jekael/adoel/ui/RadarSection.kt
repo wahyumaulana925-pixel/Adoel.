@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.FreeBreakfast
 import androidx.compose.material3.*
@@ -19,6 +20,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jekael.adoel.data.*
@@ -34,6 +36,8 @@ internal fun LazyListScope.estimasiSection(
     menungguAccent: Color,
     db: Map<String, MesinData>,
     nowAbs: Long,
+    radarFilter: String,
+    onRadarFilterChange: (String) -> Unit,
     onDoff: (String) -> Unit,
     onHapus: (String) -> Unit,
     onQuickEdit: (String) -> Unit,
@@ -44,6 +48,27 @@ internal fun LazyListScope.estimasiSection(
     if (radarList.isEmpty()) {
         item(key = "est_empty") {
             EmptyState(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp))
+        }
+        return
+    }
+    // Only worth showing once there's more than a handful to scan through — for a couple of
+    // machines a filter field is just clutter above the very thing it's meant to help find.
+    if (radarList.size > 4) {
+        item(key = "est_filter") {
+            RadarFilterField(
+                value = radarFilter,
+                onValueChange = onRadarFilterChange,
+                modifier = Modifier.fillMaxWidth().animateItem(),
+            )
+        }
+    }
+    if (segeraList.isEmpty() && menungguList.isEmpty()) {
+        item(key = "est_filter_empty") {
+            EmptyState(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                title = "Tidak ditemukan",
+                subtitle = "Coba kata kunci lain — cari berdasarkan nomor mesin atau corak",
+            )
         }
         return
     }
@@ -154,4 +179,22 @@ private fun BreakGapCard(gapMin: Long, nextMcNo: String, nextAbsMin: Long, modif
             )
         }
     }
+}
+
+/** Filters the Segera/Menunggu bands by mc number or corak — lets an operator jump straight to a
+ * machine instead of scanning past everything else when a lot of machines are running at once. */
+@Composable
+private fun RadarFilterField(value: String, onValueChange: (String) -> Unit, modifier: Modifier = Modifier) {
+    val colors = LocalAppColors.current
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = modifier,
+        placeholder = { Text("Cari nomor mesin atau corak", style = AppType.Caption.copy(color = colors.textFaint)) },
+        colors = outlinedFieldColors(),
+        shape = RoundedCornerShape(50.dp),
+        textStyle = AppType.FieldText.copy(color = colors.textPrimary),
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        singleLine = true,
+    )
 }

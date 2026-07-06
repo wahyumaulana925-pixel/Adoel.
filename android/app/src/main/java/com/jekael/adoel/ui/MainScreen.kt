@@ -100,6 +100,7 @@ fun MainScreen(
     // Console command bar — the one and only way to record estimasi/doffing
     var mode by remember { mutableStateOf(Mode.AKTUAL) }
     var input by remember { mutableStateOf("") }
+    var radarFilter by remember { mutableStateOf("") }
 
     // Send button feedback — bounce + brief checkmark flash on a successful submit
     var sendPulseKey by remember { mutableStateOf(0) }
@@ -114,6 +115,18 @@ fun MainScreen(
         }
         delay(500)
         sendShowCheck = false
+    }
+
+    // Error feedback on a rejected console command — a toast alone (3.5s, auto-dismiss) can be
+    // missed if the operator looks back at the machine right after hitting send, so this pairs it
+    // with a haptic + a brief red ring around the input that doesn't depend on eyes staying on screen.
+    var errorFlashKey by remember { mutableStateOf(0) }
+    var inputErrorFlash by remember { mutableStateOf(false) }
+    LaunchedEffect(errorFlashKey) {
+        if (errorFlashKey == 0) return@LaunchedEffect
+        inputErrorFlash = true
+        delay(200)
+        inputErrorFlash = false
     }
 
     var nowAbs by remember { mutableLongStateOf(nowAbsMin()) }
@@ -169,8 +182,34 @@ fun MainScreen(
     val radarList = remember(state.estimasi) {
         sortedByNearest(state.estimasi)
     }
-    val (segeraList, menungguList) = remember(radarList, nowAbs) {
-        partitionSegeraMenunggu(radarList, nowAbs)
+    // Filters by mc number or corak so an operator can jump straight to a machine instead of
+    // scanning past everything else when a lot of machines are running at once.
+    val filteredRadarList = remember(radarList, radarFilter, state.db) {
+        if (radarFilter.isBlank()) {
+            radarList
+        } else {
+            radarList.filter { est ->
+                val corak = est.corakOverride ?: state.db[est.mcNo]?.corak ?: ""
+                est.mcNo.contains(radarFilter, ignoreCase = true) || corak.contains(radarFilter, ignoreCase = true)
+            }
+        }
+    }
+    val (segeraList, menungguList) = remember(filteredRadarList, nowAbs) {
+        partitionSegeraMenunggu(filteredRadarList, nowAbs)
+    }
+    // Real-time reminder of the expected command syntax for the machine number being typed —
+    // TAPPET/CAM want a duration, D405 wants running yard, D408 wants a jam counter — so an
+    // operator who forgets the format gets a hint before submitting instead of a generic error.
+    val inputHint = remember(input, mode, state.db) {
+        if (mode != Mode.ESTIMASI) return@remember null
+        val mcNo = input.trim().substringBefore(' ')
+        if (mcNo.isEmpty() || !mcNo.matches(Regex("^\\d{1,3}$"))) return@remember null
+        when (state.db[mcNo]?.tipe) {
+            MesinTipe.TAPPET, MesinTipe.CAM -> "Mc $mcNo → sisa menit, cth: $mcNo 45"
+            MesinTipe.D405 -> "Mc $mcNo → yard berjalan, cth: $mcNo 280"
+            MesinTipe.D408 -> "Mc $mcNo → jam counter, cth: $mcNo 12.30"
+            null -> null
+        }
     }
     // Menunggu bucket spans CALM through IMMINENT (Segera already claims OVERDUE) — tint the
     // band header by its most urgent member so it doesn't read "calm" while cards inside are
@@ -198,21 +237,43 @@ fun MainScreen(
             }
         }
     }
+    fun flashError(msg: String) {
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        errorFlashKey++
+        uiVm.showToast("⚠ $msg")
+    }
+
+    fun submitEstimasi(cmd: String) {
+        val result = doffVm.prosesBarisKondisiMesin(cmd, nowAbsMin())
+        when (result) {
+            is ProsesResult.Ok -> {
+                sendPulseKey++
+                uiVm.showToast(result.msg)
+                input = ""
+                result.estAbs?.let { NotificationHelper.scheduleNotif(context, result.mcNo, it) }
+            }
+            is ProsesResult.Err -> flashError(result.msg)
+        }
+    }
+
     fun handleCommand() {
         val cmd = input.trim().uppercase()
         if (cmd.isEmpty()) return
 
         when (mode) {
             Mode.ESTIMASI -> {
-                val result = doffVm.prosesBarisKondisiMesin(cmd, nowAbsMin())
-                when (result) {
-                    is ProsesResult.Ok -> {
-                        sendPulseKey++
-                        uiVm.showToast(result.msg)
-                        input = ""
-                        result.estAbs?.let { NotificationHelper.scheduleNotif(context, result.mcNo, it) }
+                val mcNo = cmd.substringBefore(' ')
+                val existing = state.estimasi[mcNo]
+                val remaining = existing?.let { it.estAbsMin - nowAbsMin() }
+                // Salah masuk mode ESTIMASI lalu ngetik cepat bisa nggak sadar menimpa timer yang
+                // masih jalan — prosesBarisKondisiMesin tidak punya undo, jadi khusus estimasi yang
+                // masih aktif & mepet (<10 menit lagi), minta konfirmasi dulu, bukan menimpa diam-diam.
+                if (existing != null && remaining != null && remaining in 0 until 10) {
+                    uiVm.showConfirm("Mc $mcNo sudah diestimasi ${formatDeltaMin(remaining)} lagi. Timpa dengan estimasi baru?") {
+                        submitEstimasi(cmd)
                     }
-                    is ProsesResult.Err -> uiVm.showToast("⚠ ${result.msg}")
+                } else {
+                    submitEstimasi(cmd)
                 }
             }
             Mode.AKTUAL -> {
@@ -228,7 +289,7 @@ fun MainScreen(
                         })
                         input = ""
                     }
-                    is ProsesResult.Err -> uiVm.showToast("⚠ ${result.msg}")
+                    is ProsesResult.Err -> flashError(result.msg)
                 }
             }
         }
@@ -336,6 +397,8 @@ fun MainScreen(
                             menungguAccent = menungguAccent,
                             db = state.db,
                             nowAbs = nowAbs,
+                            radarFilter = radarFilter,
+                            onRadarFilterChange = { radarFilter = it },
                             onDoff = { mcNo -> handleDoff(mcNo) },
                             onHapus = { mcNo -> handleHapusEst(mcNo) },
                             onQuickEdit = { mcNo -> quickEditMcNo = mcNo },
@@ -384,6 +447,8 @@ fun MainScreen(
             onSend = { handleCommand() },
             sendScale = sendScale.value,
             sendShowCheck = sendShowCheck,
+            inputErrorFlash = inputErrorFlash,
+            inputHint = inputHint,
             onHeightMeasured = { consoleBarHeight = it },
             modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
         )
