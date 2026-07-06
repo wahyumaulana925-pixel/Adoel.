@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.sp
 import com.jekael.adoel.data.MesinData
 import com.jekael.adoel.data.ShiftRecord
 import com.jekael.adoel.data.formatDeltaMin
+import com.jekael.adoel.data.formatYard
 import com.jekael.adoel.data.shiftNumberForEpochMin
 import com.jekael.adoel.ui.components.CloseIcon
 import com.jekael.adoel.ui.components.CopyIcon
@@ -401,11 +402,16 @@ private fun ShiftRow(
             Spacer(Modifier.height(10.dp))
             chronological.forEach { entry ->
                 val corak = entry.corakOverride ?: db[entry.mcNo]?.corak ?: "—"
+                // Yard sudah terlihat di layar Doffing sebelum "Selesai Shift" mengarsipkannya ke
+                // sini — datanya tetap tersimpan di AktualEntry, jadi riwayat semestinya tetap
+                // menunjukkannya alih-alih diam-diam menghilang begitu shift diarsipkan.
+                val yard = entry.customYard ?: db[entry.mcNo]?.targetYard
+                val corakLine = if (yard != null) "$corak · ${formatYard(yard)}y" else corak
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Text("Mc ${entry.mcNo} · $corak · ${entry.ket}", style = TextStyle(fontSize = 12.sp, color = colors.textSecondary))
+                    Text("Mc ${entry.mcNo} · $corakLine · ${entry.ket}", style = TextStyle(fontSize = 12.sp, color = colors.textSecondary))
                     Text(entry.jam, style = TextStyle(fontSize = 12.sp, color = colors.textFaint))
                 }
             }
