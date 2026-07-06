@@ -1,8 +1,7 @@
 package com.jekael.adoel.ui
 
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -57,8 +56,8 @@ import com.jekael.adoel.data.formatDeltaMin
 import com.jekael.adoel.data.formatYard
 import com.jekael.adoel.data.shiftNumberForEpochMin
 import com.jekael.adoel.ui.components.CloseIcon
-import com.jekael.adoel.ui.components.CopyIcon
 import com.jekael.adoel.ui.components.LinearProgressBar
+import com.jekael.adoel.ui.components.ShareIcon
 import com.jekael.adoel.ui.components.TrashIcon
 import com.jekael.adoel.ui.theme.Cyan400
 import com.jekael.adoel.ui.theme.Cyan500
@@ -79,10 +78,8 @@ fun StatistikScreen(
     onClose: () -> Unit,
     onDeleteShift: (Int) -> Unit,
     showConfirm: (String, () -> Unit) -> Unit,
-    showToast: (String) -> Unit,
 ) {
     val colors = LocalAppColors.current
-    val context = LocalContext.current
     var visible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { visible = true }
 
@@ -188,17 +185,8 @@ fun StatistikScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text("Statistik", style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        // Ini sumber data laporan resmi ke atasan — sebelumnya harus diketik ulang
-                        // manual dari layar; sekarang bisa langsung disalin sebagai teks siap tempel.
-                        if (history.isNotEmpty()) {
-                            IconButton(onClick = { copySummaryToClipboard(context, history, showToast) }) {
-                                CopyIcon()
-                            }
-                        }
-                        IconButton(onClick = { requestClose() }) {
-                            CloseIcon()
-                        }
+                    IconButton(onClick = { requestClose() }) {
+                        CloseIcon()
                     }
                 }
             }
@@ -340,6 +328,7 @@ private fun ShiftRow(
     modifier: Modifier = Modifier,
 ) {
     val colors = LocalAppColors.current
+    val context = LocalContext.current
     val shiftNo = remember(shift.startedAtEpochMin) { shiftNumberForEpochMin(shift.startedAtEpochMin) }
     val dateStr = remember(shift.startedAtEpochMin) { formatShiftDate(shift.startedAtEpochMin) }
     val timeRange = remember(shift.startedAtEpochMin, shift.endedAtEpochMin) {
@@ -388,6 +377,14 @@ private fun ShiftRow(
                         )
                     }
                 }
+                // Bagikan langsung — bukan salin, supaya tidak perlu ganti aplikasi lalu tempel
+                // manual. Disembunyikan untuk shift tanpa doff (mis. diarsipkan dengan estimasi
+                // yang belum sempat diselesaikan) karena tidak ada yang berarti untuk dibagikan.
+                if (shift.aktual.isNotEmpty()) {
+                    IconButton(onClick = { shareShift(context, shift, db) }) {
+                        ShareIcon()
+                    }
+                }
                 IconButton(onClick = {
                     showConfirm("Hapus arsip Shift $shiftNo · $dateStr? Data ini tidak bisa dikembalikan.") {
                         onDeleteShift(shift.id)
@@ -434,27 +431,24 @@ private fun formatShiftTime(epochMin: Long): String {
     return "%02d.%02d".format(cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE))
 }
 
-/** Formal-toned text summary of shift history — for pasting into a written report to atasan,
- * as opposed to MainScreen's shareHistory (casual, WhatsApp-to-rekan tone). */
-private fun buildStatistikSummary(history: List<ShiftRecord>): String {
-    val totalDoff = history.sumOf { it.aktual.size }
-    val avgPerShift = if (history.isNotEmpty()) totalDoff.toFloat() / history.size else 0f
-    val rows = history.asReversed().map { shift ->
-        val shiftNo = shiftNumberForEpochMin(shift.startedAtEpochMin)
-        val dateStr = formatShiftDate(shift.startedAtEpochMin)
-        val timeRange = "${formatShiftTime(shift.startedAtEpochMin)}–${formatShiftTime(shift.endedAtEpochMin)}"
-        "Shift $shiftNo · $dateStr ($timeRange) — ${shift.aktual.size} doff"
+/** Re-share a single archived shift — mirrors MainScreen's shareHistory format/tone exactly
+ * (same "Bravo!!!" casual register, same audience: rekan kerja), for whenever an operator needs
+ * to resend a specific day's record instead of the whole running total. Opens the share-sheet
+ * directly instead of a copy-then-paste round trip. */
+private fun shareShift(context: Context, shift: ShiftRecord, db: Map<String, MesinData>) {
+    val shiftNo = shiftNumberForEpochMin(shift.startedAtEpochMin)
+    val dateStr = formatShiftDate(shift.startedAtEpochMin)
+    val lines = shift.aktual.asReversed().mapIndexed { i, a ->
+        val mesin = db[a.mcNo]
+        val corak = a.corakOverride ?: mesin?.corak ?: "—"
+        val yard = a.customYard ?: mesin?.targetYard
+        val suffix = if (yard != null) " [${formatYard(yard)}y]" else ""
+        "${i + 1}. Mc${a.mcNo} - $corak$suffix - ${a.ket}"
     }
-    return "Laporan Statistik Doffing\n" +
-        "Total shift: ${history.size}\n" +
-        "Total doff: $totalDoff\n" +
-        "Rata-rata/shift: %.1f".format(avgPerShift) +
-        "\n\nRincian per shift:\n${rows.joinToString("\n")}"
-}
-
-private fun copySummaryToClipboard(context: Context, history: List<ShiftRecord>, showToast: (String) -> Unit) {
-    val text = buildStatistikSummary(history)
-    val clipboard = context.getSystemService(ClipboardManager::class.java)
-    clipboard.setPrimaryClip(ClipData.newPlainText("Ringkasan Statistik", text))
-    showToast("Ringkasan disalin ✓")
+    val text = "Bravo!!!\nShift $shiftNo · $dateStr\n\n${lines.joinToString("\n")}\n\nTotal: ${shift.aktual.size} doff"
+    val intent = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_TEXT, text)
+    }
+    runCatching { context.startActivity(Intent.createChooser(intent, "Bagikan shift")) }
 }

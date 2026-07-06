@@ -5,10 +5,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Send
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
@@ -53,10 +53,10 @@ fun SendIcon() {
 }
 
 @Composable
-fun CopyIcon() {
+fun ShareIcon() {
     Icon(
-        imageVector = Icons.Outlined.ContentCopy,
-        contentDescription = "Salin ringkasan",
+        imageVector = Icons.Outlined.Share,
+        contentDescription = "Bagikan",
         tint = LocalAppColors.current.textMuted,
         modifier = Modifier.size(18.dp),
     )

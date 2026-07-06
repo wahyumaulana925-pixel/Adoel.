@@ -634,6 +634,18 @@ fun MainScreen(
                     .navigationBarsPadding()
                     .padding(bottom = 10.dp),
             ) {
+                // Quick keterangan chips — placed above the toggle (not between toggle and input)
+                // so the toggle→input block below keeps a constant position when switching modes;
+                // the console card grows/shrinks upward from its bottom anchor, so only the region
+                // above the toggle should move, not the toggle/input themselves.
+                if (mode == Mode.AKTUAL) {
+                    KeteranganChips(
+                        onPick = { code -> input = (input.trimEnd() + " " + code).trimStart() },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(Modifier.height(10.dp))
+                }
+
                 // Mode toggle
                 SlidingToggle(
                     labelLeft = "ESTIMASI",
@@ -648,16 +660,6 @@ fun MainScreen(
                     inactiveTextColor = colors.textMuted,
                     modifier = Modifier.fillMaxWidth(),
                 )
-
-                // Quick keterangan chips — lets an operator tap a standard code (HB, P.LP, dst.)
-                // instead of having to recall/type its exact spelling from memory every time.
-                if (mode == Mode.AKTUAL) {
-                    Spacer(Modifier.height(8.dp))
-                    KeteranganChips(
-                        onPick = { code -> input = (input.trimEnd() + " " + code).trimStart() },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
 
                 Spacer(Modifier.height(10.dp))
 
@@ -770,7 +772,6 @@ fun MainScreen(
                 onClose = { statistikOpen = false },
                 onDeleteShift = { id -> doffVm.hapusShift(id) },
                 showConfirm = { msg, fn -> uiVm.showConfirm(msg, onConfirm = fn) },
-                showToast = { uiVm.showToast(it) },
             )
         }
     }
