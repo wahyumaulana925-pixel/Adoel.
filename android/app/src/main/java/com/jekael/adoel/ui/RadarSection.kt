@@ -5,7 +5,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -76,7 +76,7 @@ internal fun LazyListScope.estimasiSection(
         item(key = "segera_head") {
             UrgencyBandHeader(label = "Segera", color = Red400, modifier = Modifier.animateItem())
         }
-        items(segeraList, key = { it.mcNo }) { est ->
+        itemsIndexed(segeraList, key = { _, est -> est.mcNo }) { index, est ->
             RadarCard(
                 est = est,
                 mesin = db[est.mcNo],
@@ -85,6 +85,7 @@ internal fun LazyListScope.estimasiSection(
                 onHapus = { onHapus(est.mcNo) },
                 onQuickEdit = { onQuickEdit(est.mcNo) },
                 modifier = Modifier.animateItem(),
+                entranceDelayMs = (index * 35L).coerceAtMost(400L),
             )
         }
     }
@@ -92,15 +93,15 @@ internal fun LazyListScope.estimasiSection(
         item(key = "menunggu_head") {
             UrgencyBandHeader(label = "Menunggu", color = menungguAccent, modifier = Modifier.animateItem())
         }
-        items(
+        itemsIndexed(
             menungguRows,
-            key = { row ->
+            key = { _, row ->
                 when (row) {
                     is MenungguRow.CardRow -> row.est.mcNo
                     is MenungguRow.GapRow -> "gap_after_${row.afterMcNo}"
                 }
             },
-        ) { row ->
+        ) { index, row ->
             when (row) {
                 is MenungguRow.CardRow -> RadarCard(
                     est = row.est,
@@ -110,6 +111,7 @@ internal fun LazyListScope.estimasiSection(
                     onHapus = { onHapus(row.est.mcNo) },
                     onQuickEdit = { onQuickEdit(row.est.mcNo) },
                     modifier = Modifier.animateItem(),
+                    entranceDelayMs = (index * 35L).coerceAtMost(400L),
                 )
                 is MenungguRow.GapRow -> BreakGapCard(
                     gapMin = row.gapMin,

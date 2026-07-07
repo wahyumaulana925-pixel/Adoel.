@@ -10,9 +10,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
-// Caps how many past shifts are kept in DoffState.history, so the DataStore JSON blob (the
-// whole state is one serialized blob, see DoffRepository) doesn't grow unbounded over months of use.
-private const val MAX_HISTORY_SHIFTS = 30
+// Caps how long past shifts are kept in DoffState.history by calendar age (not shift count), so
+// the DataStore JSON blob (the whole state is one serialized blob, see DoffRepository) doesn't
+// grow unbounded over months of use, while still keeping a full rolling month of history for
+// reporting regardless of how many shifts happen to fall inside it.
+private const val HISTORY_RETENTION_DAYS = 30
+private const val HISTORY_RETENTION_MIN = HISTORY_RETENTION_DAYS * 24 * 60L
 
 class DoffViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = DoffRepository(app)
@@ -20,9 +23,19 @@ class DoffViewModel(app: Application) : AndroidViewModel(app) {
     private val _state = MutableStateFlow(DoffState(db = buildDefaultDb()))
     val state: StateFlow<DoffState> = _state.asStateFlow()
 
+    // _state starts out holding a placeholder (174 unconfigured machines) until the real
+    // persisted data finishes loading from disk — isLoaded lets the UI show a brief loading
+    // placeholder instead of that placeholder data if the very first frame renders before
+    // observeState()'s first emission arrives.
+    private val _isLoaded = MutableStateFlow(false)
+    val isLoaded: StateFlow<Boolean> = _isLoaded.asStateFlow()
+
     init {
         viewModelScope.launch {
-            repo.observeState().collect { _state.value = it }
+            repo.observeState().collect {
+                _state.value = it
+                _isLoaded.value = true
+            }
         }
     }
 
@@ -33,7 +46,7 @@ class DoffViewModel(app: Application) : AndroidViewModel(app) {
         // persisted state (DataStore serializes transactions), so a concurrent writer such as the
         // notification action's quickDoff can't clobber it. observeState() then reconciles _state
         // to the merged result.
-        viewModelScope.launch { repo.update(transform) }
+        viewModelScope.launch { repo.update(transform, debounceWidgetRefresh = true) }
     }
 
     fun setMesin(mcNo: String, data: MesinData) = updateState { s ->
@@ -206,10 +219,11 @@ class DoffViewModel(app: Application) : AndroidViewModel(app) {
             aktual = s.aktual,
             estimasiRemaining = s.estimasi,
         )
+        val cutoff = now - HISTORY_RETENTION_MIN
         s.copy(
             estimasi = emptyMap(),
             aktual = emptyList(),
-            history = (listOf(record) + s.history).take(MAX_HISTORY_SHIFTS),
+            history = (listOf(record) + s.history).filter { it.endedAtEpochMin >= cutoff },
             nextShiftId = s.nextShiftId + 1,
         )
     }
