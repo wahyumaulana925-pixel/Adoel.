@@ -200,7 +200,7 @@ class DoffRepository(private val context: Context) {
      * inside a BroadcastReceiver's goAsync() window, which finishes right after this call returns,
      * so a delayed refresh scheduled there could be killed before it ever runs.
      */
-    suspend fun update(transform: (DoffState) -> DoffState, debounceWidgetRefresh: Boolean = false): DoffState {
+    suspend fun update(debounceWidgetRefresh: Boolean = false, transform: (DoffState) -> DoffState): DoffState {
         lateinit var next: DoffState
         context.dataStore.edit { prefs ->
             next = transform(parseState(prefs))

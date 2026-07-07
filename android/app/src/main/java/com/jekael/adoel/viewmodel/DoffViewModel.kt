@@ -46,7 +46,7 @@ class DoffViewModel(app: Application) : AndroidViewModel(app) {
         // persisted state (DataStore serializes transactions), so a concurrent writer such as the
         // notification action's quickDoff can't clobber it. observeState() then reconciles _state
         // to the merged result.
-        viewModelScope.launch { repo.update(transform, debounceWidgetRefresh = true) }
+        viewModelScope.launch { repo.update(debounceWidgetRefresh = true, transform = transform) }
     }
 
     fun setMesin(mcNo: String, data: MesinData) = updateState { s ->
