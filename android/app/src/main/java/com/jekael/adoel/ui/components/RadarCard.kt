@@ -66,6 +66,7 @@ fun RadarCard(
     onHapus: () -> Unit,
     onQuickEdit: () -> Unit,
     modifier: Modifier = Modifier,
+    entranceDelayMs: Long = 0L,
 ) {
     val remaining = est.estAbsMin - nowAbs
     val clr = urgency(remaining)
@@ -115,6 +116,17 @@ fun RadarCard(
         label = "checkScale",
     )
 
+    // Staggered fade+rise entrance when a batch of cards first appears (e.g. switching into
+    // ESTIMASI mode from empty), instead of every card popping in at once — keyed to mcNo so it
+    // only plays once per card, not on every recomposition (nowAbs ticks every 5s).
+    val entranceAlpha = remember(est.mcNo) { Animatable(0f) }
+    val entranceOffsetY = remember(est.mcNo) { Animatable(16f) }
+    LaunchedEffect(est.mcNo) {
+        delay(entranceDelayMs)
+        launch { entranceAlpha.animateTo(1f, tween(220)) }
+        entranceOffsetY.animateTo(0f, tween(220, easing = FastOutSlowInEasing))
+    }
+
     fun triggerDoff() {
         if (completing) return
         completing = true
@@ -150,7 +162,8 @@ fun RadarCard(
                 .fillMaxWidth()
                 .graphicsLayer {
                     translationX = offsetX.value + exitProgress * size.width
-                    alpha = 1f - exitProgress
+                    translationY = entranceOffsetY.value
+                    alpha = (1f - exitProgress) * entranceAlpha.value
                 }
                 .shadow(elevation = 5.dp, shape = RoundedCornerShape(14.dp), ambientColor = Color.Black.copy(alpha = 0.35f))
                 .clip(RoundedCornerShape(14.dp))

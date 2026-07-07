@@ -12,10 +12,16 @@ import androidx.glance.appwidget.updateAll
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.jekael.adoel.widget.AdoelWidget
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import java.io.IOException
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore("adoel_v5")
@@ -174,14 +180,27 @@ class DoffRepository(private val context: Context) {
         return gson.toJson(serial)
     }
 
+    // Lives as long as this DoffRepository instance (the ViewModel's, for the app's foreground
+    // lifetime) rather than any single caller's coroutine, so a debounced refresh isn't cancelled
+    // just because the mutation that scheduled it already returned.
+    private val widgetRefreshScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private var widgetRefreshJob: Job? = null
+
     /**
      * Atomically read-modify-write the persisted state inside a single DataStore transaction.
      * DataStore serializes transactions, so concurrent callers (the ViewModel and the
      * notification action's [quickDoff]) can never overwrite each other based on a stale snapshot.
      * [transform] must be pure — it is applied to whatever the latest persisted state is, not to
      * the caller's own in-memory copy.
+     *
+     * [debounceWidgetRefresh] coalesces rapid back-to-back mutations (e.g. an operator recording
+     * several doffs in quick succession while catching up at the end of a shift) into a single
+     * widget re-render shortly after the last one, instead of one full Glance recomposition per
+     * mutation. Left off (the default) for [quickDoff]'s notification-action path — that runs
+     * inside a BroadcastReceiver's goAsync() window, which finishes right after this call returns,
+     * so a delayed refresh scheduled there could be killed before it ever runs.
      */
-    suspend fun update(transform: (DoffState) -> DoffState): DoffState {
+    suspend fun update(debounceWidgetRefresh: Boolean = false, transform: (DoffState) -> DoffState): DoffState {
         lateinit var next: DoffState
         context.dataStore.edit { prefs ->
             next = transform(parseState(prefs))
@@ -190,12 +209,24 @@ class DoffRepository(private val context: Context) {
         // Centralized here (the one funnel every mutator passes through) instead of at each call
         // site, so no future mutator can forget to refresh the widget — and any failure is at
         // least visible in logcat instead of leaving the widget silently stale.
+        if (debounceWidgetRefresh) {
+            widgetRefreshJob?.cancel()
+            widgetRefreshJob = widgetRefreshScope.launch {
+                delay(400)
+                refreshWidget()
+            }
+        } else {
+            refreshWidget()
+        }
+        return next
+    }
+
+    private suspend fun refreshWidget() {
         try {
             AdoelWidget().updateAll(context)
         } catch (e: Exception) {
             Log.e("DoffRepository", "widget refresh failed", e)
         }
-        return next
     }
 
     /** Records a plain doff (no keterangan/yard) for [mcNo] — used by the notification action

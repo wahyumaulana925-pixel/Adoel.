@@ -35,6 +35,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.outlined.FreeBreakfast
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -90,6 +91,15 @@ fun MainScreen(
     doffVm: DoffViewModel,
     uiVm: UIViewModel,
 ) {
+    // DoffViewModel's _state starts out holding a 174-unconfigured-machine placeholder until the
+    // real persisted data finishes loading from disk — bail out to a brief loading screen instead
+    // of letting that placeholder data render for a frame or two on a slow cold start.
+    val isLoaded by doffVm.isLoaded.collectAsStateWithLifecycle()
+    if (!isLoaded) {
+        LoadingPlaceholder()
+        return
+    }
+
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
     val colors = LocalAppColors.current
@@ -127,6 +137,24 @@ fun MainScreen(
         inputErrorFlash = true
         delay(200)
         inputErrorFlash = false
+    }
+
+    // "Selesai Shift" closes out a full work shift — worth a beat more than a toast that's gone
+    // in 3.5s, so this pops a big checkmark over a dimmed backdrop before fading on its own.
+    var shiftFinishedKey by remember { mutableStateOf(0) }
+    var shiftFinishedVisible by remember { mutableStateOf(false) }
+    val shiftCheckScale = remember { Animatable(0f) }
+    val shiftBackdropAlpha = remember { Animatable(0f) }
+    LaunchedEffect(shiftFinishedKey) {
+        if (shiftFinishedKey == 0) return@LaunchedEffect
+        shiftFinishedVisible = true
+        shiftBackdropAlpha.snapTo(0f)
+        shiftCheckScale.snapTo(0f)
+        launch { shiftBackdropAlpha.animateTo(1f, tween(150)) }
+        shiftCheckScale.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+        delay(700)
+        shiftBackdropAlpha.animateTo(0f, tween(250))
+        shiftFinishedVisible = false
     }
 
     var nowAbs by remember { mutableLongStateOf(nowAbsMin()) }
@@ -414,7 +442,7 @@ fun MainScreen(
                                 uiVm.showConfirm("Akhiri shift? ${state.aktual.size} doff & ${state.estimasi.size} estimasi akan diarsipkan ke Riwayat, lalu konsol dikosongkan untuk shift baru.") {
                                     NotificationHelper.cancelAll(context, state.estimasi.keys.toList())
                                     doffVm.finishShift()
-                                    uiVm.showToast("Shift selesai ✓")
+                                    shiftFinishedKey++
                                 }
                             },
                             onEntryClick = { id -> editAktId = id },
@@ -508,6 +536,10 @@ fun MainScreen(
                 showConfirm = { msg, fn -> uiVm.showConfirm(msg, onConfirm = fn) },
             )
         }
+
+        if (shiftFinishedVisible) {
+            ShiftFinishedOverlay(checkScale = shiftCheckScale.value, backdropAlpha = shiftBackdropAlpha.value)
+        }
     }
 
     // Overlays
@@ -549,6 +581,44 @@ fun MainScreen(
         confirm = confirm,
         onDismiss = { uiVm.dismissConfirm() },
     )
+}
+
+@Composable
+private fun ShiftFinishedOverlay(checkScale: Float, backdropAlpha: Float) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.45f * backdropAlpha)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                imageVector = Icons.Filled.CheckCircle,
+                contentDescription = null,
+                tint = Emerald500,
+                modifier = Modifier
+                    .size(96.dp)
+                    .graphicsLayer { scaleX = checkScale; scaleY = checkScale; alpha = backdropAlpha },
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                "Shift Selesai",
+                style = AppType.DialogTitle.copy(color = Zinc100),
+                modifier = Modifier.graphicsLayer { alpha = backdropAlpha },
+            )
+        }
+    }
+}
+
+@Composable
+private fun LoadingPlaceholder() {
+    val colors = LocalAppColors.current
+    Box(
+        modifier = Modifier.fillMaxSize().background(colors.bg),
+        contentAlignment = Alignment.Center,
+    ) {
+        CircularProgressIndicator(color = Cyan500)
+    }
 }
 
 @Composable

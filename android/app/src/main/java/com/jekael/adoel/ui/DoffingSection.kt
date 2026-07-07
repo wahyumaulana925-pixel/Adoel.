@@ -10,6 +10,10 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.Flag
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -78,21 +82,24 @@ private fun DoffingActions(onShare: () -> Unit, onStatistik: () -> Unit, onFinis
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
             border = BorderStroke(1.dp, colors.border),
-        ) { Text("Bagikan", style = AppType.ButtonLabel) }
+            contentPadding = PaddingValues(0.dp),
+        ) { Icon(imageVector = Icons.Outlined.Share, contentDescription = "Bagikan", modifier = Modifier.size(20.dp)) }
         OutlinedButton(
             onClick = onStatistik,
             modifier = Modifier.weight(1f).height(44.dp),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
             border = BorderStroke(1.dp, colors.border),
-        ) { Text("Statistik", style = AppType.ButtonLabel) }
+            contentPadding = PaddingValues(0.dp),
+        ) { Icon(imageVector = Icons.Outlined.BarChart, contentDescription = "Statistik", modifier = Modifier.size(20.dp)) }
         OutlinedButton(
             onClick = onFinish,
             modifier = Modifier.weight(1f).height(44.dp),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = Red400),
             border = BorderStroke(1.dp, Red700.copy(alpha = 0.5f)),
-        ) { Text("Selesai Shift", style = AppType.ButtonLabel) }
+            contentPadding = PaddingValues(0.dp),
+        ) { Icon(imageVector = Icons.Outlined.Flag, contentDescription = "Selesai Shift", modifier = Modifier.size(20.dp)) }
     }
 }
 
