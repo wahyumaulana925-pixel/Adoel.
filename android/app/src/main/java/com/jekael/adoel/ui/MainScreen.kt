@@ -352,6 +352,17 @@ fun MainScreen(
         }
     }
 
+    fun handleHapusAktual(id: Int) {
+        val entry = state.aktual.find { it.id == id } ?: return
+        uiVm.showConfirm("Hapus riwayat Mc ${entry.mcNo}?") {
+            doffVm.hapusAktualById(id)
+            editAktId = null
+            uiVm.showToast("Mc ${entry.mcNo} dihapus", undo = {
+                doffVm.restoreAktual(entry)
+            })
+        }
+    }
+
     val doffCount = state.aktual.size
     val totalMc = remember(state.estimasi, state.aktual) {
         (state.estimasi.keys + state.aktual.map { it.mcNo }).toSet().size
@@ -555,6 +566,7 @@ fun MainScreen(
             },
             onInvalidYard = { uiVm.showToast("Yard tidak valid") },
             onEmptyKet = { uiVm.showToast("Keterangan tidak boleh kosong") },
+            onDelete = { editAktId?.let { id -> handleHapusAktual(id) } },
         )
     }
 
