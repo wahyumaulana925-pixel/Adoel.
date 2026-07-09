@@ -111,6 +111,7 @@ fun MainScreen(
     var mode by remember { mutableStateOf(Mode.AKTUAL) }
     var input by remember { mutableStateOf("") }
     var radarFilter by remember { mutableStateOf("") }
+    var doffFilter by remember { mutableStateOf("") }
 
     // Send button feedback — bounce + brief checkmark flash on a successful submit
     var sendPulseKey by remember { mutableStateOf(0) }
@@ -138,6 +139,11 @@ fun MainScreen(
         delay(200)
         inputErrorFlash = false
     }
+
+    // "Nanti" on the stale-shift banner only snoozes it for this composition/app session — it's
+    // not persisted, so if the shift genuinely never gets closed out, the reminder is back next
+    // time the app is opened fresh.
+    var staleShiftDismissed by remember { mutableStateOf(false) }
 
     // "Selesai Shift" closes out a full work shift — worth a beat more than a toast that's gone
     // in 3.5s, so this pops a big checkmark over a dimmed backdrop before fading on its own.
@@ -245,6 +251,11 @@ fun MainScreen(
     val staleDoffCount = remember(state.aktual, nowAbs) {
         val shiftStart = currentShiftStartAbsMin(nowAbs)
         state.aktual.count { val ts = it.tsEpochMin; ts != null && ts < shiftStart }
+    }
+    // Un-snooze once the stale batch is actually resolved (e.g. via Selesai Shift), so a *later*
+    // forgotten shift isn't silently suppressed by a "Nanti" tap from a previous, unrelated one.
+    LaunchedEffect(staleDoffCount == 0) {
+        if (staleDoffCount == 0) staleShiftDismissed = false
     }
     // Menunggu bucket spans CALM through IMMINENT (Segera already claims OVERDUE) — tint the
     // band header by its most urgent member so it doesn't read "calm" while cards inside are
@@ -371,6 +382,13 @@ fun MainScreen(
     }
 
     fun handleFinishShift() {
+        // finishShift() itself already no-ops on an empty console — mirror that here so an
+        // accidental/duplicate tap doesn't show a confirm dialog and checkmark celebration for
+        // archiving "0 doff & 0 estimasi".
+        if (state.aktual.isEmpty() && state.estimasi.isEmpty()) {
+            uiVm.showToast("Tidak ada yang perlu diarsipkan")
+            return
+        }
         uiVm.showConfirm("Akhiri shift? ${state.aktual.size} doff & ${state.estimasi.size} estimasi akan diarsipkan ke Riwayat, lalu konsol dikosongkan untuk shift baru.") {
             NotificationHelper.cancelAll(context, state.estimasi.keys.toList())
             doffVm.finishShift()
@@ -440,8 +458,9 @@ fun MainScreen(
                 )
 
                 staleShiftBanner(
-                    staleCount = staleDoffCount,
+                    staleCount = if (staleShiftDismissed) 0 else staleDoffCount,
                     onFinishClick = { handleFinishShift() },
+                    onDismiss = { staleShiftDismissed = true },
                 )
 
                 // The console's mode toggle doubles as a page switcher: ESTIMASI shows the
@@ -467,6 +486,8 @@ fun MainScreen(
                         doffingSection(
                             state = state,
                             aktualReversed = aktualReversed,
+                            doffFilter = doffFilter,
+                            onDoffFilterChange = { doffFilter = it },
                             onShare = { shareHistory(context, state) },
                             onStatistik = { statistikOpen = true },
                             onFinish = { handleFinishShift() },

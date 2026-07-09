@@ -55,9 +55,10 @@ internal fun LazyListScope.estimasiSection(
     // machines a filter field is just clutter above the very thing it's meant to help find.
     if (radarList.size > 4) {
         item(key = "est_filter") {
-            RadarFilterField(
+            ListFilterField(
                 value = radarFilter,
                 onValueChange = onRadarFilterChange,
+                placeholder = "Cari nomor mesin atau corak",
                 modifier = Modifier.fillMaxWidth().animateItem(),
             )
         }
@@ -183,16 +184,16 @@ private fun BreakGapCard(gapMin: Long, nextMcNo: String, nextAbsMin: Long, modif
     }
 }
 
-/** Filters the Segera/Menunggu bands by mc number or corak — lets an operator jump straight to a
- * machine instead of scanning past everything else when a lot of machines are running at once. */
+/** Shared search box for both the radar (ESTIMASI) and doffing (AKTUAL) lists — lets an operator
+ * jump straight to a machine instead of scanning past everything else when a lot are on screen. */
 @Composable
-private fun RadarFilterField(value: String, onValueChange: (String) -> Unit, modifier: Modifier = Modifier) {
+internal fun ListFilterField(value: String, onValueChange: (String) -> Unit, placeholder: String, modifier: Modifier = Modifier) {
     val colors = LocalAppColors.current
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
         modifier = modifier,
-        placeholder = { Text("Cari nomor mesin atau corak", style = AppType.Caption.copy(color = colors.textFaint)) },
+        placeholder = { Text(placeholder, style = AppType.Caption.copy(color = colors.textFaint)) },
         colors = outlinedFieldColors(),
         shape = RoundedCornerShape(50.dp),
         textStyle = AppType.FieldText.copy(color = colors.textPrimary),
