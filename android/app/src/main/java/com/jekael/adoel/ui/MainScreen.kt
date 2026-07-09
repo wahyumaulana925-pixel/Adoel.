@@ -111,6 +111,7 @@ fun MainScreen(
     var mode by remember { mutableStateOf(Mode.AKTUAL) }
     var input by remember { mutableStateOf("") }
     var radarFilter by remember { mutableStateOf("") }
+    var doffFilter by remember { mutableStateOf("") }
 
     // Send button feedback — bounce + brief checkmark flash on a successful submit
     var sendPulseKey by remember { mutableStateOf(0) }
@@ -138,6 +139,11 @@ fun MainScreen(
         delay(200)
         inputErrorFlash = false
     }
+
+    // "Nanti" on the stale-shift banner only snoozes it for this composition/app session — it's
+    // not persisted, so if the shift genuinely never gets closed out, the reminder is back next
+    // time the app is opened fresh.
+    var staleShiftDismissed by remember { mutableStateOf(false) }
 
     // "Selesai Shift" closes out a full work shift — worth a beat more than a toast that's gone
     // in 3.5s, so this pops a big checkmark over a dimmed backdrop before fading on its own.
@@ -238,6 +244,18 @@ fun MainScreen(
             MesinTipe.D408 -> "Mc $mcNo → jam counter, cth: $mcNo 12.30"
             null -> null
         }
+    }
+    // Flags doff entries left over from a shift the operator forgot to close via "Selesai Shift"
+    // before the next 06.00/14.00/22.00 boundary — otherwise they'd silently get archived together
+    // with the new shift's entries the next time Selesai Shift is pressed.
+    val staleDoffCount = remember(state.aktual, nowAbs) {
+        val shiftStart = currentShiftStartAbsMin(nowAbs)
+        state.aktual.count { val ts = it.tsEpochMin; ts != null && ts < shiftStart }
+    }
+    // Un-snooze once the stale batch is actually resolved (e.g. via Selesai Shift), so a *later*
+    // forgotten shift isn't silently suppressed by a "Nanti" tap from a previous, unrelated one.
+    LaunchedEffect(staleDoffCount == 0) {
+        if (staleDoffCount == 0) staleShiftDismissed = false
     }
     // Menunggu bucket spans CALM through IMMINENT (Segera already claims OVERDUE) — tint the
     // band header by its most urgent member so it doesn't read "calm" while cards inside are
@@ -352,6 +370,32 @@ fun MainScreen(
         }
     }
 
+    fun handleHapusAktual(id: Int) {
+        val entry = state.aktual.find { it.id == id } ?: return
+        uiVm.showConfirm("Hapus riwayat Mc ${entry.mcNo}?") {
+            doffVm.hapusAktualById(id)
+            editAktId = null
+            uiVm.showToast("Mc ${entry.mcNo} dihapus", undo = {
+                doffVm.restoreAktual(entry)
+            })
+        }
+    }
+
+    fun handleFinishShift() {
+        // finishShift() itself already no-ops on an empty console — mirror that here so an
+        // accidental/duplicate tap doesn't show a confirm dialog and checkmark celebration for
+        // archiving "0 doff & 0 estimasi".
+        if (state.aktual.isEmpty() && state.estimasi.isEmpty()) {
+            uiVm.showToast("Tidak ada yang perlu diarsipkan")
+            return
+        }
+        uiVm.showConfirm("Akhiri shift? ${state.aktual.size} doff & ${state.estimasi.size} estimasi akan diarsipkan ke Riwayat, lalu konsol dikosongkan untuk shift baru.") {
+            NotificationHelper.cancelAll(context, state.estimasi.keys.toList())
+            doffVm.finishShift()
+            shiftFinishedKey++
+        }
+    }
+
     val doffCount = state.aktual.size
     val totalMc = remember(state.estimasi, state.aktual) {
         (state.estimasi.keys + state.aktual.map { it.mcNo }).toSet().size
@@ -413,6 +457,12 @@ fun MainScreen(
                     },
                 )
 
+                staleShiftBanner(
+                    staleCount = if (staleShiftDismissed) 0 else staleDoffCount,
+                    onFinishClick = { handleFinishShift() },
+                    onDismiss = { staleShiftDismissed = true },
+                )
+
                 // The console's mode toggle doubles as a page switcher: ESTIMASI shows the
                 // estimate rows, DOFFING shows the recorded-doff rows.
                 when (mode) {
@@ -436,16 +486,13 @@ fun MainScreen(
                         doffingSection(
                             state = state,
                             aktualReversed = aktualReversed,
+                            doffFilter = doffFilter,
+                            onDoffFilterChange = { doffFilter = it },
                             onShare = { shareHistory(context, state) },
                             onStatistik = { statistikOpen = true },
-                            onFinish = {
-                                uiVm.showConfirm("Akhiri shift? ${state.aktual.size} doff & ${state.estimasi.size} estimasi akan diarsipkan ke Riwayat, lalu konsol dikosongkan untuk shift baru.") {
-                                    NotificationHelper.cancelAll(context, state.estimasi.keys.toList())
-                                    doffVm.finishShift()
-                                    shiftFinishedKey++
-                                }
-                            },
+                            onFinish = { handleFinishShift() },
                             onEntryClick = { id -> editAktId = id },
+                            onHapusEntry = { id -> handleHapusAktual(id) },
                         )
                     }
                 }
@@ -481,12 +528,14 @@ fun MainScreen(
             modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
         )
 
-        // Toast — floats just above the floating console card, never covers it
+        // Toast — floats just below the floating header. Anchored to the top (not the console
+        // bar at the bottom) so the on-screen keyboard, which only ever covers the bottom of the
+        // screen while typing a command, can never hide it right when it matters most.
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .align(Alignment.BottomCenter)
-                .padding(bottom = consoleBarHeight + 8.dp),
+                .align(Alignment.TopCenter)
+                .padding(top = headerHeight + 8.dp),
         ) {
             ToastHost(toast = toast, onDismiss = { uiVm.dismissToast() })
         }
@@ -555,6 +604,7 @@ fun MainScreen(
             },
             onInvalidYard = { uiVm.showToast("Yard tidak valid") },
             onEmptyKet = { uiVm.showToast("Keterangan tidak boleh kosong") },
+            onDelete = { editAktId?.let { id -> handleHapusAktual(id) } },
         )
     }
 

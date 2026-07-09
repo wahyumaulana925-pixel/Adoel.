@@ -32,6 +32,7 @@ fun EditAktSheet(
     state: DoffState,
     onClose: () -> Unit,
     onSave: (id: Int, ket: String, corakOverride: String?, customYard: Double?) -> Unit,
+    onDelete: () -> Unit,
     onInvalidYard: () -> Unit = {},
     onEmptyKet: () -> Unit = {},
 ) {
@@ -91,6 +92,8 @@ fun EditAktSheet(
                     text = entry.jam,
                     style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Medium, color = colors.textMuted),
                 )
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = onDelete) { TrashIcon() }
             }
 
             Spacer(Modifier.height(20.dp))

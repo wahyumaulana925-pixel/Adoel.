@@ -193,6 +193,10 @@ class DoffViewModel(app: Application) : AndroidViewModel(app) {
         s.copy(aktual = s.aktual.filter { it.id != id })
     }
 
+    fun restoreAktual(entry: AktualEntry) = updateState { s ->
+        if (s.aktual.any { it.id == entry.id }) s else s.copy(aktual = listOf(entry) + s.aktual)
+    }
+
     fun hapusShift(id: Int) = updateState { s ->
         s.copy(history = s.history.filter { it.id != id })
     }
