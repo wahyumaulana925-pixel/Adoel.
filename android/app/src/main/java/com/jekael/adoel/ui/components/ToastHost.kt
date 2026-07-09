@@ -34,8 +34,8 @@ fun ToastHost(
 
     AnimatedVisibility(
         visible = toast != null,
-        enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-        exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+        enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+        exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
     ) {
         toast?.let {
             Box(

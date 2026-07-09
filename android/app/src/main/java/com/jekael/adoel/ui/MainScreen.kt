@@ -527,12 +527,14 @@ fun MainScreen(
             modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
         )
 
-        // Toast — floats just above the floating console card, never covers it
+        // Toast — floats just below the floating header. Anchored to the top (not the console
+        // bar at the bottom) so the on-screen keyboard, which only ever covers the bottom of the
+        // screen while typing a command, can never hide it right when it matters most.
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .align(Alignment.BottomCenter)
-                .padding(bottom = consoleBarHeight + 8.dp),
+                .align(Alignment.TopCenter)
+                .padding(top = headerHeight + 8.dp),
         ) {
             ToastHost(toast = toast, onDismiss = { uiVm.dismissToast() })
         }
