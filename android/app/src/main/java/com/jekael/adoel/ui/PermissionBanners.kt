@@ -82,3 +82,30 @@ fun LazyListScope.permissionBanners(
         }
     }
 }
+
+/** Warns when the console still holds doff/estimasi entries from a shift period that's already
+ * over (operator forgot to tap "Selesai Shift" before the next 06.00/14.00/22.00 boundary) —
+ * shown regardless of ESTIMASI/DOFFING mode so it can't be missed by only checking one tab, and
+ * left visible (not auto-archived) since the operator may still be copying the old list into a
+ * written report. Left off entirely once there's nothing stale to flag. */
+fun LazyListScope.staleShiftBanner(staleCount: Int, onFinishClick: () -> Unit) {
+    if (staleCount <= 0) return
+    item {
+        val colors = LocalAppColors.current
+        TextButton(
+            onClick = onFinishClick,
+            modifier = Modifier.fillMaxWidth().animateItem(),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.textButtonColors(
+                containerColor = colors.bannerWarnBg,
+                contentColor = colors.bannerWarnFg,
+            ),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+        ) {
+            Text(
+                "Ada $staleCount catatan dari shift sebelumnya yang belum diarsipkan — ketuk untuk Selesai Shift dulu",
+                style = AppType.Caption,
+            )
+        }
+    }
+}

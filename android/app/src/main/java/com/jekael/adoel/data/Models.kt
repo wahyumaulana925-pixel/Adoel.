@@ -102,6 +102,21 @@ fun shiftNumberForEpochMin(epochMin: Long): Int {
     }
 }
 
+/** Epoch-minute the *current* shift period began (the most recent 06.00/14.00/22.00 boundary at
+ * or before [epochMin]) — used to tell whether an already-recorded entry belongs to a shift that
+ * hasn't been archived yet via "Selesai Shift" (see MainScreen's staleShiftBanner). */
+fun currentShiftStartAbsMin(epochMin: Long): Long {
+    val cal = Calendar.getInstance().apply { timeInMillis = epochMin * 60000L }
+    val hour = cal.get(Calendar.HOUR_OF_DAY)
+    val boundaryHour = if (hour in 6 until 22) (if (hour < 14) 6 else 14) else 22
+    if (hour < 6) cal.add(Calendar.DAY_OF_YEAR, -1)
+    cal.set(Calendar.HOUR_OF_DAY, boundaryHour)
+    cal.set(Calendar.MINUTE, 0)
+    cal.set(Calendar.SECOND, 0)
+    cal.set(Calendar.MILLISECOND, 0)
+    return cal.timeInMillis / 60000L
+}
+
 fun jamKeShiftAbs(jamMin: Int): Long {
     val startOfDay = Calendar.getInstance().apply {
         set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)

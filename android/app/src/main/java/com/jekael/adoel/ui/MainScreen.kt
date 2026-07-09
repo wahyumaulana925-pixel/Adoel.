@@ -239,6 +239,13 @@ fun MainScreen(
             null -> null
         }
     }
+    // Flags doff entries left over from a shift the operator forgot to close via "Selesai Shift"
+    // before the next 06.00/14.00/22.00 boundary — otherwise they'd silently get archived together
+    // with the new shift's entries the next time Selesai Shift is pressed.
+    val staleDoffCount = remember(state.aktual, nowAbs) {
+        val shiftStart = currentShiftStartAbsMin(nowAbs)
+        state.aktual.count { val ts = it.tsEpochMin; ts != null && ts < shiftStart }
+    }
     // Menunggu bucket spans CALM through IMMINENT (Segera already claims OVERDUE) — tint the
     // band header by its most urgent member so it doesn't read "calm" while cards inside are
     // already amber/orange.
@@ -363,6 +370,14 @@ fun MainScreen(
         }
     }
 
+    fun handleFinishShift() {
+        uiVm.showConfirm("Akhiri shift? ${state.aktual.size} doff & ${state.estimasi.size} estimasi akan diarsipkan ke Riwayat, lalu konsol dikosongkan untuk shift baru.") {
+            NotificationHelper.cancelAll(context, state.estimasi.keys.toList())
+            doffVm.finishShift()
+            shiftFinishedKey++
+        }
+    }
+
     val doffCount = state.aktual.size
     val totalMc = remember(state.estimasi, state.aktual) {
         (state.estimasi.keys + state.aktual.map { it.mcNo }).toSet().size
@@ -424,6 +439,11 @@ fun MainScreen(
                     },
                 )
 
+                staleShiftBanner(
+                    staleCount = staleDoffCount,
+                    onFinishClick = { handleFinishShift() },
+                )
+
                 // The console's mode toggle doubles as a page switcher: ESTIMASI shows the
                 // estimate rows, DOFFING shows the recorded-doff rows.
                 when (mode) {
@@ -449,13 +469,7 @@ fun MainScreen(
                             aktualReversed = aktualReversed,
                             onShare = { shareHistory(context, state) },
                             onStatistik = { statistikOpen = true },
-                            onFinish = {
-                                uiVm.showConfirm("Akhiri shift? ${state.aktual.size} doff & ${state.estimasi.size} estimasi akan diarsipkan ke Riwayat, lalu konsol dikosongkan untuk shift baru.") {
-                                    NotificationHelper.cancelAll(context, state.estimasi.keys.toList())
-                                    doffVm.finishShift()
-                                    shiftFinishedKey++
-                                }
-                            },
+                            onFinish = { handleFinishShift() },
                             onEntryClick = { id -> editAktId = id },
                         )
                     }
