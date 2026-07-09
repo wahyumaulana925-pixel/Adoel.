@@ -28,6 +28,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -42,9 +45,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -57,8 +64,7 @@ import com.jekael.adoel.data.formatYard
 import com.jekael.adoel.data.shiftNumberForEpochMin
 import com.jekael.adoel.ui.components.CloseIcon
 import com.jekael.adoel.ui.components.LinearProgressBar
-import com.jekael.adoel.ui.components.ShareIcon
-import com.jekael.adoel.ui.components.TrashIcon
+import com.jekael.adoel.ui.components.SwipeableCard
 import com.jekael.adoel.ui.theme.AppType
 import com.jekael.adoel.ui.theme.Cyan400
 import com.jekael.adoel.ui.theme.Cyan500
@@ -341,34 +347,59 @@ private fun ShiftRow(
         if (stamped.size >= 2) stamped.zipWithNext { a, b -> b - a }.average() else null
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(colors.bgElevated)
-            .clickable { onToggle() }
-            .padding(14.dp),
+    // Bagikan langsung — bukan salin, supaya tidak perlu ganti aplikasi lalu tempel manual.
+    // Tidak berarti apa-apa untuk shift tanpa doff (mis. diarsipkan dengan estimasi yang belum
+    // sempat diselesaikan), jadi swipe-kanan pada shift kosong tidak melakukan apa-apa.
+    fun requestShare() {
+        if (shift.aktual.isNotEmpty()) shareShift(context, shift, db)
+    }
+    fun requestDelete() {
+        showConfirm("Hapus arsip Shift $shiftNo · $dateStr? Data ini tidak bisa dikembalikan.") {
+            onDeleteShift(shift.id)
+        }
+    }
+
+    SwipeableCard(
+        modifier = modifier,
+        onSwipeRight = { requestShare() },
+        onSwipeLeft = { requestDelete() },
+        rightIcon = Icons.Outlined.Share,
+        leftIcon = Icons.Outlined.Delete,
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .shadow(elevation = 5.dp, shape = RoundedCornerShape(14.dp), ambientColor = Color.Black.copy(alpha = 0.35f))
+                .clip(RoundedCornerShape(14.dp))
+                .background(colors.bgElevated)
+                .clickable { onToggle() }
+                .semantics(mergeDescendants = true) {
+                    customActions = listOf(
+                        CustomAccessibilityAction("Bagikan Shift $shiftNo") { requestShare(); true },
+                        CustomAccessibilityAction("Hapus Shift $shiftNo") { requestDelete(); true },
+                    )
+                }
+                .padding(14.dp),
         ) {
-            Column {
-                Text(
-                    "Shift $shiftNo · $dateStr",
-                    style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary),
-                )
-                Text(timeRange, style = AppType.Caption.copy(color = colors.textFaint))
-                Spacer(Modifier.height(6.dp))
-                LinearProgressBar(
-                    fraction = shift.aktual.size.toFloat() / maxDoffCount,
-                    trackColor = colors.bgElevated2,
-                    fillColor = Cyan500,
-                    width = 60.dp,
-                )
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column {
+                    Text(
+                        "Shift $shiftNo · $dateStr",
+                        style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary),
+                    )
+                    Text(timeRange, style = AppType.Caption.copy(color = colors.textFaint))
+                    Spacer(Modifier.height(6.dp))
+                    LinearProgressBar(
+                        fraction = shift.aktual.size.toFloat() / maxDoffCount,
+                        trackColor = colors.bgElevated2,
+                        fillColor = Cyan500,
+                        width = 60.dp,
+                    )
+                }
                 Column(horizontalAlignment = Alignment.End) {
                     Text("${shift.aktual.size} doff", style = AppType.TabLabel.copy(color = Cyan400))
                     if (avgGapMin != null) {
@@ -378,39 +409,24 @@ private fun ShiftRow(
                         )
                     }
                 }
-                // Bagikan langsung — bukan salin, supaya tidak perlu ganti aplikasi lalu tempel
-                // manual. Disembunyikan untuk shift tanpa doff (mis. diarsipkan dengan estimasi
-                // yang belum sempat diselesaikan) karena tidak ada yang berarti untuk dibagikan.
-                if (shift.aktual.isNotEmpty()) {
-                    IconButton(onClick = { shareShift(context, shift, db) }) {
-                        ShareIcon()
-                    }
-                }
-                IconButton(onClick = {
-                    showConfirm("Hapus arsip Shift $shiftNo · $dateStr? Data ini tidak bisa dikembalikan.") {
-                        onDeleteShift(shift.id)
-                    }
-                }) {
-                    TrashIcon()
-                }
             }
-        }
 
-        if (expanded) {
-            Spacer(Modifier.height(10.dp))
-            chronological.forEach { entry ->
-                val corak = entry.corakOverride ?: db[entry.mcNo]?.corak ?: "—"
-                // Yard sudah terlihat di layar Doffing sebelum "Selesai Shift" mengarsipkannya ke
-                // sini — datanya tetap tersimpan di AktualEntry, jadi riwayat semestinya tetap
-                // menunjukkannya alih-alih diam-diam menghilang begitu shift diarsipkan.
-                val yard = entry.customYard ?: db[entry.mcNo]?.targetYard
-                val corakLine = if (yard != null) "$corak · ${formatYard(yard)}y" else corak
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text("Mc ${entry.mcNo} · $corakLine · ${entry.ket}", style = AppType.Caption.copy(color = colors.textSecondary))
-                    Text(entry.jam, style = AppType.Caption.copy(color = colors.textFaint))
+            if (expanded) {
+                Spacer(Modifier.height(10.dp))
+                chronological.forEach { entry ->
+                    val corak = entry.corakOverride ?: db[entry.mcNo]?.corak ?: "—"
+                    // Yard sudah terlihat di layar Doffing sebelum "Selesai Shift" mengarsipkannya ke
+                    // sini — datanya tetap tersimpan di AktualEntry, jadi riwayat semestinya tetap
+                    // menunjukkannya alih-alih diam-diam menghilang begitu shift diarsipkan.
+                    val yard = entry.customYard ?: db[entry.mcNo]?.targetYard
+                    val corakLine = if (yard != null) "$corak · ${formatYard(yard)}y" else corak
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text("Mc ${entry.mcNo} · $corakLine · ${entry.ket}", style = AppType.Caption.copy(color = colors.textSecondary))
+                        Text(entry.jam, style = AppType.Caption.copy(color = colors.textFaint))
+                    }
                 }
             }
         }

@@ -492,6 +492,7 @@ fun MainScreen(
                             onStatistik = { statistikOpen = true },
                             onFinish = { handleFinishShift() },
                             onEntryClick = { id -> editAktId = id },
+                            onHapusEntry = { id -> handleHapusAktual(id) },
                         )
                     }
                 }

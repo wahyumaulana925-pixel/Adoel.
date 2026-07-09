@@ -12,6 +12,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.*
@@ -21,12 +23,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jekael.adoel.data.*
+import com.jekael.adoel.ui.components.SwipeableCard
 import com.jekael.adoel.ui.theme.*
 import java.util.Calendar
 
@@ -41,6 +47,7 @@ fun LazyListScope.doffingSection(
     onStatistik: () -> Unit,
     onFinish: () -> Unit,
     onEntryClick: (Int) -> Unit,
+    onHapusEntry: (Int) -> Unit,
 ) {
     item(key = "doff_header") {
         SectionHeader(title = "Doffing", count = state.aktual.size)
@@ -100,7 +107,8 @@ fun LazyListScope.doffingSection(
             entry = entry,
             mesin = state.db[entry.mcNo],
             num = idx + 1,
-            onClick = { onEntryClick(entry.id) },
+            onEdit = { onEntryClick(entry.id) },
+            onHapus = { onHapusEntry(entry.id) },
             modifier = Modifier.animateItem(),
         )
     }
@@ -145,7 +153,8 @@ private fun DoffingRow(
     entry: AktualEntry,
     mesin: MesinData?,
     num: Int,
-    onClick: () -> Unit,
+    onEdit: () -> Unit,
+    onHapus: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = LocalAppColors.current
@@ -162,39 +171,56 @@ private fun DoffingRow(
         MesinTipe.D408 -> Sky500
         null -> colors.textFaint
     }
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .shadow(elevation = 3.dp, shape = RoundedCornerShape(14.dp), ambientColor = Color.Black.copy(alpha = 0.3f))
-            .clip(RoundedCornerShape(14.dp))
-            .background(colors.bgElevated)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 11.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    // Swipe right = edit (same as tapping the card), swipe left = hapus — matches RadarCard's
+    // swipe model. Tap still opens edit too, both as a fallback for anyone who doesn't swipe and
+    // because TalkBack can't perform the drag gesture at all (see customActions below for that).
+    SwipeableCard(
+        modifier = modifier.fillMaxWidth(),
+        onSwipeRight = onEdit,
+        onSwipeLeft = onHapus,
+        rightIcon = Icons.Outlined.Edit,
+        leftIcon = Icons.Outlined.Delete,
     ) {
-        Text(
-            text = "$num",
-            style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Black, color = colors.textMuted),
-            modifier = Modifier.width(22.dp),
-        )
-        Box(Modifier.size(8.dp).clip(CircleShape).background(dotColor))
-        Column(modifier = Modifier.weight(1f)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .shadow(elevation = 5.dp, shape = RoundedCornerShape(14.dp), ambientColor = Color.Black.copy(alpha = 0.35f))
+                .clip(RoundedCornerShape(14.dp))
+                .background(colors.bgElevated)
+                .clickable(onClick = onEdit)
+                .semantics(mergeDescendants = true) {
+                    customActions = listOf(
+                        CustomAccessibilityAction("Edit riwayat Mc ${entry.mcNo}") { onEdit(); true },
+                        CustomAccessibilityAction("Hapus riwayat Mc ${entry.mcNo}") { onHapus(); true },
+                    )
+                }
+                .padding(horizontal = 14.dp, vertical = 11.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             Text(
-                text = entry.mcNo,
-                style = AppType.NumberLarge.copy(color = Cyan500, letterSpacing = (-1).sp),
+                text = "$num",
+                style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Black, color = colors.textMuted),
+                modifier = Modifier.width(22.dp),
             )
+            Box(Modifier.size(8.dp).clip(CircleShape).background(dotColor))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = entry.mcNo,
+                    style = AppType.NumberLarge.copy(color = Cyan500, letterSpacing = (-1).sp),
+                )
+                Text(
+                    text = sub,
+                    style = AppType.LabelBold.copy(color = colors.textMuted),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
             Text(
-                text = sub,
-                style = AppType.LabelBold.copy(color = colors.textMuted),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                text = entry.ket,
+                style = AppType.TabLabel.copy(color = colors.textPrimary),
             )
         }
-        Text(
-            text = entry.ket,
-            style = AppType.TabLabel.copy(color = colors.textPrimary),
-        )
     }
 }
 
