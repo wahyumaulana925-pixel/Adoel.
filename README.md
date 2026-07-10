@@ -1,6 +1,8 @@
 # Adoel.
 
 Native Android app (Kotlin + Jetpack Compose) for tracking machine doffing schedules and estimates.
+A functionally-identical web/PWA port lives in `web/` (React + TypeScript, see `web/README.md`) —
+its backup JSON is interchangeable with the Android app's.
 
 ## Stack
 
