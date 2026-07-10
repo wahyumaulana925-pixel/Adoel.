@@ -36,6 +36,11 @@ jobs:
         run: npm run build
 
       - uses: actions/configure-pages@v5
+        with:
+          # Repo ini belum pernah punya Pages diaktifkan sama sekali — enablement:
+          # true bikin action ini yang mengaktifkannya sendiri (butuh permission
+          # "pages: write" di atas), bukan mengharuskan toggle manual di Settings.
+          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
