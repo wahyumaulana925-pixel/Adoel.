@@ -35,5 +35,13 @@ npm run preview
 
 ## Deploy
 
-`.github/workflows/deploy-web.yml` otomatis build & deploy ke GitHub Pages
-setiap push ke `main` yang menyentuh folder `web/`.
+Repo ini private, jadi GitHub Pages tidak bisa dipakai gratis. Deploy lewat
+**Netlify** (mendukung repo private tanpa upgrade akun apa pun):
+
+1. Daftar di https://app.netlify.com (bisa langsung "Sign up with GitHub")
+2. **Add new site → Import an existing project → GitHub**, beri Netlify akses
+   ke repo `Adoel.` (bisa dibatasi hanya repo ini)
+3. Pengaturan build otomatis terbaca dari `netlify.toml` di root repo (base
+   directory `web`, build command `npm run build`, publish directory `dist`)
+   — tinggal klik **Deploy**
+4. Setiap push ke `main` yang menyentuh `web/` otomatis ter-deploy ulang
