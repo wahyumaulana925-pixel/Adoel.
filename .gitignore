@@ -13,6 +13,12 @@ android/.cxx
 *.jks
 keystore.b64
 
+# Web (PWA)
+web/node_modules
+web/dist
+web/dist-ssr
+web/*.local
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
