@@ -27,7 +27,7 @@ fun ToastHost(
     val colors = LocalAppColors.current
     LaunchedEffect(toast?.key) {
         if (toast != null) {
-            delay(3500)
+            delay(Motion.TOAST_VISIBLE_MS)
             onDismiss()
         }
     }

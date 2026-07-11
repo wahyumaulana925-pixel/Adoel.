@@ -86,9 +86,14 @@ class DoffRepository(private val context: Context) {
             val serial = gson.fromJson(json, SerialState::class.java) ?: return null
             if (serial.db.isEmpty()) return null
             DoffState(
-                db = serial.db.mapValues { (_, v) ->
+                db = serial.db.mapValues { (mcNo, v) ->
                     MesinData(
-                        tipe = runCatching { MesinTipe.valueOf(v.tipe) }.getOrDefault(MesinTipe.TAPPET),
+                        tipe = runCatching { MesinTipe.valueOf(v.tipe) }.getOrElse {
+                            // Silently coercing would hide data corruption AND silently switch the
+                            // machine to TAPPET's estimation formula — at least leave a trace.
+                            Log.w("DoffRepository", "Tipe mesin tak dikenal '${v.tipe}' di Mc $mcNo, fallback TAPPET")
+                            MesinTipe.TAPPET
+                        },
                         corak = v.corak,
                         targetYard = v.targetYard,
                         speed = v.speed,
@@ -116,6 +121,9 @@ class DoffRepository(private val context: Context) {
                 onboardingSeen = serial.onboardingSeen ?: true,
             )
         } catch (e: Exception) {
+            // Null is the correct contract for the caller (invalid backup / corrupt blob), but a
+            // systematic serialization break in the field is undiagnosable without this trace.
+            Log.w("DoffRepository", "parseJson gagal — bukan snapshot Adoel yang valid", e)
             null
         }
     }
@@ -140,8 +148,17 @@ class DoffRepository(private val context: Context) {
 
     // DataStore reads can surface transient IOExceptions; recover to a default snapshot instead of
     // letting the exception cancel the collector (which would silently freeze all state updates).
+    // Logged loudly because downstream this emission is indistinguishable from a fresh install —
+    // without the trace, "all my data vanished" reports would have nothing to correlate against.
     private fun DataStore<Preferences>.safeData(): Flow<Preferences> =
-        data.catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
+        data.catch { e ->
+            if (e is IOException) {
+                Log.e("DoffRepository", "Gagal baca DataStore — emit state default sementara", e)
+                emit(emptyPreferences())
+            } else {
+                throw e
+            }
+        }
 
     suspend fun load(): DoffState = parseState(context.dataStore.safeData().first())
 

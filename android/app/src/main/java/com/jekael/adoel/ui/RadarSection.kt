@@ -86,7 +86,7 @@ internal fun LazyListScope.estimasiSection(
                 onHapus = { onHapus(est.mcNo) },
                 onQuickEdit = { onQuickEdit(est.mcNo) },
                 modifier = Modifier.animateItem(),
-                entranceDelayMs = (index * 35L).coerceAtMost(400L),
+                entranceDelayMs = (index * Motion.LIST_STAGGER_STEP_MS).coerceAtMost(Motion.LIST_STAGGER_MAX_MS),
             )
         }
     }
@@ -112,7 +112,7 @@ internal fun LazyListScope.estimasiSection(
                     onHapus = { onHapus(row.est.mcNo) },
                     onQuickEdit = { onQuickEdit(row.est.mcNo) },
                     modifier = Modifier.animateItem(),
-                    entranceDelayMs = (index * 35L).coerceAtMost(400L),
+                    entranceDelayMs = (index * Motion.LIST_STAGGER_STEP_MS).coerceAtMost(Motion.LIST_STAGGER_MAX_MS),
                 )
                 is MenungguRow.GapRow -> BreakGapCard(
                     gapMin = row.gapMin,

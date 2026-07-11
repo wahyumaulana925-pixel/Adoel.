@@ -7,9 +7,16 @@ package com.jekael.adoel.data
  */
 enum class UrgencyLevel { CALM, SOON, IMMINENT, OVERDUE }
 
+/** More than this many minutes remaining reads as "tenang" — no visual urgency at all. */
+const val URGENCY_CALM_OVER_MIN = 30L
+
+/** Between this and [URGENCY_CALM_OVER_MIN] minutes remaining is "segera" (amber). Below it,
+ * down to zero, is "mendesak" (orange); at/past zero the card is overdue (red, pulsing). */
+const val URGENCY_SOON_OVER_MIN = 10L
+
 fun urgencyLevel(remainingMin: Long): UrgencyLevel = when {
-    remainingMin > 30 -> UrgencyLevel.CALM
-    remainingMin > 10 -> UrgencyLevel.SOON
+    remainingMin > URGENCY_CALM_OVER_MIN -> UrgencyLevel.CALM
+    remainingMin > URGENCY_SOON_OVER_MIN -> UrgencyLevel.SOON
     remainingMin > 0 -> UrgencyLevel.IMMINENT
     else -> UrgencyLevel.OVERDUE
 }

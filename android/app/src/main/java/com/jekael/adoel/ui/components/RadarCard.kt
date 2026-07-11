@@ -139,8 +139,8 @@ fun RadarCard(
     // Swipe right = doff, swipe left = hapus — the only way to act on a card now that the
     // always-visible buttons are gone (see SwipeActionBackground for the reveal panel).
     val density = LocalDensity.current
-    val swipeThresholdPx = with(density) { 88.dp.toPx() }
-    val maxSwipePx = with(density) { 132.dp.toPx() }
+    val swipeThresholdPx = with(density) { Dimens.SwipeThreshold.toPx() }
+    val maxSwipePx = with(density) { Dimens.SwipeMax.toPx() }
     val offsetX = remember(est.mcNo) { Animatable(0f) }
 
     fun settleSwipe() {
@@ -165,8 +165,8 @@ fun RadarCard(
                     translationY = entranceOffsetY.value
                     alpha = (1f - exitProgress) * entranceAlpha.value
                 }
-                .shadow(elevation = 5.dp, shape = RoundedCornerShape(14.dp), ambientColor = Color.Black.copy(alpha = 0.35f))
-                .clip(RoundedCornerShape(14.dp))
+                .shadow(elevation = 5.dp, shape = RoundedCornerShape(Dimens.RadiusCard), ambientColor = Color.Black.copy(alpha = 0.35f))
+                .clip(RoundedCornerShape(Dimens.RadiusCard))
                 .background(faceBg)
                 // Swipe is the fast path, but TalkBack intercepts swipe gestures for its own
                 // navigation before they ever reach this card — without this, a screen-reader
@@ -335,7 +335,7 @@ private fun BoxScope.SwipeActionBackground(offsetX: Float, thresholdPx: Float) {
     Box(
         modifier = Modifier
             .matchParentSize()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(Dimens.RadiusCard))
             .background(bg.copy(alpha = 0.18f + 0.6f * progress)),
         contentAlignment = if (isDoff) Alignment.CenterStart else Alignment.CenterEnd,
     ) {
