@@ -20,8 +20,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.IOException
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore("adoel_v5")
@@ -73,7 +75,35 @@ private data class SerialShiftRecord(
     val estimasiRemaining: Map<String, SerialEstimasi>,
 )
 
-class DoffRepository(private val context: Context) {
+/**
+ * Kontrak penyimpanan state yang dipakai [com.jekael.adoel.viewmodel.DoffViewModel] — dipisah
+ * dari [DoffRepository] supaya unit test bisa menyuntikkan fake in-memory dan benar-benar
+ * menjalankan jalur persist (update/importJson) tanpa DataStore/Android framework.
+ */
+interface DoffStateStore {
+    fun observeState(): Flow<DoffState>
+    suspend fun update(debounceWidgetRefresh: Boolean = false, transform: (DoffState) -> DoffState): DoffState
+    fun exportJson(state: DoffState): String
+    suspend fun importJson(json: String): DoffState?
+}
+
+class DoffRepository private constructor(private val context: Context) : DoffStateStore {
+
+    companion object {
+        @Volatile private var instance: DoffRepository? = null
+
+        /** Satu instance per proses — Gson, scope debounce widget, dan konteks aplikasi dibagi
+         * oleh ViewModel, ketiga BroadcastReceiver, dan widget, alih-alih tiap alarm/render
+         * widget membangun repository (plus Gson) baru. DataStore-nya sendiri memang sudah
+         * process-wide (property delegate top-level), jadi ini murni dedup objek pendukung. */
+        fun getInstance(context: Context): DoffRepository =
+            instance ?: synchronized(this) {
+                // applicationContext bisa null untuk Application() polos di unit test — fallback
+                // ke context yang diberikan; jalur test tidak pernah menyentuh DataStore.
+                instance ?: DoffRepository(context.applicationContext ?: context).also { instance = it }
+            }
+    }
+
     private val gson: Gson = GsonBuilder().create()
 
     private fun parseState(prefs: Preferences): DoffState =
@@ -160,11 +190,17 @@ class DoffRepository(private val context: Context) {
             }
         }
 
-    suspend fun load(): DoffState = parseState(context.dataStore.safeData().first())
+    // Deserialisasi seluruh blob (db 174 mesin + riwayat 30 hari) bukan pekerjaan murah — kedua
+    // jalur baca di bawah memindahkannya ke Dispatchers.Default supaya tidak pernah berjalan di
+    // main thread (kolektor observeState di ViewModel berjalan di Main).
+    suspend fun load(): DoffState = withContext(Dispatchers.Default) {
+        parseState(context.dataStore.safeData().first())
+    }
 
     /** Reactive state — reflects any write, including ones from outside this ViewModel/process
      * lifecycle (e.g. the notification action button). */
-    fun observeState(): Flow<DoffState> = context.dataStore.safeData().map(::parseState)
+    override fun observeState(): Flow<DoffState> =
+        context.dataStore.safeData().map(::parseState).flowOn(Dispatchers.Default)
 
     private fun toSerialAktual(a: AktualEntry): SerialAktual =
         SerialAktual(a.id, a.mcNo, a.jam, a.ket, a.corakOverride, a.customYard, a.tsEpochMin)
@@ -217,7 +253,7 @@ class DoffRepository(private val context: Context) {
      * inside a BroadcastReceiver's goAsync() window, which finishes right after this call returns,
      * so a delayed refresh scheduled there could be killed before it ever runs.
      */
-    suspend fun update(debounceWidgetRefresh: Boolean = false, transform: (DoffState) -> DoffState): DoffState {
+    override suspend fun update(debounceWidgetRefresh: Boolean, transform: (DoffState) -> DoffState): DoffState {
         lateinit var next: DoffState
         context.dataStore.edit { prefs ->
             next = transform(parseState(prefs))
@@ -275,11 +311,11 @@ class DoffRepository(private val context: Context) {
     }
 
     /** Full-state backup as a JSON string (machine db + estimasi + doff history + theme). */
-    fun exportJson(state: DoffState): String = serialize(state)
+    override fun exportJson(state: DoffState): String = serialize(state)
 
     /** Restore state from a backup produced by [exportJson]. Returns the imported state, or null
      * if the JSON is not a valid Adoel backup. Writes atomically like any other mutation. */
-    suspend fun importJson(json: String): DoffState? {
+    override suspend fun importJson(json: String): DoffState? {
         val parsed = parseJson(json) ?: return null
         update { parsed }
         return parsed

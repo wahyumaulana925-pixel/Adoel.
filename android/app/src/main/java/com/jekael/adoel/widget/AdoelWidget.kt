@@ -37,8 +37,8 @@ import com.jekael.adoel.ui.theme.Zinc950
 
 /**
  * Home-screen widget: read-only scrollable list of every pending estimasi (nearest/most-overdue
- * first) — tapping anywhere on it opens the app, no in-widget actions. Reads its own
- * [DoffRepository] instance directly — same independent-access pattern already used by
+ * first) — tapping anywhere on it opens the app, no in-widget actions. Reads the shared
+ * [DoffRepository] singleton directly — same independent-access pattern already used by
  * [com.jekael.adoel.notification.DoffActionReceiver] outside the Activity/ViewModel scope.
  *
  * Tap-to-open is applied to the header, the empty state, and each row individually (not just the
@@ -47,7 +47,7 @@ import com.jekael.adoel.ui.theme.Zinc950
  */
 class AdoelWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val state = DoffRepository(context).load()
+        val state = DoffRepository.getInstance(context).load()
         val now = nowAbsMin()
         val sorted = sortedByNearest(state.estimasi)
         val openApp = actionStartActivity(Intent(context, MainActivity::class.java))

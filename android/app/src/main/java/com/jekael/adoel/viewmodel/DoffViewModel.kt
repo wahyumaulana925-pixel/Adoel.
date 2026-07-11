@@ -8,7 +8,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 
 // Caps how long past shifts are kept in DoffState.history by calendar age (not shift count), so
 // the DataStore JSON blob (the whole state is one serialized blob, see DoffRepository) doesn't
@@ -17,8 +16,13 @@ import kotlin.math.roundToInt
 private const val HISTORY_RETENTION_DAYS = 30
 private const val HISTORY_RETENTION_MIN = HISTORY_RETENTION_DAYS * 24 * 60L
 
-class DoffViewModel(app: Application) : AndroidViewModel(app) {
-    private val repo = DoffRepository(app)
+class DoffViewModel @JvmOverloads constructor(
+    app: Application,
+    // Injectable hanya untuk unit test (fake in-memory). @JvmOverloads menghasilkan konstruktor
+    // sekunder (Application) sehingga AndroidViewModelFactory bawaan tetap menemukannya via
+    // refleksi — tanpa itu, factory default gagal membuat ViewModel ini.
+    private val repo: DoffStateStore = DoffRepository.getInstance(app),
+) : AndroidViewModel(app) {
 
     private val _state = MutableStateFlow(DoffState(db = buildDefaultDb()))
     val state: StateFlow<DoffState> = _state.asStateFlow()
@@ -85,16 +89,15 @@ class DoffViewModel(app: Application) : AndroidViewModel(app) {
                     ?: return ProsesResult.Err("Data target kosong")
                 val speed = mesin.speed ?: return ProsesResult.Err("Data speed kosong")
                 if (speed <= 0.0) return ProsesResult.Err("Speed harus > 0")
-                val sisaMin = ((target - yardBerjalan) / speed).roundToInt()
-                nowAbsMin + sisaMin
+                nowAbsMin + sisaMenitD405(target, yardBerjalan, speed)
             }
             MesinTipe.D408 -> {
                 var jamCounterStr = parts[1]
                 if (jamCounterStr.equals("c", ignoreCase = true) && parts.size >= 3)
                     jamCounterStr = parts[2]
                 val jamMin = parseJam(jamCounterStr) ?: return ProsesResult.Err("Jam counter tidak valid")
-                val koreksi = mesin.koreksi?.roundToInt() ?: return ProsesResult.Err("Menit koreksi kosong")
-                jamKeShiftAbs(jamMin) + koreksi
+                val koreksi = mesin.koreksi ?: return ProsesResult.Err("Menit koreksi kosong")
+                estAbsD408(jamMin, koreksi)
             }
         }
 
@@ -138,7 +141,7 @@ class DoffViewModel(app: Application) : AndroidViewModel(app) {
                 val num = ydMatch.groupValues[2].replace(',', '.').toDoubleOrNull()
                 if (num != null) {
                     val standard = _state.value.estimasi[mcNo]?.yardOverride ?: mesin.targetYard
-                    customYard = if (isDelta && standard != null) standard + num else num
+                    customYard = resolveYardToken(isDelta, num, standard)
                     continue
                 }
             }
