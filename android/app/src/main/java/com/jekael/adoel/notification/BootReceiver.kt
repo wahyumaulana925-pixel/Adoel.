@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.jekael.adoel.data.DoffRepository
-import com.jekael.adoel.data.nowAbsMin
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -17,10 +16,7 @@ class BootReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val state = DoffRepository.getInstance(context).load()
-                val now = nowAbsMin()
-                state.estimasi.values
-                    .filter { it.estAbsMin > now }
-                    .forEach { NotificationHelper.scheduleNotif(context, it.mcNo, it.estAbsMin) }
+                NotificationHelper.rescheduleAll(context, state.estimasi.values)
             } catch (e: Exception) {
                 // Gagal reschedule setelah reboot berarti SEMUA alarm doff hilang diam-diam
                 // sampai app dibuka lagi — kegagalan sepenting itu wajib meninggalkan jejak.

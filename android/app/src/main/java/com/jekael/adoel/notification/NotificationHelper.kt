@@ -14,7 +14,9 @@ import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
 import com.jekael.adoel.MainActivity
 import com.jekael.adoel.R
+import com.jekael.adoel.data.Estimasi
 import com.jekael.adoel.data.formatYard
+import com.jekael.adoel.data.nowAbsMin
 
 // Brand accent (Cyan600 #0891B2) — tints the small icon & app name in the notification shade.
 private const val BRAND_COLOR = 0xFF0891B2.toInt()
@@ -110,6 +112,13 @@ object NotificationHelper {
 
     fun cancelAll(context: Context, mcNos: List<String>) {
         mcNos.forEach { cancelNotif(context, it) }
+    }
+
+    /** Schedules a notif for every estimasi still in the future — shared by BootReceiver (after a
+     * device reboot) and MainScreen's backup-import flow, which both need to reschedule a whole
+     * batch of estimasi at once from a freshly-loaded/restored [DoffState]. */
+    fun rescheduleAll(context: Context, estimasi: Collection<Estimasi>, now: Long = nowAbsMin()) {
+        estimasi.filter { it.estAbsMin > now }.forEach { scheduleNotif(context, it.mcNo, it.estAbsMin) }
     }
 
     fun showNotification(context: Context, mcNo: String, isReminder: Boolean, corak: String? = null, targetYard: Double? = null) {
