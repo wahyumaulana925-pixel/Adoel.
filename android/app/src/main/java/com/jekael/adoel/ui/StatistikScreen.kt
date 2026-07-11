@@ -63,6 +63,7 @@ import com.jekael.adoel.data.formatDeltaMin
 import com.jekael.adoel.data.formatYard
 import com.jekael.adoel.data.shiftNumberForEpochMin
 import com.jekael.adoel.ui.components.CloseIcon
+import com.jekael.adoel.ui.components.EmptyState
 import com.jekael.adoel.ui.components.LinearProgressBar
 import com.jekael.adoel.ui.components.SwipeableCard
 import com.jekael.adoel.ui.theme.AppType
