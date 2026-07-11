@@ -2,7 +2,6 @@ package com.jekael.adoel.ui
 
 import android.Manifest
 import android.app.AlarmManager
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -10,38 +9,20 @@ import android.os.PowerManager
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.outlined.FreeBreakfast
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -54,17 +35,6 @@ import com.jekael.adoel.viewmodel.DoffViewModel
 import com.jekael.adoel.viewmodel.UIViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
-internal enum class Mode { ESTIMASI, AKTUAL }
-
-/** Gaps at or above this many minutes between two upcoming doffs are worth flagging as a
- * break window — short enough to still be actionable, long enough to actually leave the floor. */
-private const val BREAK_GAP_THRESHOLD_MIN = 30L
-
-internal sealed class MenungguRow {
-    data class CardRow(val est: Estimasi) : MenungguRow()
-    data class GapRow(val afterMcNo: String, val nextMcNo: String, val gapMin: Long, val nextAbsMin: Long) : MenungguRow()
-}
 
 @Composable
 fun MainScreen(
@@ -93,31 +63,27 @@ fun MainScreen(
     var radarFilter by remember { mutableStateOf("") }
     var doffFilter by remember { mutableStateOf("") }
 
-    // Send button feedback — bounce + brief checkmark flash on a successful submit
-    var sendPulseKey by remember { mutableStateOf(0) }
-    val sendScale = remember { Animatable(1f) }
-    var sendShowCheck by remember { mutableStateOf(false) }
-    LaunchedEffect(sendPulseKey) {
-        if (sendPulseKey == 0) return@LaunchedEffect
-        sendShowCheck = true
-        sendScale.snapTo(0.8f)
+    val sendPulse = remember { SendPulseState() }
+    LaunchedEffect(sendPulse.key) {
+        if (sendPulse.key == 0) return@LaunchedEffect
+        sendPulse.showCheck = true
+        sendPulse.scale.snapTo(0.8f)
         launch {
-            sendScale.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+            sendPulse.scale.animateTo(1f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
         }
         delay(500)
-        sendShowCheck = false
+        sendPulse.showCheck = false
     }
 
     // Error feedback on a rejected console command — a toast alone (3.5s, auto-dismiss) can be
     // missed if the operator looks back at the machine right after hitting send, so this pairs it
     // with a haptic + a brief red ring around the input that doesn't depend on eyes staying on screen.
-    var errorFlashKey by remember { mutableStateOf(0) }
-    var inputErrorFlash by remember { mutableStateOf(false) }
-    LaunchedEffect(errorFlashKey) {
-        if (errorFlashKey == 0) return@LaunchedEffect
-        inputErrorFlash = true
+    val errorFlash = remember { ErrorFlashState() }
+    LaunchedEffect(errorFlash.key) {
+        if (errorFlash.key == 0) return@LaunchedEffect
+        errorFlash.active = true
         delay(200)
-        inputErrorFlash = false
+        errorFlash.active = false
     }
 
     // "Nanti" on the stale-shift banner only snoozes it for this composition/app session — it's
@@ -127,42 +93,38 @@ fun MainScreen(
 
     // "Selesai Shift" closes out a full work shift — worth a beat more than a toast that's gone
     // in 3.5s, so this pops a big checkmark over a dimmed backdrop before fading on its own.
-    var shiftFinishedKey by remember { mutableStateOf(0) }
-    var shiftFinishedVisible by remember { mutableStateOf(false) }
-    val shiftCheckScale = remember { Animatable(0f) }
-    val shiftBackdropAlpha = remember { Animatable(0f) }
-    LaunchedEffect(shiftFinishedKey) {
-        if (shiftFinishedKey == 0) return@LaunchedEffect
-        shiftFinishedVisible = true
-        shiftBackdropAlpha.snapTo(0f)
-        shiftCheckScale.snapTo(0f)
-        launch { shiftBackdropAlpha.animateTo(1f, tween(150)) }
-        shiftCheckScale.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
+    val shiftFinished = remember { ShiftFinishedState() }
+    LaunchedEffect(shiftFinished.key) {
+        if (shiftFinished.key == 0) return@LaunchedEffect
+        shiftFinished.visible = true
+        shiftFinished.backdropAlpha.snapTo(0f)
+        shiftFinished.checkScale.snapTo(0f)
+        launch { shiftFinished.backdropAlpha.animateTo(1f, tween(150)) }
+        shiftFinished.checkScale.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium))
         delay(700)
-        shiftBackdropAlpha.animateTo(0f, tween(250))
-        shiftFinishedVisible = false
+        shiftFinished.backdropAlpha.animateTo(0f, tween(250))
+        shiftFinished.visible = false
     }
 
     var nowAbs by remember { mutableLongStateOf(nowAbsMin()) }
-    var notifGranted by remember { mutableStateOf(true) }
-    var exactAlarmGranted by remember { mutableStateOf(true) }
-    var batteryUnrestricted by remember { mutableStateOf(true) }
+    val permission = remember { PermissionState() }
 
-    var settingsOpen by remember { mutableStateOf(false) }
-    var statistikOpen by remember { mutableStateOf(false) }
-    var editAktId by remember { mutableStateOf<Int?>(null) }
-    var quickEditMcNo by remember { mutableStateOf<String?>(null) }
+    var activeOverlay by remember { mutableStateOf<ActiveOverlay>(ActiveOverlay.None) }
     var showRemaining by remember { mutableStateOf(false) }
 
     val inputFocus = remember { FocusRequester() }
     var consoleBarHeight by remember { mutableStateOf(0.dp) }
     var headerHeight by remember { mutableStateOf(0.dp) }
 
+    val handlers = remember(context, doffVm, uiVm, haptic) {
+        MainScreenHandlers(context, doffVm, uiVm, haptic, sendPulse, errorFlash, shiftFinished)
+    }
+
     // Request notification permission launcher
     val notifPermLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
-        notifGranted = granted
+        permission.notifGranted = granted
         if (!granted) uiVm.showToast("⚠ Izin notifikasi ditolak")
     }
 
@@ -172,14 +134,14 @@ fun MainScreen(
             if (event == Lifecycle.Event.ON_RESUME) {
                 if (Build.VERSION.SDK_INT >= 33) {
                     val nm = context.getSystemService(android.app.NotificationManager::class.java)
-                    notifGranted = nm.areNotificationsEnabled()
+                    permission.notifGranted = nm.areNotificationsEnabled()
                 }
                 if (Build.VERSION.SDK_INT >= 31) {
                     val am = context.getSystemService(AlarmManager::class.java)
-                    exactAlarmGranted = am.canScheduleExactAlarms()
+                    permission.exactAlarmGranted = am.canScheduleExactAlarms()
                 }
                 val powerManager = context.getSystemService(PowerManager::class.java)
-                batteryUnrestricted = powerManager.isIgnoringBatteryOptimizations(context.packageName)
+                permission.batteryUnrestricted = powerManager.isIgnoringBatteryOptimizations(context.packageName)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -208,9 +170,12 @@ fun MainScreen(
             }
         }
     }
-    val (segeraList, menungguList) = remember(filteredRadarList, nowAbs) {
-        partitionSegeraMenunggu(filteredRadarList, nowAbs)
-    }
+    // Derived (not a plain remember(nowAbs, ...)) — partitioning only needs to actually re-propagate
+    // to whatever reads segeraList/menungguList when a card crosses the Segera/Menunggu boundary,
+    // not on every 5-second nowAbs tick that leaves the partition unchanged.
+    val (segeraList, menungguList) = remember(filteredRadarList) {
+        derivedStateOf { partitionSegeraMenunggu(filteredRadarList, nowAbs) }
+    }.value
     // Real-time reminder of the expected command syntax for the machine number being typed —
     // TAPPET/CAM want a duration, D405 wants running yard, D408 wants a jam counter — so an
     // operator who forgets the format gets a hint before submitting instead of a generic error.
@@ -227,10 +192,13 @@ fun MainScreen(
     }
     // Flags doff entries left over from a shift the operator forgot to close via "Selesai Shift"
     // before the next 06.00/14.00/22.00 boundary — otherwise they'd silently get archived together
-    // with the new shift's entries the next time Selesai Shift is pressed.
-    val staleDoffCount = remember(state.aktual, nowAbs) {
-        val shiftStart = currentShiftStartAbsMin(nowAbs)
-        state.aktual.count { val ts = it.tsEpochMin; ts != null && ts < shiftStart }
+    // with the new shift's entries the next time Selesai Shift is pressed. Derived so this only
+    // re-propagates when the stale count itself changes, not on every 5-second tick.
+    val staleDoffCount by remember(state.aktual) {
+        derivedStateOf {
+            val shiftStart = currentShiftStartAbsMin(nowAbs)
+            state.aktual.count { val ts = it.tsEpochMin; ts != null && ts < shiftStart }
+        }
     }
     // Un-snooze once the stale batch is actually resolved (e.g. via Selesai Shift), so a *later*
     // forgotten shift isn't silently suppressed by a "Nanti" tap from a previous, unrelated one.
@@ -239,12 +207,14 @@ fun MainScreen(
     }
     // Menunggu bucket spans CALM through IMMINENT (Segera already claims OVERDUE) — tint the
     // band header by its most urgent member so it doesn't read "calm" while cards inside are
-    // already amber/orange.
-    val menungguAccent = remember(menungguList, nowAbs) {
-        when (menungguList.maxOfOrNull { urgencyLevel(it.estAbsMin - nowAbs) }) {
-            UrgencyLevel.IMMINENT -> Orange400
-            UrgencyLevel.SOON -> Amber400
-            else -> Cyan400
+    // already amber/orange. Derived so this only re-propagates when the accent color itself changes.
+    val menungguAccent by remember(menungguList) {
+        derivedStateOf {
+            when (menungguList.maxOfOrNull { urgencyLevel(it.estAbsMin - nowAbs) }) {
+                UrgencyLevel.IMMINENT -> Orange400
+                UrgencyLevel.SOON -> Amber400
+                else -> Cyan400
+            }
         }
     }
     // Flag long idle stretches between two upcoming doffs so the operator knows when it's
@@ -261,118 +231,6 @@ fun MainScreen(
                     }
                 }
             }
-        }
-    }
-    fun flashError(msg: String) {
-        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-        errorFlashKey++
-        uiVm.showToast("⚠ $msg")
-    }
-
-    fun submitEstimasi(cmd: String) {
-        val result = doffVm.prosesBarisKondisiMesin(cmd, nowAbsMin())
-        when (result) {
-            is ProsesResult.Ok -> {
-                sendPulseKey++
-                uiVm.showToast(result.msg)
-                input = ""
-                result.estAbs?.let { NotificationHelper.scheduleNotif(context, result.mcNo, it) }
-            }
-            is ProsesResult.Err -> flashError(result.msg)
-        }
-    }
-
-    fun handleCommand() {
-        val cmd = input.trim().uppercase()
-        if (cmd.isEmpty()) return
-
-        when (mode) {
-            Mode.ESTIMASI -> {
-                val mcNo = cmd.substringBefore(' ')
-                val existing = state.estimasi[mcNo]
-                val remaining = existing?.let { it.estAbsMin - nowAbsMin() }
-                // Salah masuk mode ESTIMASI lalu ngetik cepat bisa nggak sadar menimpa timer yang
-                // masih jalan — prosesBarisKondisiMesin tidak punya undo, jadi khusus estimasi yang
-                // masih aktif & mepet (<10 menit lagi), minta konfirmasi dulu, bukan menimpa diam-diam.
-                if (existing != null && remaining != null && remaining in 0 until 10) {
-                    uiVm.showConfirm("Mc $mcNo sudah diestimasi ${formatDeltaMin(remaining)} lagi. Timpa dengan estimasi baru?") {
-                        submitEstimasi(cmd)
-                    }
-                } else {
-                    submitEstimasi(cmd)
-                }
-            }
-            Mode.AKTUAL -> {
-                val result = doffVm.prosesBarisUmum(cmd)
-                when (result) {
-                    is ProsesResult.Ok -> {
-                        sendPulseKey++
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        NotificationHelper.cancelNotif(context, result.mcNo)
-                        uiVm.showToast(result.msg, undo = {
-                            result.undoFn?.invoke()
-                            result.prevEst?.let { NotificationHelper.scheduleNotif(context, it.mcNo, it.estAbsMin) }
-                        })
-                        input = ""
-                    }
-                    is ProsesResult.Err -> flashError(result.msg)
-                }
-            }
-        }
-    }
-
-    fun handleDoff(mcNo: String) {
-        val result = doffVm.prosesBarisUmum(mcNo)
-        when (result) {
-            is ProsesResult.Ok -> {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                NotificationHelper.cancelNotif(context, result.mcNo)
-                uiVm.showToast(result.msg, undo = {
-                    result.undoFn?.invoke()
-                    result.prevEst?.let { NotificationHelper.scheduleNotif(context, it.mcNo, it.estAbsMin) }
-                })
-            }
-            is ProsesResult.Err -> uiVm.showToast("⚠ ${result.msg}")
-        }
-    }
-
-    fun handleHapusEst(mcNo: String) {
-        uiVm.showConfirm("Hapus estimasi Mc $mcNo?") {
-            val prevEst = state.estimasi[mcNo]
-            doffVm.hapusEstimasi(mcNo)
-            NotificationHelper.cancelNotif(context, mcNo)
-            uiVm.showToast("Mc $mcNo dihapus", undo = {
-                if (prevEst != null) {
-                    doffVm.restoreEstimasi(prevEst)
-                    NotificationHelper.scheduleNotif(context, prevEst.mcNo, prevEst.estAbsMin)
-                }
-            })
-        }
-    }
-
-    fun handleHapusAktual(id: Int) {
-        val entry = state.aktual.find { it.id == id } ?: return
-        uiVm.showConfirm("Hapus riwayat Mc ${entry.mcNo}?") {
-            doffVm.hapusAktualById(id)
-            editAktId = null
-            uiVm.showToast("Mc ${entry.mcNo} dihapus", undo = {
-                doffVm.restoreAktual(entry)
-            })
-        }
-    }
-
-    fun handleFinishShift() {
-        // finishShift() itself already no-ops on an empty console — mirror that here so an
-        // accidental/duplicate tap doesn't show a confirm dialog and checkmark celebration for
-        // archiving "0 doff & 0 estimasi".
-        if (state.aktual.isEmpty() && state.estimasi.isEmpty()) {
-            uiVm.showToast("Tidak ada yang perlu diarsipkan")
-            return
-        }
-        uiVm.showConfirm("Akhiri shift? ${state.aktual.size} doff & ${state.estimasi.size} estimasi akan diarsipkan ke Riwayat, lalu konsol dikosongkan untuk shift baru.") {
-            NotificationHelper.cancelAll(context, state.estimasi.keys.toList())
-            doffVm.finishShift()
-            shiftFinishedKey++
         }
     }
 
@@ -401,9 +259,9 @@ fun MainScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 permissionBanners(
-                    notifGranted = notifGranted,
-                    exactAlarmGranted = exactAlarmGranted,
-                    batteryUnrestricted = batteryUnrestricted,
+                    notifGranted = permission.notifGranted,
+                    exactAlarmGranted = permission.exactAlarmGranted,
+                    batteryUnrestricted = permission.batteryUnrestricted,
                     onNotifBannerClick = {
                         if (Build.VERSION.SDK_INT >= 33) {
                             notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -439,7 +297,7 @@ fun MainScreen(
 
                 staleShiftBanner(
                     staleCount = if (staleShiftDismissed) 0 else staleDoffCount,
-                    onFinishClick = { handleFinishShift() },
+                    onFinishClick = { handlers.handleFinishShift() },
                     onDismiss = { staleShiftDismissed = true },
                 )
 
@@ -457,9 +315,9 @@ fun MainScreen(
                             nowAbs = nowAbs,
                             radarFilter = radarFilter,
                             onRadarFilterChange = { radarFilter = it },
-                            onDoff = { mcNo -> handleDoff(mcNo) },
-                            onHapus = { mcNo -> handleHapusEst(mcNo) },
-                            onQuickEdit = { mcNo -> quickEditMcNo = mcNo },
+                            onDoff = { mcNo -> handlers.handleDoff(mcNo) },
+                            onHapus = { mcNo -> handlers.handleHapusEst(mcNo) },
+                            onQuickEdit = { mcNo -> activeOverlay = ActiveOverlay.QuickEditMesin(mcNo) },
                         )
                     }
                     Mode.AKTUAL -> {
@@ -469,10 +327,10 @@ fun MainScreen(
                             doffFilter = doffFilter,
                             onDoffFilterChange = { doffFilter = it },
                             onShare = { shareHistory(context, state) },
-                            onStatistik = { statistikOpen = true },
-                            onFinish = { handleFinishShift() },
-                            onEntryClick = { id -> editAktId = id },
-                            onHapusEntry = { id -> handleHapusAktual(id) },
+                            onStatistik = { activeOverlay = ActiveOverlay.Statistik },
+                            onFinish = { handlers.handleFinishShift() },
+                            onEntryClick = { id -> activeOverlay = ActiveOverlay.EditAkt(id) },
+                            onHapusEntry = { id -> handlers.handleHapusAktual(id) { activeOverlay = ActiveOverlay.None } },
                         )
                     }
                 }
@@ -486,7 +344,7 @@ fun MainScreen(
             doffCount = doffCount,
             showRemaining = showRemaining,
             onToggleShowRemaining = { showRemaining = !showRemaining },
-            onGearClick = { settingsOpen = true },
+            onGearClick = { activeOverlay = ActiveOverlay.Settings },
             onHeightMeasured = { headerHeight = it },
             haptic = haptic,
             modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth(),
@@ -499,10 +357,10 @@ fun MainScreen(
             input = input,
             onInputChange = { input = it },
             inputFocus = inputFocus,
-            onSend = { handleCommand() },
-            sendScale = sendScale.value,
-            sendShowCheck = sendShowCheck,
-            inputErrorFlash = inputErrorFlash,
+            onSend = { handlers.handleCommand(mode, input) { input = "" } },
+            sendScale = { sendPulse.scale.value },
+            sendShowCheck = sendPulse.showCheck,
+            inputErrorFlash = errorFlash.active,
             inputHint = inputHint,
             onHeightMeasured = { consoleBarHeight = it },
             modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
@@ -522,10 +380,10 @@ fun MainScreen(
 
         // Settings panel — rendered in this same Box (not a separate Dialog window) so its own
         // AnimatedVisibility is the only thing animating it in/out, drawn last to sit on top.
-        if (settingsOpen) {
+        if (activeOverlay is ActiveOverlay.Settings) {
             SettingsDrawer(
                 state = state,
-                onClose = { settingsOpen = false },
+                onClose = { activeOverlay = ActiveOverlay.None },
                 onSetMesin = { mcNo, data -> doffVm.setMesin(mcNo, data) },
                 onResetMesin = { mcNo -> doffVm.resetMesin(mcNo) },
                 onResetDb = {
@@ -540,10 +398,7 @@ fun MainScreen(
                         doffVm.importJson(json) { imported ->
                             if (imported != null) {
                                 NotificationHelper.cancelAll(context, oldKeys)
-                                val now = nowAbsMin()
-                                imported.estimasi.values
-                                    .filter { it.estAbsMin > now }
-                                    .forEach { NotificationHelper.scheduleNotif(context, it.mcNo, it.estAbsMin) }
+                                NotificationHelper.rescheduleAll(context, imported.estimasi.values)
                                 uiVm.showToast("Data dipulihkan ✓")
                             } else {
                                 uiVm.showToast("⚠ File cadangan tidak valid")
@@ -556,49 +411,54 @@ fun MainScreen(
             )
         }
 
-        if (statistikOpen) {
+        if (activeOverlay is ActiveOverlay.Statistik) {
             StatistikScreen(
                 history = state.history,
                 db = state.db,
-                onClose = { statistikOpen = false },
+                onClose = { activeOverlay = ActiveOverlay.None },
                 onDeleteShift = { id -> doffVm.hapusShift(id) },
                 showConfirm = { msg, fn -> uiVm.showConfirm(msg, onConfirm = fn) },
             )
         }
 
-        if (shiftFinishedVisible) {
-            ShiftFinishedOverlay(checkScale = shiftCheckScale.value, backdropAlpha = shiftBackdropAlpha.value)
+        if (shiftFinished.visible) {
+            ShiftFinishedOverlay(
+                checkScale = { shiftFinished.checkScale.value },
+                backdropAlpha = { shiftFinished.backdropAlpha.value },
+            )
         }
     }
 
     // Overlays
+    val editAktId = (activeOverlay as? ActiveOverlay.EditAkt)?.id
     if (editAktId != null) {
         EditAktSheet(
             aktualId = editAktId,
             state = state,
-            onClose = { editAktId = null },
+            onClose = { activeOverlay = ActiveOverlay.None },
             onSave = { id, ket, corakOverride, customYard ->
                 doffVm.updateAktual(id, ket, corakOverride, customYard)
                 uiVm.showToast("Riwayat diperbarui")
-                editAktId = null
+                activeOverlay = ActiveOverlay.None
             },
             onInvalidYard = { uiVm.showToast("Yard tidak valid") },
             onEmptyKet = { uiVm.showToast("Keterangan tidak boleh kosong") },
-            onDelete = { editAktId?.let { id -> handleHapusAktual(id) } },
+            onDelete = { handlers.handleHapusAktual(editAktId) { activeOverlay = ActiveOverlay.None } },
         )
     }
 
-    quickEditMcNo?.let { mcNo ->
-        val mesin = state.db[mcNo] ?: MesinData()
+    val quickEditMcNo = (activeOverlay as? ActiveOverlay.QuickEditMesin)?.mcNo
+    if (quickEditMcNo != null) {
+        val mesin = state.db[quickEditMcNo] ?: MesinData()
         QuickEditCorakDialog(
-            mcNo = mcNo,
+            mcNo = quickEditMcNo,
             corak = mesin.corak,
             targetYard = mesin.targetYard,
-            onDismiss = { quickEditMcNo = null },
+            onDismiss = { activeOverlay = ActiveOverlay.None },
             onSave = { corak, targetYard ->
-                doffVm.setMesin(mcNo, mesin.copy(corak = corak, targetYard = targetYard))
-                uiVm.showToast("Mc $mcNo disimpan ✓")
-                quickEditMcNo = null
+                doffVm.setMesin(quickEditMcNo, mesin.copy(corak = corak, targetYard = targetYard))
+                uiVm.showToast("Mc $quickEditMcNo disimpan ✓")
+                activeOverlay = ActiveOverlay.None
             },
         )
     }
@@ -611,97 +471,4 @@ fun MainScreen(
         confirm = confirm,
         onDismiss = { uiVm.dismissConfirm() },
     )
-}
-
-@Composable
-private fun ShiftFinishedOverlay(checkScale: Float, backdropAlpha: Float) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.45f * backdropAlpha)),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-                imageVector = Icons.Filled.CheckCircle,
-                contentDescription = null,
-                tint = Emerald500,
-                modifier = Modifier
-                    .size(96.dp)
-                    .graphicsLayer { scaleX = checkScale; scaleY = checkScale; alpha = backdropAlpha },
-            )
-            Spacer(Modifier.height(12.dp))
-            Text(
-                "Shift Selesai",
-                style = AppType.DialogTitle.copy(color = Zinc100),
-                modifier = Modifier.graphicsLayer { alpha = backdropAlpha },
-            )
-        }
-    }
-}
-
-@Composable
-private fun LoadingPlaceholder() {
-    val colors = LocalAppColors.current
-    Box(
-        modifier = Modifier.fillMaxSize().background(colors.bg),
-        contentAlignment = Alignment.Center,
-    ) {
-        CircularProgressIndicator(color = Cyan500)
-    }
-}
-
-@Composable
-internal fun SectionHeader(title: String, count: Int) {
-    val colors = LocalAppColors.current
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = title,
-            style = AppType.TabLabel.copy(letterSpacing = 0.5.sp, color = colors.textPrimary),
-        )
-        if (count > 0) {
-            Text(
-                text = "$count",
-                style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = colors.textFaint),
-            )
-        }
-    }
-}
-
-@Composable
-fun EmptyState(
-    modifier: Modifier = Modifier,
-    title: String = "Belum ada mesin yang dipantau",
-    subtitle: String = "Masukkan nomor mesin + estimasi di kolom bawah untuk mulai",
-) {
-    val colors = LocalAppColors.current
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(96.dp)) {
-            Box(Modifier.size(96.dp).clip(CircleShape).background(colors.bgElevated2.copy(alpha = 0.3f)))
-            Box(Modifier.size(72.dp).clip(CircleShape).background(colors.bg))
-            Box(Modifier.size(72.dp).clip(CircleShape).background(colors.bgElevated2.copy(alpha = 0.2f)))
-            Box(Modifier.size(48.dp).clip(CircleShape).background(colors.bg))
-            Box(Modifier.size(12.dp).clip(CircleShape).background(colors.border))
-        }
-        Text(
-            text = title,
-            style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = colors.textSecondary),
-        )
-        Text(
-            text = subtitle,
-            style = AppType.Caption.copy(color = colors.textFaint, lineHeight = 17.sp),
-            modifier = Modifier.padding(horizontal = 32.dp),
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-        )
-    }
 }

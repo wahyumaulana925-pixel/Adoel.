@@ -53,7 +53,11 @@ internal fun ConsoleBar(
     onInputChange: (String) -> Unit,
     inputFocus: FocusRequester,
     onSend: () -> Unit,
-    sendScale: Float,
+    // Lambda (not a plain Float) so the .value read of the underlying Animatable happens inside
+    // this composable's own graphicsLayer{} block at draw time, not at MainScreen's call site —
+    // reading it there would resubscribe MainScreen's whole recomposition scope to every
+    // animation frame of the send-button bounce.
+    sendScale: () -> Float,
     sendShowCheck: Boolean,
     inputErrorFlash: Boolean,
     inputHint: String?,
@@ -169,7 +173,7 @@ internal fun ConsoleBar(
                     onClick = onSend,
                     modifier = Modifier
                         .size(56.dp)
-                        .graphicsLayer { scaleX = sendScale; scaleY = sendScale }
+                        .graphicsLayer { scaleX = sendScale(); scaleY = sendScale() }
                         .shadow(elevation = 8.dp, shape = CircleShape, ambientColor = Cyan600.copy(alpha = 0.6f)),
                     shape = CircleShape,
                     colors = ButtonDefaults.buttonColors(containerColor = if (sendShowCheck) Emerald500 else Cyan600),
