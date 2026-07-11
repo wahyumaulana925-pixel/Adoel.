@@ -1,10 +1,16 @@
 package com.jekael.adoel.viewmodel
 
 import android.app.Application
+import com.jekael.adoel.data.DoffState
+import com.jekael.adoel.data.DoffStateStore
 import com.jekael.adoel.data.ProsesResult
+import com.jekael.adoel.data.buildDefaultDb
 import com.jekael.adoel.data.nowAbsMin
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.After
@@ -17,20 +23,40 @@ import org.junit.Test
 import kotlin.math.roundToInt
 
 /**
- * Covers the optimistic in-memory state transitions in DoffViewModel — the per-machine-type
- * estimation math in prosesBarisKondisiMesin/prosesBarisUmum, and finishShift's archive step.
- * The persisted DataStore write (repo.update, launched on viewModelScope) never actually runs
- * here since Dispatchers.Main is a StandardTestDispatcher that's never pumped, so these tests
- * exercise updateState()'s synchronous optimistic-apply path only, not the DataStore round-trip.
+ * Covers DoffViewModel end to end terhadap fake store in-memory: jalur optimistic-apply yang
+ * sinkron (asersi tanpa memompa dispatcher) DAN jalur persist — transform yang sama diterapkan
+ * ulang secara atomik lewat [DoffStateStore.update] begitu dispatcher dipompa
+ * (advanceUntilIdle), lalu observeState merekonsiliasi state ViewModel ke hasil tersimpan.
  */
 class DoffViewModelTest {
 
+    /** Pengganti in-memory untuk DoffRepository — update menerapkan transform ke MutableStateFlow
+     * sehingga jalur "tulis → emisi → rekonsiliasi" berjalan nyata tanpa DataStore/Android. */
+    private class FakeStore : DoffStateStore {
+        val persisted = MutableStateFlow(DoffState(db = buildDefaultDb()))
+        override fun observeState(): Flow<DoffState> = persisted
+        override suspend fun update(
+            debounceWidgetRefresh: Boolean,
+            transform: (DoffState) -> DoffState,
+        ): DoffState {
+            val next = transform(persisted.value)
+            persisted.value = next
+            return next
+        }
+        override fun exportJson(state: DoffState): String = ""
+        override suspend fun importJson(json: String): DoffState? = null
+    }
+
+    private lateinit var dispatcher: TestDispatcher
+    private lateinit var store: FakeStore
     private lateinit var viewModel: DoffViewModel
 
     @Before
     fun setUp() {
-        Dispatchers.setMain(StandardTestDispatcher())
-        viewModel = DoffViewModel(Application())
+        dispatcher = StandardTestDispatcher()
+        Dispatchers.setMain(dispatcher)
+        store = FakeStore()
+        viewModel = DoffViewModel(Application(), store)
     }
 
     @After
@@ -77,8 +103,8 @@ class DoffViewModelTest {
 
     @Test
     fun d408EstimasiIsAccepted() {
-        // Mc 79 is D408/60357, koreksi 18.0 — exact estAbs depends on wall-clock via
-        // jamKeShiftAbs, so this only asserts the jam-counter command parses successfully.
+        // Mc 79 is D408/60357, koreksi 18.0 — nilai numeriknya diuji di EstimasiUtilsTest
+        // (estAbsD408 dengan clock suntikan); di sini cukup jalur perintahnya.
         val result = viewModel.prosesBarisKondisiMesin("79 12.30", nowAbsMin())
 
         assertTrue(result is ProsesResult.Ok)
@@ -108,5 +134,33 @@ class DoffViewModelTest {
         assertTrue(viewModel.state.value.estimasi.isEmpty())
         assertEquals(1, viewModel.state.value.history.size)
         assertEquals(1, viewModel.state.value.history.first().aktual.size)
+    }
+
+    @Test
+    fun persistedWriteAppliesSameTransformAsOptimisticApply() {
+        viewModel.prosesBarisKondisiMesin("29 45", 1_000L)
+        // Sebelum dipompa, tulis-persist belum berjalan sama sekali.
+        assertNull(store.persisted.value.estimasi["29"])
+
+        dispatcher.scheduler.advanceUntilIdle()
+
+        // Transform yang sama diterapkan ke store, dan hasil rekonsiliasi observeState di
+        // ViewModel identik dengan yang tersimpan — tidak ada divergensi optimistic vs persist.
+        assertEquals(1_045L, store.persisted.value.estimasi["29"]?.estAbsMin)
+        assertEquals(store.persisted.value, viewModel.state.value)
+    }
+
+    @Test
+    fun persistedPathSurvivesChainedMutations() {
+        viewModel.prosesBarisKondisiMesin("29 45", 1_000L)
+        viewModel.prosesBarisUmum("29 HB")
+        viewModel.finishShift()
+
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(store.persisted.value.aktual.isEmpty())
+        assertTrue(store.persisted.value.estimasi.isEmpty())
+        assertEquals(1, store.persisted.value.history.size)
+        assertEquals(store.persisted.value, viewModel.state.value)
     }
 }

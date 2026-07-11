@@ -1,8 +1,8 @@
 package com.jekael.adoel.data
 
 import java.util.Calendar
+import java.util.TimeZone
 import kotlin.math.abs
-import kotlin.math.roundToInt
 
 enum class MesinTipe { TAPPET, CAM, D405, D408 }
 
@@ -92,9 +92,10 @@ fun formatYard(y: Double): String =
     if (y == y.toLong().toDouble()) y.toLong().toString() else y.toString()
 
 /** Fixed 3-shift schedule: Shift 1 06.00–14.00, Shift 2 14.00–22.00, Shift 3 22.00–06.00
- * (crosses midnight). Classified by the hour-of-day the shift started. */
-fun shiftNumberForEpochMin(epochMin: Long): Int {
-    val hour = Calendar.getInstance().apply { timeInMillis = epochMin * 60000L }.get(Calendar.HOUR_OF_DAY)
+ * (crosses midnight). Classified by the hour-of-day the shift started. [zone] hanya untuk unit
+ * test — call site produksi memakai default zona perangkat, perilaku tidak berubah. */
+fun shiftNumberForEpochMin(epochMin: Long, zone: TimeZone = TimeZone.getDefault()): Int {
+    val hour = Calendar.getInstance(zone).apply { timeInMillis = epochMin * 60000L }.get(Calendar.HOUR_OF_DAY)
     return when {
         hour in 6 until 14 -> 1
         hour in 14 until 22 -> 2
@@ -105,8 +106,8 @@ fun shiftNumberForEpochMin(epochMin: Long): Int {
 /** Epoch-minute the *current* shift period began (the most recent 06.00/14.00/22.00 boundary at
  * or before [epochMin]) — used to tell whether an already-recorded entry belongs to a shift that
  * hasn't been archived yet via "Selesai Shift" (see MainScreen's staleShiftBanner). */
-fun currentShiftStartAbsMin(epochMin: Long): Long {
-    val cal = Calendar.getInstance().apply { timeInMillis = epochMin * 60000L }
+fun currentShiftStartAbsMin(epochMin: Long, zone: TimeZone = TimeZone.getDefault()): Long {
+    val cal = Calendar.getInstance(zone).apply { timeInMillis = epochMin * 60000L }
     val hour = cal.get(Calendar.HOUR_OF_DAY)
     val boundaryHour = if (hour in 6 until 22) (if (hour < 14) 6 else 14) else 22
     if (hour < 6) cal.add(Calendar.DAY_OF_YEAR, -1)
@@ -123,14 +124,20 @@ fun currentShiftStartAbsMin(epochMin: Long): Long {
 private const val DAY_MIN = 1440L
 private const val HALF_DAY_MIN = 720L
 
-fun jamKeShiftAbs(jamMin: Int): Long {
-    val startOfDay = Calendar.getInstance().apply {
+/** [nowEpochMin]/[zone] hanya untuk unit test — "hari ini" diturunkan dari [nowEpochMin] di
+ * [zone], sehingga test bisa memilih momen tetap; default-nya identik dengan perilaku lama. */
+fun jamKeShiftAbs(
+    jamMin: Int,
+    nowEpochMin: Long = nowAbsMin(),
+    zone: TimeZone = TimeZone.getDefault(),
+): Long {
+    val startOfDay = Calendar.getInstance(zone).apply {
+        timeInMillis = nowEpochMin * 60000L
         set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
         set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
     }.timeInMillis
     val epochMinToday = startOfDay / 60000L + jamMin
-    val currentEpochMin = nowAbsMin()
-    val diff = epochMinToday - currentEpochMin
+    val diff = epochMinToday - nowEpochMin
     return when {
         diff < -HALF_DAY_MIN -> epochMinToday + DAY_MIN
         diff > HALF_DAY_MIN -> epochMinToday - DAY_MIN
