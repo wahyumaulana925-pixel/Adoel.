@@ -46,7 +46,9 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import com.jekael.adoel.ui.theme.Cyan500
+import com.jekael.adoel.ui.theme.Dimens
 import com.jekael.adoel.ui.theme.LocalAppColors
+import com.jekael.adoel.ui.theme.Motion
 
 @Composable
 fun FieldLabel(text: String) {
@@ -104,7 +106,7 @@ fun FloatingEditDialog(
     }
     LaunchedEffect(visible) {
         if (!visible) {
-            kotlinx.coroutines.delay(180)
+            kotlinx.coroutines.delay(Motion.DIALOG_DISMISS_MS.toLong())
             onDismissRequest()
         }
     }
@@ -150,8 +152,8 @@ fun FloatingEditDialog(
                         .navigationBarsPadding()
                         .padding(16.dp)
                         .heightIn(max = maxCardHeight)
-                        .shadow(elevation = 24.dp, shape = RoundedCornerShape(28.dp))
-                        .clip(RoundedCornerShape(28.dp))
+                        .shadow(elevation = 24.dp, shape = RoundedCornerShape(Dimens.RadiusFloating))
+                        .clip(RoundedCornerShape(Dimens.RadiusFloating))
                         .background(colors.bgElevated)
                         .padding(20.dp)
                         .verticalScroll(rememberScrollState()),

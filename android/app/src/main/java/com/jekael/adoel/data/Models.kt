@@ -117,6 +117,12 @@ fun currentShiftStartAbsMin(epochMin: Long): Long {
     return cal.timeInMillis / 60000L
 }
 
+/** One day / half a day in minutes — used by [jamKeShiftAbs] to snap an ambiguous wall-clock
+ * reading (which carries no date) onto whichever calendar day puts it within 12 hours of now.
+ * Assumes fixed-offset days of exactly 24h; fine for WIB (no DST), not portable to DST zones. */
+private const val DAY_MIN = 1440L
+private const val HALF_DAY_MIN = 720L
+
 fun jamKeShiftAbs(jamMin: Int): Long {
     val startOfDay = Calendar.getInstance().apply {
         set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
@@ -126,8 +132,8 @@ fun jamKeShiftAbs(jamMin: Int): Long {
     val currentEpochMin = nowAbsMin()
     val diff = epochMinToday - currentEpochMin
     return when {
-        diff < -720 -> epochMinToday + 1440
-        diff > 720 -> epochMinToday - 1440
+        diff < -HALF_DAY_MIN -> epochMinToday + DAY_MIN
+        diff > HALF_DAY_MIN -> epochMinToday - DAY_MIN
         else -> epochMinToday
     }
 }

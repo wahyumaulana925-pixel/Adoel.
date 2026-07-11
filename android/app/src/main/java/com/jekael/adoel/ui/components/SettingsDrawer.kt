@@ -88,7 +88,7 @@ fun SettingsDrawer(
 
     LaunchedEffect(visible) {
         if (!visible) {
-            delay(220)
+            delay(Motion.PANEL_EXIT_MS.toLong())
             onClose()
         }
     }
@@ -109,8 +109,8 @@ fun SettingsDrawer(
     // diagonal entrance no matter what.
     AnimatedVisibility(
         visible = visible,
-        enter = slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(260)),
-        exit = slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(220)),
+        enter = slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(Motion.PANEL_ENTER_MS)),
+        exit = slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(Motion.PANEL_EXIT_MS)),
     ) {
         // Box, not Column: the header floats as an overlay on top of the tab content (which is
         // laid out full-size from the very top) so the content actually scrolls behind it,
@@ -178,9 +178,9 @@ fun SettingsDrawer(
                     }
                     .padding(horizontal = 12.dp)
                     .padding(top = 12.dp)
-                    .shadow(elevation = 16.dp, shape = RoundedCornerShape(28.dp))
-                    .clip(RoundedCornerShape(28.dp))
-                    .border(1.dp, colors.border, RoundedCornerShape(28.dp))
+                    .shadow(elevation = 16.dp, shape = RoundedCornerShape(Dimens.RadiusFloating))
+                    .clip(RoundedCornerShape(Dimens.RadiusFloating))
+                    .border(1.dp, colors.border, RoundedCornerShape(Dimens.RadiusFloating))
                     .background(colors.bgElevated),
             ) {
                 Column {
@@ -317,8 +317,8 @@ private fun MesinTab(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .shadow(elevation = 3.dp, shape = RoundedCornerShape(14.dp), ambientColor = Color.Black.copy(alpha = 0.3f))
-                        .clip(RoundedCornerShape(14.dp))
+                        .shadow(elevation = 3.dp, shape = RoundedCornerShape(Dimens.RadiusCard), ambientColor = Color.Black.copy(alpha = 0.3f))
+                        .clip(RoundedCornerShape(Dimens.RadiusCard))
                         .background(colors.bgElevated2)
                         .clickable { loadFrom(k, v) }
                         .padding(horizontal = 12.dp, vertical = 10.dp),

@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.os.Build
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
@@ -34,6 +35,9 @@ object NotificationHelper {
         cachedLargeIcon?.let { return it }
         val decoded = runCatching {
             ContextCompat.getDrawable(context, R.mipmap.ic_launcher)?.toBitmap(width = 128, height = 128)
+        }.onFailure { e ->
+            // Notifikasi tetap tampil tanpa large icon — cukup dicatat, jangan sampai gagal senyap.
+            Log.w("NotificationHelper", "Gagal decode launcher icon untuk notifikasi", e)
         }.getOrNull()
         cachedLargeIcon = decoded
         return decoded

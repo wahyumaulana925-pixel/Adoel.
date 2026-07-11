@@ -17,7 +17,6 @@ object AppType {
     val LabelSmallBold = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold)
     val Caption = TextStyle(fontSize = 12.sp)
     val FieldText = TextStyle(fontSize = 14.sp)
-    val ButtonLabel = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
     val TabLabel = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold)
     val BodySmall = TextStyle(fontSize = 13.sp)
 }

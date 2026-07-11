@@ -184,8 +184,8 @@ private fun DoffingRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .shadow(elevation = 5.dp, shape = RoundedCornerShape(14.dp), ambientColor = Color.Black.copy(alpha = 0.35f))
-                .clip(RoundedCornerShape(14.dp))
+                .shadow(elevation = 5.dp, shape = RoundedCornerShape(Dimens.RadiusCard), ambientColor = Color.Black.copy(alpha = 0.35f))
+                .clip(RoundedCornerShape(Dimens.RadiusCard))
                 .background(colors.bgElevated)
                 .clickable(onClick = onEdit)
                 .semantics(mergeDescendants = true) {

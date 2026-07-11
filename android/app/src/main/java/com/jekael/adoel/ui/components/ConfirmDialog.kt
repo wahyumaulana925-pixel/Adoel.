@@ -65,7 +65,7 @@ fun ConfirmDialog(
 
     LaunchedEffect(visible) {
         if (!visible) {
-            delay(180)
+            delay(Motion.DIALOG_DISMISS_MS.toLong())
             shown = null
             onDismiss()
         }

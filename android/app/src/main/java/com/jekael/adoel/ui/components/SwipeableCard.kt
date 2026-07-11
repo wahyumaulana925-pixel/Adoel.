@@ -26,12 +26,10 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.jekael.adoel.ui.theme.Cyan600
+import com.jekael.adoel.ui.theme.Dimens
 import com.jekael.adoel.ui.theme.Red500
 import kotlinx.coroutines.launch
 import kotlin.math.abs
-
-private val SWIPE_THRESHOLD_DP = 88.dp
-private val SWIPE_MAX_DP = 132.dp
 
 /** Shared swipe-to-act gesture + reveal background for list cards outside RadarCard (which has
  * its own richer "doff" completion celebration — slide-out, checkmark pop — since that swipe
@@ -52,8 +50,8 @@ fun SwipeableCard(
     content: @Composable () -> Unit,
 ) {
     val density = LocalDensity.current
-    val thresholdPx = with(density) { SWIPE_THRESHOLD_DP.toPx() }
-    val maxPx = with(density) { SWIPE_MAX_DP.toPx() }
+    val thresholdPx = with(density) { Dimens.SwipeThreshold.toPx() }
+    val maxPx = with(density) { Dimens.SwipeMax.toPx() }
     val offsetX = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
 
@@ -69,7 +67,7 @@ fun SwipeableCard(
             Box(
                 modifier = Modifier
                     .matchParentSize()
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(RoundedCornerShape(Dimens.RadiusCard))
                     .background(bg.copy(alpha = 0.18f + 0.6f * progress)),
                 contentAlignment = if (isRight) Alignment.CenterStart else Alignment.CenterEnd,
             ) {

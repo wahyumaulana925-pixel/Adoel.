@@ -62,9 +62,9 @@ fun MainScreenHeader(
             }
             .padding(horizontal = 12.dp)
             .padding(top = 12.dp)
-            .shadow(elevation = 16.dp, shape = RoundedCornerShape(28.dp))
-            .clip(RoundedCornerShape(28.dp))
-            .border(1.dp, colors.border, RoundedCornerShape(28.dp))
+            .shadow(elevation = 16.dp, shape = RoundedCornerShape(Dimens.RadiusFloating))
+            .clip(RoundedCornerShape(Dimens.RadiusFloating))
+            .border(1.dp, colors.border, RoundedCornerShape(Dimens.RadiusFloating))
             .background(colors.bgElevated),
     ) {
         Row(

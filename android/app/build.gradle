@@ -67,6 +67,14 @@ android {
             returnDefaultValues = true
         }
     }
+
+    // Informational only — surfaces warnings in local/CI logs without ever failing the build.
+    // Tightening to abortOnError=true would need a baseline generated on a machine that can run
+    // lint (the CI sandbox used for development can't reach dl.google.com to run Gradle).
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
 }
 
 dependencies {

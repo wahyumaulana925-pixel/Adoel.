@@ -68,7 +68,9 @@ import com.jekael.adoel.ui.components.SwipeableCard
 import com.jekael.adoel.ui.theme.AppType
 import com.jekael.adoel.ui.theme.Cyan400
 import com.jekael.adoel.ui.theme.Cyan500
+import com.jekael.adoel.ui.theme.Dimens
 import com.jekael.adoel.ui.theme.LocalAppColors
+import com.jekael.adoel.ui.theme.Motion
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Calendar
@@ -95,7 +97,7 @@ fun StatistikScreen(
     }
     LaunchedEffect(visible) {
         if (!visible) {
-            delay(220)
+            delay(Motion.PANEL_EXIT_MS.toLong())
             onClose()
         }
     }
@@ -107,8 +109,8 @@ fun StatistikScreen(
 
     AnimatedVisibility(
         visible = visible,
-        enter = slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(260)),
-        exit = slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(220)),
+        enter = slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(Motion.PANEL_ENTER_MS)),
+        exit = slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(Motion.PANEL_EXIT_MS)),
     ) {
         // Same "floating header overlays a full-bleed scrollable list" concept as MainScreen —
         // the list is measured/laid out from the very top and scrolls behind the header, instead
@@ -181,9 +183,9 @@ fun StatistikScreen(
                     }
                     .padding(horizontal = 12.dp)
                     .padding(top = 12.dp)
-                    .shadow(elevation = 16.dp, shape = RoundedCornerShape(28.dp))
-                    .clip(RoundedCornerShape(28.dp))
-                    .border(1.dp, colors.border, RoundedCornerShape(28.dp))
+                    .shadow(elevation = 16.dp, shape = RoundedCornerShape(Dimens.RadiusFloating))
+                    .clip(RoundedCornerShape(Dimens.RadiusFloating))
+                    .border(1.dp, colors.border, RoundedCornerShape(Dimens.RadiusFloating))
                     .background(colors.bgElevated),
             ) {
                 Row(
@@ -269,7 +271,7 @@ private fun DoffCountChart(history: List<ShiftRecord>, selectedShiftId: Int?, on
                 val targetFraction = shift.aktual.size.toFloat() / maxCount
                 val animatedFraction = remember { Animatable(0f) }
                 LaunchedEffect(shift.id, targetFraction) {
-                    delay(index * 50L)
+                    delay(index * Motion.CHART_STAGGER_STEP_MS)
                     animatedFraction.animateTo(targetFraction, animationSpec = tween(450, easing = FastOutSlowInEasing))
                 }
                 val selected = shift.id == selectedShiftId
@@ -369,8 +371,8 @@ private fun ShiftRow(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .shadow(elevation = 5.dp, shape = RoundedCornerShape(14.dp), ambientColor = Color.Black.copy(alpha = 0.35f))
-                .clip(RoundedCornerShape(14.dp))
+                .shadow(elevation = 5.dp, shape = RoundedCornerShape(Dimens.RadiusCard), ambientColor = Color.Black.copy(alpha = 0.35f))
+                .clip(RoundedCornerShape(Dimens.RadiusCard))
                 .background(colors.bgElevated)
                 .clickable { onToggle() }
                 .semantics(mergeDescendants = true) {
