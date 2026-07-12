@@ -6,7 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Warning
@@ -19,7 +18,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
@@ -156,7 +154,14 @@ fun RadarCard(
     }
 
     Box(modifier = modifier.fillMaxWidth()) {
-        SwipeActionBackground(offsetX = offsetX.value, thresholdPx = swipeThresholdPx)
+        SwipeActionBackground(
+            offsetX = offsetX.value,
+            thresholdPx = swipeThresholdPx,
+            rightIcon = Icons.Outlined.Check,
+            leftIcon = Icons.Outlined.Delete,
+            rightColor = Emerald500,
+            leftColor = Red500,
+        )
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -165,9 +170,7 @@ fun RadarCard(
                     translationY = entranceOffsetY.value
                     alpha = (1f - exitProgress) * entranceAlpha.value
                 }
-                .shadow(elevation = 5.dp, shape = RoundedCornerShape(Dimens.RadiusCard), ambientColor = Color.Black.copy(alpha = 0.35f))
-                .clip(RoundedCornerShape(Dimens.RadiusCard))
-                .background(faceBg)
+                .elevatedListCard(elevation = 5.dp, backgroundColor = faceBg)
                 // Swipe is the fast path, but TalkBack intercepts swipe gestures for its own
                 // navigation before they ever reach this card — without this, a screen-reader
                 // user would have no way at all to doff or delete. These custom actions surface
@@ -323,34 +326,6 @@ fun RadarCard(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun BoxScope.SwipeActionBackground(offsetX: Float, thresholdPx: Float) {
-    if (abs(offsetX) < 1f) return
-    val isDoff = offsetX > 0
-    val progress = (abs(offsetX) / thresholdPx).coerceIn(0f, 1f)
-    val bg = if (isDoff) Emerald500 else Red500
-    Box(
-        modifier = Modifier
-            .matchParentSize()
-            .clip(RoundedCornerShape(Dimens.RadiusCard))
-            .background(bg.copy(alpha = 0.18f + 0.6f * progress)),
-        contentAlignment = if (isDoff) Alignment.CenterStart else Alignment.CenterEnd,
-    ) {
-        Icon(
-            imageVector = if (isDoff) Icons.Outlined.Check else Icons.Outlined.Delete,
-            contentDescription = null,
-            tint = Color.White,
-            modifier = Modifier
-                .padding(horizontal = 28.dp)
-                .size(26.dp)
-                .graphicsLayer {
-                    scaleX = 0.6f + 0.4f * progress
-                    scaleY = 0.6f + 0.4f * progress
-                },
-        )
     }
 }
 

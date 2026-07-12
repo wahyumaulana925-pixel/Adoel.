@@ -3,33 +3,24 @@ package com.jekael.adoel.ui.components
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.dp
 import com.jekael.adoel.ui.theme.Cyan600
 import com.jekael.adoel.ui.theme.Dimens
 import com.jekael.adoel.ui.theme.Red500
 import kotlinx.coroutines.launch
-import kotlin.math.abs
 
 /** Shared swipe-to-act gesture + reveal background for list cards outside RadarCard (which has
  * its own richer "doff" completion celebration — slide-out, checkmark pop — since that swipe
@@ -60,31 +51,14 @@ fun SwipeableCard(
     }
 
     Box(modifier = modifier.fillMaxWidth()) {
-        if (abs(offsetX.value) >= 1f) {
-            val isRight = offsetX.value > 0
-            val progress = (abs(offsetX.value) / thresholdPx).coerceIn(0f, 1f)
-            val bg = if (isRight) rightColor else leftColor
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .clip(RoundedCornerShape(Dimens.RadiusCard))
-                    .background(bg.copy(alpha = 0.18f + 0.6f * progress)),
-                contentAlignment = if (isRight) Alignment.CenterStart else Alignment.CenterEnd,
-            ) {
-                Icon(
-                    imageVector = if (isRight) rightIcon else leftIcon,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier
-                        .padding(horizontal = 28.dp)
-                        .size(26.dp)
-                        .graphicsLayer {
-                            scaleX = 0.6f + 0.4f * progress
-                            scaleY = 0.6f + 0.4f * progress
-                        },
-                )
-            }
-        }
+        SwipeActionBackground(
+            offsetX = offsetX.value,
+            thresholdPx = thresholdPx,
+            rightIcon = rightIcon,
+            leftIcon = leftIcon,
+            rightColor = rightColor,
+            leftColor = leftColor,
+        )
         Box(
             modifier = Modifier
                 .fillMaxWidth()

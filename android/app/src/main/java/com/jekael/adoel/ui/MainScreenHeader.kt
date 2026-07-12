@@ -6,7 +6,6 @@ import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -18,7 +17,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedback
@@ -62,10 +60,7 @@ fun MainScreenHeader(
             }
             .padding(horizontal = 12.dp)
             .padding(top = 12.dp)
-            .shadow(elevation = 16.dp, shape = RoundedCornerShape(Dimens.RadiusFloating))
-            .clip(RoundedCornerShape(Dimens.RadiusFloating))
-            .border(1.dp, colors.border, RoundedCornerShape(Dimens.RadiusFloating))
-            .background(colors.bgElevated),
+            .floatingHeaderCard(),
     ) {
         Row(
             modifier = Modifier

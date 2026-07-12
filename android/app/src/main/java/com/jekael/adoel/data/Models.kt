@@ -72,8 +72,27 @@ sealed class ProsesResult {
 
 fun nowAbsMin(): Long = System.currentTimeMillis() / 60000L
 
-fun absMinToTimeStr(absMin: Long): String {
-    val cal = Calendar.getInstance().apply { timeInMillis = absMin * 60000L }
+/** [zone] hanya untuk unit test — call site produksi memakai default zona perangkat. */
+fun absMinToTimeStr(absMin: Long, zone: TimeZone = TimeZone.getDefault()): String {
+    val cal = Calendar.getInstance(zone).apply { timeInMillis = absMin * 60000L }
+    return "%02d.%02d".format(cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE))
+}
+
+/** [zone] hanya untuk unit test — call site produksi memakai default zona perangkat. */
+fun formatShiftDate(epochMin: Long, zone: TimeZone = TimeZone.getDefault()): String {
+    val cal = Calendar.getInstance(zone).apply { timeInMillis = epochMin * 60000L }
+    return "%02d/%02d/%04d".format(cal.get(Calendar.DAY_OF_MONTH), cal.get(Calendar.MONTH) + 1, cal.get(Calendar.YEAR))
+}
+
+/** [zone] hanya untuk unit test — call site produksi memakai default zona perangkat. */
+fun formatShiftShortDate(epochMin: Long, zone: TimeZone = TimeZone.getDefault()): String {
+    val cal = Calendar.getInstance(zone).apply { timeInMillis = epochMin * 60000L }
+    return "%02d/%02d".format(cal.get(Calendar.DAY_OF_MONTH), cal.get(Calendar.MONTH) + 1)
+}
+
+/** [zone] hanya untuk unit test — call site produksi memakai default zona perangkat. */
+fun formatShiftTime(epochMin: Long, zone: TimeZone = TimeZone.getDefault()): String {
+    val cal = Calendar.getInstance(zone).apply { timeInMillis = epochMin * 60000L }
     return "%02d.%02d".format(cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE))
 }
 

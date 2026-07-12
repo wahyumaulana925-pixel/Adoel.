@@ -83,10 +83,7 @@ internal fun ConsoleBar(
             }
             .padding(horizontal = 12.dp)
             .padding(bottom = 12.dp)
-            .shadow(elevation = 16.dp, shape = RoundedCornerShape(Dimens.RadiusFloating))
-            .clip(RoundedCornerShape(Dimens.RadiusFloating))
-            .border(1.dp, colors.border, RoundedCornerShape(Dimens.RadiusFloating))
-            .background(colors.bgElevated),
+            .floatingHeaderCard(),
     ) {
         Column(
             modifier = Modifier
