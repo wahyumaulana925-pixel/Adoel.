@@ -33,6 +33,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -60,6 +65,10 @@ fun SlidingToggle(
     inactiveTextColor: Color,
     modifier: Modifier = Modifier,
     height: Dp = 44.dp,
+    // Optional label naming what this toggle controls (e.g. "Mode Estimasi/Doffing") — TalkBack
+    // announces it alongside the Switch role and the current side's label (read via
+    // stateDescription below), so a screen-reader user hears both what it is and what it's set to.
+    accessibilityLabel: String? = null,
 ) {
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
@@ -76,6 +85,11 @@ fun SlidingToggle(
 
     BoxWithConstraints(
         modifier = modifier
+            .semantics(mergeDescendants = true) {
+                role = Role.Switch
+                stateDescription = if (selectedIndex == 0) labelLeft else labelRight
+                accessibilityLabel?.let { contentDescription = it }
+            }
             .background(containerColor, RoundedCornerShape(50.dp))
             .padding(4.dp),
     ) {

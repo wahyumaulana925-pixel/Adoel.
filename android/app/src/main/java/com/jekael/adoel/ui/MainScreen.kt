@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -57,11 +58,12 @@ fun MainScreen(
     val toast by uiVm.toast.collectAsStateWithLifecycle()
     val confirm by uiVm.confirm.collectAsStateWithLifecycle()
 
-    // Console command bar — the one and only way to record estimasi/doffing
-    var mode by remember { mutableStateOf(Mode.AKTUAL) }
-    var input by remember { mutableStateOf("") }
-    var radarFilter by remember { mutableStateOf("") }
-    var doffFilter by remember { mutableStateOf("") }
+    // Console command bar — the one and only way to record estimasi/doffing. Saveable so a
+    // rotation or process death mid-shift doesn't drop what the operator is in the middle of.
+    var mode by rememberSaveable { mutableStateOf(Mode.AKTUAL) }
+    var input by rememberSaveable { mutableStateOf("") }
+    var radarFilter by rememberSaveable { mutableStateOf("") }
+    var doffFilter by rememberSaveable { mutableStateOf("") }
 
     val sendPulse = remember { SendPulseState() }
     LaunchedEffect(sendPulse.key) {
@@ -109,8 +111,8 @@ fun MainScreen(
     var nowAbs by remember { mutableLongStateOf(nowAbsMin()) }
     val permission = remember { PermissionState() }
 
-    var activeOverlay by remember { mutableStateOf<ActiveOverlay>(ActiveOverlay.None) }
-    var showRemaining by remember { mutableStateOf(false) }
+    var activeOverlay by rememberSaveable(stateSaver = ActiveOverlaySaver) { mutableStateOf<ActiveOverlay>(ActiveOverlay.None) }
+    var showRemaining by rememberSaveable { mutableStateOf(false) }
 
     val inputFocus = remember { FocusRequester() }
     var consoleBarHeight by remember { mutableStateOf(0.dp) }
@@ -431,7 +433,15 @@ fun MainScreen(
 
     // Overlays
     val editAktId = (activeOverlay as? ActiveOverlay.EditAkt)?.id
-    if (editAktId != null) {
+    // activeOverlay is rememberSaveable now, so a restored EditAkt can point at an entry that no
+    // longer exists (e.g. deleted from another device before this process was recreated) — reset
+    // instead of leaving the overlay stuck non-None with nothing to show for it.
+    LaunchedEffect(editAktId, state.aktual) {
+        if (editAktId != null && state.aktual.none { it.id == editAktId }) {
+            activeOverlay = ActiveOverlay.None
+        }
+    }
+    if (editAktId != null && state.aktual.any { it.id == editAktId }) {
         EditAktSheet(
             aktualId = editAktId,
             state = state,

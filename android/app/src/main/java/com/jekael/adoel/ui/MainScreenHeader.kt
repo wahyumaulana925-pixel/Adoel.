@@ -106,6 +106,7 @@ fun MainScreenHeader(
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
+                            onClickLabel = "Animasi logo",
                         ) { brandPulseKey++ },
                 ) {
                     Text(
@@ -145,7 +146,7 @@ fun MainScreenHeader(
                     Column(
                         modifier = Modifier
                             .clip(RoundedCornerShape(10.dp))
-                            .clickable {
+                            .clickable(onClickLabel = "Ganti tampilan jumlah selesai/sisa") {
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 onToggleShowRemaining()
                             }

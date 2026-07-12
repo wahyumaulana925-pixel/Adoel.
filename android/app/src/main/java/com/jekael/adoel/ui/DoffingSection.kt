@@ -121,7 +121,7 @@ private fun DoffingActions(onShare: () -> Unit, onStatistik: () -> Unit, onFinis
     ) {
         OutlinedButton(
             onClick = onShare,
-            modifier = Modifier.weight(1f).height(44.dp),
+            modifier = Modifier.weight(1f).height(48.dp),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
             border = BorderStroke(1.dp, colors.border),
@@ -129,7 +129,7 @@ private fun DoffingActions(onShare: () -> Unit, onStatistik: () -> Unit, onFinis
         ) { Icon(imageVector = Icons.Outlined.Share, contentDescription = "Bagikan", modifier = Modifier.size(20.dp)) }
         OutlinedButton(
             onClick = onStatistik,
-            modifier = Modifier.weight(1f).height(44.dp),
+            modifier = Modifier.weight(1f).height(48.dp),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
             border = BorderStroke(1.dp, colors.border),
@@ -137,7 +137,7 @@ private fun DoffingActions(onShare: () -> Unit, onStatistik: () -> Unit, onFinis
         ) { Icon(imageVector = Icons.Outlined.BarChart, contentDescription = "Statistik", modifier = Modifier.size(20.dp)) }
         OutlinedButton(
             onClick = onFinish,
-            modifier = Modifier.weight(1f).height(44.dp),
+            modifier = Modifier.weight(1f).height(48.dp),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = Red400),
             border = BorderStroke(1.dp, Red700.copy(alpha = 0.5f)),
