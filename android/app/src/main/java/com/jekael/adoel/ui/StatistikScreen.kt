@@ -268,7 +268,10 @@ private fun DoffCountChart(history: List<ShiftRecord>, selectedShiftId: Int?, on
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(6.dp))
-                            .clickable { onBarClick(shift) },
+                            .clickable(
+                                onClickLabel = "Lihat detail Shift ${shiftNumberForEpochMin(shift.startedAtEpochMin)} · ${shift.aktual.size} doff",
+                                onClick = { onBarClick(shift) },
+                            ),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Bottom,
                     ) {

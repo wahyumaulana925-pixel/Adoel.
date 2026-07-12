@@ -233,7 +233,7 @@ fun RadarCard(
                 Column(
                     modifier = Modifier
                         .weight(1f)
-                        .clickable(onClick = onQuickEdit),
+                        .clickable(onClickLabel = "Ubah corak dan target yard Mc ${est.mcNo}", onClick = onQuickEdit),
                 ) {
                     Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(

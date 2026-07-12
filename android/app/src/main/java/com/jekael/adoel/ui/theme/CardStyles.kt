@@ -29,11 +29,9 @@ fun Modifier.floatingHeaderCard(): Modifier {
 }
 
 /**
- * Elevated list-row card: shadow + rounded + background. [elevation]/[ambientAlpha]/[backgroundColor]
- * are left as parameters (not baked in) since current call sites disagree — RadarCard/DoffingRow/
- * ShiftRow use 5dp @ 0.35 alpha, SettingsDrawer's MesinTab rows use 3dp @ 0.3 alpha, and RadarCard's
- * background is a dynamically computed urgency color, not a constant. Batch 5 reconciles the
- * mismatched values; this only removes the duplicated modifier chain.
+ * Elevated list-row card: shadow + rounded + background. Every call site now agrees on
+ * elevation/ambientAlpha (5dp @ 0.35, the [ambientAlpha] default) — only [backgroundColor] is a
+ * required parameter, since RadarCard's is a dynamically computed urgency color, not a constant.
  */
 fun Modifier.elevatedListCard(
     elevation: Dp,

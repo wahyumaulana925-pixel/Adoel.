@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -110,10 +111,18 @@ fun LazyListScope.staleShiftBanner(staleCount: Int, onFinishClick: () -> Unit, o
                 style = AppType.Caption.copy(color = colors.bannerWarnFg),
                 modifier = Modifier.weight(1f),
             )
-            TextButton(onClick = onFinishClick, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)) {
+            TextButton(
+                onClick = onFinishClick,
+                modifier = Modifier.heightIn(min = 48.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+            ) {
                 Text("Selesai Shift", style = AppType.LabelSmallBold.copy(color = colors.bannerWarnFg))
             }
-            TextButton(onClick = onDismiss, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)) {
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.heightIn(min = 48.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+            ) {
                 Text("Nanti", style = AppType.Caption.copy(color = colors.bannerWarnFg.copy(alpha = 0.7f)))
             }
         }

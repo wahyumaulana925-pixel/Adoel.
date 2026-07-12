@@ -25,6 +25,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -109,6 +110,7 @@ internal fun ConsoleBar(
             SlidingToggle(
                 labelLeft = "ESTIMASI",
                 labelRight = "DOFFING",
+                accessibilityLabel = "Mode Estimasi/Doffing",
                 selectedIndex = if (mode == Mode.ESTIMASI) 0 else 1,
                 onSelect = { onModeSelect(if (it == 0) Mode.ESTIMASI else Mode.AKTUAL) },
                 containerColor = colors.bgElevated2,
@@ -195,9 +197,10 @@ private fun KeteranganChips(onPick: (String) -> Unit, modifier: Modifier = Modif
         KETERANGAN_CHIPS.forEach { code ->
             Box(
                 modifier = Modifier
+                    .heightIn(min = 48.dp)
                     .clip(RoundedCornerShape(50.dp))
                     .background(colors.bgElevated2)
-                    .clickable { onPick(code) }
+                    .clickable(role = Role.Button) { onPick(code) }
                     .padding(horizontal = 14.dp, vertical = 10.dp),
                 contentAlignment = Alignment.Center,
             ) {

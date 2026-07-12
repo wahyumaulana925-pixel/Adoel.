@@ -95,7 +95,7 @@ internal fun DataTab(
                     runCatching { exportLauncher.launch("adoel-backup-$stamp.json") }
                 },
                 modifier = Modifier.weight(1f).height(52.dp),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textPrimary),
                 border = BorderStroke(1.dp, colors.border),
             ) { Text("Cadangkan") }
@@ -104,7 +104,7 @@ internal fun DataTab(
                     runCatching { importLauncher.launch(arrayOf("application/json", "text/plain", "*/*")) }
                 },
                 modifier = Modifier.weight(1f).height(52.dp),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = Cyan500),
                 border = BorderStroke(1.dp, Cyan500),
             ) { Text("Pulihkan") }
@@ -122,7 +122,7 @@ internal fun DataTab(
                 }
             },
             modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = Red400),
             border = BorderStroke(1.dp, Red700.copy(alpha = 0.5f)),
         ) { Text("Reset ke Default") }
@@ -137,14 +137,14 @@ internal fun DataTab(
             OutlinedButton(
                 onClick = { helpOpen = true },
                 modifier = Modifier.weight(1f).height(52.dp),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
                 border = BorderStroke(1.dp, colors.border),
             ) { Text("Bantuan") }
             OutlinedButton(
                 onClick = { aboutOpen = true },
                 modifier = Modifier.weight(1f).height(52.dp),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
                 border = BorderStroke(1.dp, colors.border),
             ) { Text("Tentang") }

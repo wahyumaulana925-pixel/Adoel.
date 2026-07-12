@@ -154,7 +154,7 @@ fun EditAktSheet(
                 OutlinedButton(
                     onClick = onClose,
                     modifier = Modifier.weight(1f).height(48.dp),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
                     border = BorderStroke(1.dp, colors.border),
                 ) { Text("Batal") }
@@ -162,7 +162,7 @@ fun EditAktSheet(
                     onClick = { doSave() },
                     enabled = !showCheck,
                     modifier = Modifier.weight(1f).height(48.dp),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Cyan600,
                         disabledContainerColor = Emerald500,
