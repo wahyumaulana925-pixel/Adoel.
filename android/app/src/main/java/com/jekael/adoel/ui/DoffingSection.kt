@@ -1,7 +1,6 @@
 package com.jekael.adoel.ui
 
 import android.content.Context
-import android.content.Intent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -21,8 +20,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
@@ -36,7 +33,6 @@ import com.jekael.adoel.ui.components.EmptyState
 import com.jekael.adoel.ui.components.SectionHeader
 import com.jekael.adoel.ui.components.SwipeableCard
 import com.jekael.adoel.ui.theme.*
-import java.util.Calendar
 
 /** DOFFING mode's list content: header, share/statistik/finish actions, empty state or the
  * recorded-doff rows (newest first). */
@@ -186,9 +182,7 @@ private fun DoffingRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .shadow(elevation = 5.dp, shape = RoundedCornerShape(Dimens.RadiusCard), ambientColor = Color.Black.copy(alpha = 0.35f))
-                .clip(RoundedCornerShape(Dimens.RadiusCard))
-                .background(colors.bgElevated)
+                .elevatedListCard(elevation = 5.dp, backgroundColor = colors.bgElevated)
                 .clickable(onClick = onEdit)
                 .semantics(mergeDescendants = true) {
                     customActions = listOf(
@@ -227,48 +221,5 @@ private fun DoffingRow(
 }
 
 internal fun shareHistory(context: Context, state: DoffState) {
-    val cal = Calendar.getInstance()
-    val dateStr = "%02d/%02d/%04d".format(
-        cal.get(Calendar.DAY_OF_MONTH),
-        cal.get(Calendar.MONTH) + 1,
-        cal.get(Calendar.YEAR),
-    )
-    val lines = state.aktual.asReversed().mapIndexed { i, a ->
-        val mesin = state.db[a.mcNo]
-        val corak = a.corakOverride ?: mesin?.corak ?: "—"
-        val yard = a.customYard ?: mesin?.targetYard
-        val suffix = if (yard != null) " · ${formatYard(yard)}y" else ""
-        "${i + 1}. Mc${a.mcNo} · $corak$suffix · ${a.ket}"
-    }
-    // Doff selesai saja tidak cukup buat rekan yang baca pesan ini di lantai produksi — mereka
-    // juga perlu tahu mesin mana yang masih ditimer sekarang dan kapan harus di-doff, jadi bagian
-    // ini ikut disertakan alih-alih cuma riwayat yang sudah selesai.
-    val berjalan = sortedByNearest(state.estimasi).map { est ->
-        val mesin = state.db[est.mcNo]
-        val corak = est.corakOverride ?: mesin?.corak ?: "—"
-        val yard = est.yardOverride ?: mesin?.targetYard
-        val suffix = if (yard != null) " · ${formatYard(yard)}y" else ""
-        "• Mc${est.mcNo} · $corak$suffix · est. ${absMinToTimeStr(est.estAbsMin)}"
-    }
-    val selesaiCount = state.aktual.size
-    val berjalanCount = berjalan.size
-    // Spelling the sum out explicitly (bukan cuma "Total: N doff") — tanpa ini, rekan yang baca
-    // sering salah jumlah sendiri antara yang sudah selesai vs. yang masih berjalan (lihat contoh
-    // nyata: seseorang nanya "jadi total 23 mc?" padahal "Total" di pesan cuma menghitung selesai).
-    val totalLine = if (berjalanCount > 0) {
-        "Total: $selesaiCount selesai + $berjalanCount berjalan = ${selesaiCount + berjalanCount} mc"
-    } else {
-        "Total: $selesaiCount doff"
-    }
-    val berjalanBlock = if (berjalan.isNotEmpty()) {
-        "\n\n*Sedang Berjalan ($berjalanCount)*\n${berjalan.joinToString("\n")}"
-    } else {
-        ""
-    }
-    val text = "Bravo!!!\n$dateStr\n\n*Selesai ($selesaiCount doff)*\n${lines.joinToString("\n")}$berjalanBlock\n\n$totalLine"
-    val intent = Intent(Intent.ACTION_SEND).apply {
-        type = "text/plain"
-        putExtra(Intent.EXTRA_TEXT, text)
-    }
-    runCatching { context.startActivity(Intent.createChooser(intent, "Bagikan riwayat")) }
+    shareIntent(context, buildShareHistoryText(state), "Bagikan riwayat")
 }

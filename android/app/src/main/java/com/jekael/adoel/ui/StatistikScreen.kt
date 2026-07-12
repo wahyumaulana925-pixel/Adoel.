@@ -1,18 +1,12 @@
 package com.jekael.adoel.ui
 
 import android.content.Context
-import android.content.Intent
-import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -44,8 +39,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
@@ -59,12 +52,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jekael.adoel.data.MesinData
 import com.jekael.adoel.data.ShiftRecord
+import com.jekael.adoel.data.buildShareShiftText
 import com.jekael.adoel.data.formatDeltaMin
+import com.jekael.adoel.data.formatShiftDate
+import com.jekael.adoel.data.formatShiftShortDate
+import com.jekael.adoel.data.formatShiftTime
 import com.jekael.adoel.data.formatYard
+import com.jekael.adoel.data.shareIntent
 import com.jekael.adoel.data.shiftNumberForEpochMin
 import com.jekael.adoel.ui.components.CloseIcon
 import com.jekael.adoel.ui.components.EmptyState
 import com.jekael.adoel.ui.components.LinearProgressBar
+import com.jekael.adoel.ui.components.SlidePanel
 import com.jekael.adoel.ui.components.SwipeableCard
 import com.jekael.adoel.ui.theme.AppType
 import com.jekael.adoel.ui.theme.Cyan400
@@ -72,9 +71,10 @@ import com.jekael.adoel.ui.theme.Cyan500
 import com.jekael.adoel.ui.theme.Dimens
 import com.jekael.adoel.ui.theme.LocalAppColors
 import com.jekael.adoel.ui.theme.Motion
+import com.jekael.adoel.ui.theme.elevatedListCard
+import com.jekael.adoel.ui.theme.floatingHeaderCard
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.util.Calendar
 
 /**
  * Full-screen panel listing archived shifts (see DoffViewModel.finishShift) with simple
@@ -90,29 +90,11 @@ fun StatistikScreen(
     showConfirm: (String, () -> Unit) -> Unit,
 ) {
     val colors = LocalAppColors.current
-    var visible by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { visible = true }
-
-    fun requestClose() {
-        visible = false
-    }
-    LaunchedEffect(visible) {
-        if (!visible) {
-            delay(Motion.PANEL_EXIT_MS.toLong())
-            onClose()
-        }
-    }
-    BackHandler(enabled = visible) { requestClose() }
-
     var expandedShiftId by remember { mutableStateOf<Int?>(null) }
     var headerHeight by remember { mutableStateOf(0.dp) }
     val density = LocalDensity.current
 
-    AnimatedVisibility(
-        visible = visible,
-        enter = slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(Motion.PANEL_ENTER_MS)),
-        exit = slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(Motion.PANEL_EXIT_MS)),
-    ) {
+    SlidePanel(onClose = onClose) { requestClose ->
         // Same "floating header overlays a full-bleed scrollable list" concept as MainScreen —
         // the list is measured/laid out from the very top and scrolls behind the header, instead
         // of just sitting in a Column below it.
@@ -184,10 +166,7 @@ fun StatistikScreen(
                     }
                     .padding(horizontal = 12.dp)
                     .padding(top = 12.dp)
-                    .shadow(elevation = 16.dp, shape = RoundedCornerShape(Dimens.RadiusFloating))
-                    .clip(RoundedCornerShape(Dimens.RadiusFloating))
-                    .border(1.dp, colors.border, RoundedCornerShape(Dimens.RadiusFloating))
-                    .background(colors.bgElevated),
+                    .floatingHeaderCard(),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
@@ -269,41 +248,47 @@ private fun DoffCountChart(history: List<ShiftRecord>, selectedShiftId: Int?, on
             verticalAlignment = Alignment.Bottom,
         ) {
             recent.forEachIndexed { index, shift ->
-                val targetFraction = shift.aktual.size.toFloat() / maxCount
-                val animatedFraction = remember { Animatable(0f) }
-                LaunchedEffect(shift.id, targetFraction) {
-                    delay(index * Motion.CHART_STAGGER_STEP_MS)
-                    animatedFraction.animateTo(targetFraction, animationSpec = tween(450, easing = FastOutSlowInEasing))
-                }
-                val selected = shift.id == selectedShiftId
-                val barColor by animateColorAsState(
-                    if (selected) Cyan400 else Cyan500.copy(alpha = 0.75f),
-                    label = "barColor",
-                )
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(6.dp))
-                        .clickable { onBarClick(shift) },
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Bottom,
-                ) {
-                    Text(
-                        "${shift.aktual.size}",
-                        style = TextStyle(
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (selected) Cyan400 else colors.textSecondary,
-                        ),
+                // key(shift.id) (not just positional remember) — without it, deleting an earlier
+                // shift shifts every later shift's position in `recent`, and a plain positional
+                // remember would then hand a DIFFERENT shift's already-settled Animatable to a bar
+                // that just moved into that slot, misanimating it as if its own count had changed.
+                key(shift.id) {
+                    val targetFraction = shift.aktual.size.toFloat() / maxCount
+                    val animatedFraction = remember { Animatable(0f) }
+                    LaunchedEffect(shift.id, targetFraction) {
+                        delay(index * Motion.CHART_STAGGER_STEP_MS)
+                        animatedFraction.animateTo(targetFraction, animationSpec = tween(450, easing = FastOutSlowInEasing))
+                    }
+                    val selected = shift.id == selectedShiftId
+                    val barColor by animateColorAsState(
+                        if (selected) Cyan400 else Cyan500.copy(alpha = 0.75f),
+                        label = "barColor",
                     )
-                    Spacer(Modifier.height(2.dp))
-                    Box(
+                    Column(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height((44.dp * animatedFraction.value).coerceAtLeast(4.dp))
-                            .clip(RoundedCornerShape(3.dp))
-                            .background(barColor),
-                    )
+                            .weight(1f)
+                            .clip(RoundedCornerShape(6.dp))
+                            .clickable { onBarClick(shift) },
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Bottom,
+                    ) {
+                        Text(
+                            "${shift.aktual.size}",
+                            style = TextStyle(
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (selected) Cyan400 else colors.textSecondary,
+                            ),
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height((44.dp * animatedFraction.value).coerceAtLeast(4.dp))
+                                .clip(RoundedCornerShape(3.dp))
+                                .background(barColor),
+                        )
+                    }
                 }
             }
         }
@@ -372,9 +357,7 @@ private fun ShiftRow(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .shadow(elevation = 5.dp, shape = RoundedCornerShape(Dimens.RadiusCard), ambientColor = Color.Black.copy(alpha = 0.35f))
-                .clip(RoundedCornerShape(Dimens.RadiusCard))
-                .background(colors.bgElevated)
+                .elevatedListCard(elevation = 5.dp, backgroundColor = colors.bgElevated)
                 .clickable { onToggle() }
                 .semantics(mergeDescendants = true) {
                     customActions = listOf(
@@ -436,39 +419,10 @@ private fun ShiftRow(
     }
 }
 
-private fun formatShiftDate(epochMin: Long): String {
-    val cal = Calendar.getInstance().apply { timeInMillis = epochMin * 60000L }
-    return "%02d/%02d/%04d".format(cal.get(Calendar.DAY_OF_MONTH), cal.get(Calendar.MONTH) + 1, cal.get(Calendar.YEAR))
-}
-
-private fun formatShiftShortDate(epochMin: Long): String {
-    val cal = Calendar.getInstance().apply { timeInMillis = epochMin * 60000L }
-    return "%02d/%02d".format(cal.get(Calendar.DAY_OF_MONTH), cal.get(Calendar.MONTH) + 1)
-}
-
-private fun formatShiftTime(epochMin: Long): String {
-    val cal = Calendar.getInstance().apply { timeInMillis = epochMin * 60000L }
-    return "%02d.%02d".format(cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE))
-}
-
-/** Re-share a single archived shift — mirrors MainScreen's shareHistory format/tone exactly
- * (same "Bravo!!!" casual register, same audience: rekan kerja), for whenever an operator needs
- * to resend a specific day's record instead of the whole running total. Opens the share-sheet
+/** Re-share a single archived shift — mirrors [buildShareHistoryText]'s format/tone exactly (same
+ * "Bravo!!!" casual register, same audience: rekan kerja), for whenever an operator needs to
+ * resend a specific day's record instead of the whole running total. Opens the share-sheet
  * directly instead of a copy-then-paste round trip. */
 private fun shareShift(context: Context, shift: ShiftRecord, db: Map<String, MesinData>) {
-    val shiftNo = shiftNumberForEpochMin(shift.startedAtEpochMin)
-    val dateStr = formatShiftDate(shift.startedAtEpochMin)
-    val lines = shift.aktual.asReversed().mapIndexed { i, a ->
-        val mesin = db[a.mcNo]
-        val corak = a.corakOverride ?: mesin?.corak ?: "—"
-        val yard = a.customYard ?: mesin?.targetYard
-        val suffix = if (yard != null) " · ${formatYard(yard)}y" else ""
-        "${i + 1}. Mc${a.mcNo} · $corak$suffix · ${a.ket}"
-    }
-    val text = "Bravo!!!\nShift $shiftNo · $dateStr\n\n*Selesai (${shift.aktual.size} doff)*\n${lines.joinToString("\n")}\n\nTotal: ${shift.aktual.size} doff"
-    val intent = Intent(Intent.ACTION_SEND).apply {
-        type = "text/plain"
-        putExtra(Intent.EXTRA_TEXT, text)
-    }
-    runCatching { context.startActivity(Intent.createChooser(intent, "Bagikan shift")) }
+    shareIntent(context, buildShareShiftText(shift, db), "Bagikan shift")
 }
