@@ -218,9 +218,9 @@ fun MainScreen(
     val menungguAccent by remember(menungguList) {
         derivedStateOf {
             when (menungguList.maxOfOrNull { urgencyLevel(it.estAbsMin - nowAbs) }) {
-                UrgencyLevel.IMMINENT -> Orange400
+                UrgencyLevel.IMMINENT -> Amber600
                 UrgencyLevel.SOON -> Amber400
-                else -> Cyan400
+                else -> Blue400
             }
         }
     }
@@ -263,6 +263,12 @@ fun MainScreen(
                 }
             }
         }
+    }
+
+    // Global (unfiltered by radar search) overdue count for the stat-summary row, so those
+    // numbers don't silently shift while an operator is typing into the radar search box.
+    val globalSegeraCount by remember(radarList, nowAbs) {
+        derivedStateOf { radarList.count { it.estAbsMin - nowAbs <= 0 } }
     }
 
     val doffCount = state.aktual.size
@@ -331,6 +337,12 @@ fun MainScreen(
                     staleCount = if (staleShiftDismissed) 0 else staleDoffCount,
                     onFinishClick = { handlers.handleFinishShift() },
                     onDismiss = { staleShiftDismissed = true },
+                )
+
+                statSummarySection(
+                    mesinAktif = radarList.size,
+                    sudahDoff = doffCount,
+                    terlambat = globalSegeraCount,
                 )
 
                 // The console's mode toggle doubles as a page switcher: ESTIMASI shows the

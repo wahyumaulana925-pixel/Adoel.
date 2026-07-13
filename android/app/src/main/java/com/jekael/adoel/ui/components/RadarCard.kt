@@ -59,9 +59,9 @@ private data class UrgencyStyle(
 )
 
 private fun urgency(remaining: Long): UrgencyStyle = when (urgencyLevel(remaining)) {
-    UrgencyLevel.CALM -> UrgencyStyle(Cyan500, Cyan500, Cyan400, Cyan700, false, null, 0f)
+    UrgencyLevel.CALM -> UrgencyStyle(Blue500, Blue500, Blue400, Blue700, false, null, 0f)
     UrgencyLevel.SOON -> UrgencyStyle(Amber500, Amber400, Amber400, Amber700, false, Icons.Outlined.Schedule, 0.08f)
-    UrgencyLevel.IMMINENT -> UrgencyStyle(Orange500, Orange500, Orange400, Orange700, false, Icons.Outlined.Warning, 0.16f)
+    UrgencyLevel.IMMINENT -> UrgencyStyle(Amber600, Amber600, Amber500, Amber700, false, Icons.Outlined.Warning, 0.16f)
     UrgencyLevel.OVERDUE -> UrgencyStyle(Red500, Red500, Red400, Red700, true, Icons.Filled.Warning, 0f)
 }
 

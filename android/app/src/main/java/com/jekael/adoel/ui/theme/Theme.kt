@@ -2,6 +2,7 @@ package com.jekael.adoel.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -28,15 +29,16 @@ val Cyan500 = Color(0xFF06B6D4)
 val Cyan600 = Color(0xFF0891B2)
 val Cyan700 = Color(0xFF0E7490)
 
+val Blue400 = Color(0xFF60A5FA)
+val Blue500 = Color(0xFF3B82F6)
+val Blue700 = Color(0xFF1D4ED8)
+
 val Teal500 = Color(0xFF14B8A6)
 
 val Amber400 = Color(0xFFFBBF24)
 val Amber500 = Color(0xFFF59E0B)
+val Amber600 = Color(0xFFD97706)
 val Amber700 = Color(0xFFB45309)
-
-val Orange400 = Color(0xFFFB923C)
-val Orange500 = Color(0xFFF97316)
-val Orange700 = Color(0xFFC2410C)
 
 val Red400 = Color(0xFFF87171)
 val Red500 = Color(0xFFEF4444)
@@ -129,6 +131,28 @@ private val LightScheme = lightColorScheme(
     onSurface = Zinc900,
 )
 
+// Material3's own default Typography() (Roboto) with every role's fontFamily swapped to Inter,
+// so stock M3 components (Button labels, AlertDialog title/text, OutlinedTextField label) pick
+// up Inter too, not just the ad hoc AppType tokens most of this app's composables read instead.
+private val DefaultTypography = Typography()
+private val AdoelTypography = Typography(
+    displayLarge = DefaultTypography.displayLarge.copy(fontFamily = InterFontFamily),
+    displayMedium = DefaultTypography.displayMedium.copy(fontFamily = InterFontFamily),
+    displaySmall = DefaultTypography.displaySmall.copy(fontFamily = InterFontFamily),
+    headlineLarge = DefaultTypography.headlineLarge.copy(fontFamily = InterFontFamily),
+    headlineMedium = DefaultTypography.headlineMedium.copy(fontFamily = InterFontFamily),
+    headlineSmall = DefaultTypography.headlineSmall.copy(fontFamily = InterFontFamily),
+    titleLarge = DefaultTypography.titleLarge.copy(fontFamily = InterFontFamily),
+    titleMedium = DefaultTypography.titleMedium.copy(fontFamily = InterFontFamily),
+    titleSmall = DefaultTypography.titleSmall.copy(fontFamily = InterFontFamily),
+    bodyLarge = DefaultTypography.bodyLarge.copy(fontFamily = InterFontFamily),
+    bodyMedium = DefaultTypography.bodyMedium.copy(fontFamily = InterFontFamily),
+    bodySmall = DefaultTypography.bodySmall.copy(fontFamily = InterFontFamily),
+    labelLarge = DefaultTypography.labelLarge.copy(fontFamily = InterFontFamily),
+    labelMedium = DefaultTypography.labelMedium.copy(fontFamily = InterFontFamily),
+    labelSmall = DefaultTypography.labelSmall.copy(fontFamily = InterFontFamily),
+)
+
 @Composable
 fun resolveDarkTheme(themeMode: ThemeMode): Boolean = when (themeMode) {
     ThemeMode.DARK -> true
@@ -142,6 +166,7 @@ fun AdoelTheme(themeMode: ThemeMode = ThemeMode.SYSTEM, content: @Composable () 
     CompositionLocalProvider(LocalAppColors provides if (dark) DarkAppColors else LightAppColors) {
         MaterialTheme(
             colorScheme = if (dark) DarkScheme else LightScheme,
+            typography = AdoelTypography,
             content = content,
         )
     }
