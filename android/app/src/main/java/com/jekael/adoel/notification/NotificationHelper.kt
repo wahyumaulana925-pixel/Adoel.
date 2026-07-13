@@ -7,16 +7,16 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Path
 import android.os.Build
-import android.util.Log
 import androidx.core.app.NotificationCompat
-import androidx.core.content.ContextCompat
-import androidx.core.graphics.drawable.toBitmap
 import com.jekael.adoel.MainActivity
 import com.jekael.adoel.R
 import com.jekael.adoel.data.Estimasi
 import com.jekael.adoel.data.REMINDER_LEAD_MIN
-import com.jekael.adoel.data.formatYard
 import com.jekael.adoel.data.nowAbsMin
 
 // Brand accent (Cyan600 #0891B2) — tints the small icon & app name in the notification shade.
@@ -27,20 +27,53 @@ object NotificationHelper {
 
     private const val REMINDER_ID_OFFSET = 100_000
 
-    // The launcher bitmap never changes at runtime, so decode+scale it once instead of on every
-    // single notification post — doff alerts can fire dozens of times per shift.
-    @Volatile private var cachedLargeIcon: Bitmap? = null
+    // Amber500 (reminder/"bersiap") and Emerald500 ("siap doff") — same urgency-color language
+    // RadarCard already uses, so the notification tells the two states apart at a glance instead
+    // of repeating the small icon (which Android forces monochrome in the status bar anyway).
+    private const val REMINDER_COLOR = 0xFFF59E0B.toInt()
+    private const val READY_COLOR = 0xFF10B981.toInt()
 
-    private fun largeIcon(context: Context): Bitmap? {
-        cachedLargeIcon?.let { return it }
-        val decoded = runCatching {
-            ContextCompat.getDrawable(context, R.mipmap.ic_launcher)?.toBitmap(width = 128, height = 128)
-        }.onFailure { e ->
-            // Notifikasi tetap tampil tanpa large icon — cukup dicatat, jangan sampai gagal senyap.
-            Log.w("NotificationHelper", "Gagal decode launcher icon untuk notifikasi", e)
-        }.getOrNull()
-        cachedLargeIcon = decoded
-        return decoded
+    // Drawn once per type, not decoded from a resource — cheap to build at runtime with plain
+    // Canvas primitives, so doff alerts firing dozens of times per shift don't redo any work.
+    @Volatile private var cachedReminderIcon: Bitmap? = null
+    @Volatile private var cachedReadyIcon: Bitmap? = null
+
+    private fun contextIcon(isReminder: Boolean): Bitmap {
+        (if (isReminder) cachedReminderIcon else cachedReadyIcon)?.let { return it }
+        val size = 128
+        val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bmp)
+        val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = if (isReminder) REMINDER_COLOR else READY_COLOR
+        }
+        canvas.drawCircle(size / 2f, size / 2f, size / 2f, bgPaint)
+
+        val fgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            style = Paint.Style.STROKE
+            strokeWidth = size * 0.09f
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+        }
+        if (isReminder) {
+            // Clock face — "waktu hampir tiba".
+            val r = size * 0.28f
+            val cx = size / 2f
+            val cy = size / 2f
+            canvas.drawCircle(cx, cy, r, fgPaint)
+            canvas.drawLine(cx, cy, cx, cy - r * 0.6f, fgPaint)
+            canvas.drawLine(cx, cy, cx + r * 0.5f, cy, fgPaint)
+        } else {
+            // Checkmark — "siap doff".
+            val path = Path().apply {
+                moveTo(size * 0.28f, size * 0.52f)
+                lineTo(size * 0.44f, size * 0.68f)
+                lineTo(size * 0.74f, size * 0.34f)
+            }
+            canvas.drawPath(path, fgPaint)
+        }
+        if (isReminder) cachedReminderIcon = bmp else cachedReadyIcon = bmp
+        return bmp
     }
 
     fun createChannel(context: Context) {
@@ -119,13 +152,12 @@ object NotificationHelper {
         estimasi.filter { it.estAbsMin > now }.forEach { scheduleNotif(context, it.mcNo, it.estAbsMin) }
     }
 
-    fun showNotification(context: Context, mcNo: String, isReminder: Boolean, corak: String? = null, targetYard: Double? = null) {
+    fun showNotification(context: Context, mcNo: String, isReminder: Boolean) {
         val notifId = notifIdFor(mcNo, isReminder)
-        val label = buildString {
-            append("Mc $mcNo")
-            if (!corak.isNullOrBlank() && corak != "-") append(" · $corak")
-            if (targetYard != null) append(" · ${formatYard(targetYard)}y")
-        }
+        // Corak/target yard used to be appended here, but on a real device that pushed the actual
+        // "X menit lagi"/"siap doff" status past the title's truncation point (see the reported
+        // notification screenshot) — mcNo is the one thing an operator actually needs to spot fast.
+        val label = "Mc $mcNo"
         val tapIntent = PendingIntent.getActivity(
             context, notifId,
             Intent(context, MainActivity::class.java).apply {
@@ -140,15 +172,14 @@ object NotificationHelper {
             },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        // Two icon elements, same as every other app's notifications (WhatsApp, Chrome, etc.):
-        // the small icon (status bar, forced monochrome by Android) and the large icon (shown
-        // prominently in the notification shade, full color — the actual launcher "A." bitmap).
-        val largeIcon = largeIcon(context)
-
+        // Small icon: status bar, forced monochrome by Android. Large icon: shown in the shade —
+        // used to just be a second copy of the app icon (redundant with the small one, see the
+        // reported screenshot), now a reminder/ready glyph so it actually adds information instead
+        // of repeating the app identity twice in the same row.
         val notif = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setColor(BRAND_COLOR)
-            .apply { if (largeIcon != null) setLargeIcon(largeIcon) }
+            .setLargeIcon(contextIcon(isReminder))
             .setContentTitle(if (isReminder) "$label — $REMINDER_LEAD_MIN menit lagi" else "$label — siap doff")
             .setContentText(if (isReminder) "Bersiap, estimasi hampir tiba" else "Estimasi waktu telah tiba")
             .setPriority(NotificationCompat.PRIORITY_HIGH)

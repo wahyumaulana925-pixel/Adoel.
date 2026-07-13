@@ -29,6 +29,7 @@ fun Modifier.floatingHeaderCard(): Modifier {
         .clip(RoundedCornerShape(Dimens.RadiusFloating))
         .border(1.dp, colors.border, RoundedCornerShape(Dimens.RadiusFloating))
         .background(colors.bgElevated)
+        .fabricTextureSubtle()
 }
 
 /**
@@ -46,4 +47,5 @@ fun Modifier.elevatedListCard(backgroundColor: Color): Modifier {
         .clip(RoundedCornerShape(Dimens.RadiusCard))
         .border(1.dp, colors.border, RoundedCornerShape(Dimens.RadiusCard))
         .background(backgroundColor)
+        .fabricTextureSubtle()
 }

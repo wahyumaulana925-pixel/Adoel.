@@ -217,6 +217,7 @@ fun standarisasiKeterangan(raw: String): String {
         t in listOf("oh", "p.oh", "p. oh", "p oh", "overhaul") -> "P.OH"
         t in listOf("el", "p.el", "p. el", "p el", "elektrik") -> "P.EL"
         t in listOf("sel", "selvedge", "p.sel", "p. sel", "p sel") -> "P.Sel"
+        t in listOf("matching", "match") -> "MATCHING"
         else -> raw.trim()
     }
 }

@@ -49,6 +49,7 @@ import com.jekael.adoel.ui.theme.Cyan500
 import com.jekael.adoel.ui.theme.Dimens
 import com.jekael.adoel.ui.theme.LocalAppColors
 import com.jekael.adoel.ui.theme.Motion
+import com.jekael.adoel.ui.theme.fabricTextureSubtle
 
 @Composable
 fun FieldLabel(text: String) {
@@ -155,6 +156,7 @@ fun FloatingEditDialog(
                         .clip(RoundedCornerShape(Dimens.RadiusFloating))
                         .border(1.dp, colors.border, RoundedCornerShape(Dimens.RadiusFloating))
                         .background(colors.bgElevated)
+                        .fabricTextureSubtle()
                         .padding(20.dp)
                         .verticalScroll(rememberScrollState()),
                     content = content,

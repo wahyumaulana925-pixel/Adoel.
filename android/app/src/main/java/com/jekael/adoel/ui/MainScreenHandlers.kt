@@ -84,8 +84,9 @@ internal class MainScreenHandlers(
         }
     }
 
-    fun handleDoff(mcNo: String) {
-        val result = doffVm.prosesBarisUmum(mcNo)
+    fun handleDoff(mcNo: String, keterangan: String? = null) {
+        val cmd = if (keterangan != null) "$mcNo $keterangan" else mcNo
+        val result = doffVm.prosesBarisUmum(cmd)
         when (result) {
             is ProsesResult.Ok -> {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)

@@ -143,6 +143,7 @@ internal fun MesinTab(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(colors.bg)
+                        .fabricTextureSubtle()
                         .padding(vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),

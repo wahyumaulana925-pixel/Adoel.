@@ -24,11 +24,11 @@ import com.jekael.adoel.ui.theme.Cyan600
 import com.jekael.adoel.ui.theme.LocalAppColors
 import com.jekael.adoel.ui.theme.Sky500
 
-private enum class GuidedDoffingStep { CHOOSE, NORMAL, KENDALA, COUNTER }
+private enum class GuidedDoffingStep { CHOOSE, NORMAL, KETERANGAN, COUNTER }
 
 /** Terpandu (guided) DOFFING entry — Batch 5. Step 1 offers big buttons instead of free-text
- * ("Doffing normal" / "Ada kendala" / D408-only "Update bacaan counter" — the guided, unambiguous
- * replacement for the old console-only "C" token shortcut being removed in Batch 6). Every path
+ * ("Doffing normal" / "Ada keterangan" / D408-only "Update bacaan counter" — the guided,
+ * unambiguous replacement for the old console-only "C" token shortcut removed in Batch 6). Every path
  * ends by building the identical command string the Teks console would send for that action and
  * handing it to the matching callback, which the caller routes through the same
  * handlers.handleCommand path Teks uses — so undo, notification cancel/reschedule, and toast/
@@ -57,7 +57,7 @@ fun GuidedDoffingSheet(
             GuidedDoffingStep.CHOOSE -> ChooseStep(
                 isD408 = mesin?.tipe == MesinTipe.D408,
                 onPickNormal = { step = GuidedDoffingStep.NORMAL },
-                onPickKendala = { step = GuidedDoffingStep.KENDALA },
+                onPickKeterangan = { step = GuidedDoffingStep.KETERANGAN },
                 onPickCounter = { step = GuidedDoffingStep.COUNTER },
                 onCancel = onDismiss,
             )
@@ -66,9 +66,10 @@ fun GuidedDoffingSheet(
                 onBack = { step = GuidedDoffingStep.CHOOSE },
                 onConfirm = { yard -> onSubmitDoffing("$mcNo $yard") },
             )
-            GuidedDoffingStep.KENDALA -> KendalaStep(
+            GuidedDoffingStep.KETERANGAN -> KeteranganStep(
+                standardYard = standardYard,
                 onBack = { step = GuidedDoffingStep.CHOOSE },
-                onConfirm = { code -> onSubmitDoffing("$mcNo $code") },
+                onConfirm = { cmd -> onSubmitDoffing("$mcNo $cmd") },
             )
             GuidedDoffingStep.COUNTER -> CounterUpdateStep(
                 onBack = { step = GuidedDoffingStep.CHOOSE },
@@ -82,14 +83,14 @@ fun GuidedDoffingSheet(
 private fun ChooseStep(
     isD408: Boolean,
     onPickNormal: () -> Unit,
-    onPickKendala: () -> Unit,
+    onPickKeterangan: () -> Unit,
     onPickCounter: () -> Unit,
     onCancel: () -> Unit,
 ) {
     val colors = LocalAppColors.current
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         BigChoiceButton(label = "Doffing normal", subtitle = "Selesai sesuai target yard", onClick = onPickNormal)
-        BigChoiceButton(label = "Ada kendala", subtitle = "HB, P.LP, P.SN, P.OH, P.EL, P.Sel", onClick = onPickKendala)
+        BigChoiceButton(label = "Ada keterangan", subtitle = "HB, P.LP, P.SN, P.OH, P.EL, P.Sel, atau lainnya", onClick = onPickKeterangan)
         if (isD408) {
             BigChoiceButton(
                 label = "Update bacaan counter",
@@ -181,13 +182,48 @@ private fun NormalYardStep(standardYard: Double?, onBack: () -> Unit, onConfirm:
     }
 }
 
+/** Keterangan needs to cover more than the 6 preset codes (e.g. HB = habis beam, not really a
+ * "kendala"/problem, just why the cut yard won't match standard) — chips are a quick-fill for the
+ * common ones, but the text field underneath stays freely editable so anything not on that list
+ * can still be typed, same freedom as the Teks console. Yard is a plain field (no +/-5/+/-10
+ * buttons like NormalYardStep): unlike a normal doff, the variance here isn't a fixed step, it's
+ * whatever the actual cut came out to — same as typing e.g. "70" or "+70" in Teks. */
 @Composable
-private fun KendalaStep(onBack: () -> Unit, onConfirm: (String) -> Unit) {
+private fun KeteranganStep(standardYard: Double?, onBack: () -> Unit, onConfirm: (String) -> Unit) {
     val colors = LocalAppColors.current
-    var selected by remember { mutableStateOf<String?>(null) }
+    var ket by remember { mutableStateOf("") }
+    var yardInput by remember { mutableStateOf("") }
 
     FieldLabel("Keterangan")
-    FlowRowChips(codes = KETERANGAN_CODES, selected = selected, onSelect = { selected = it })
+    FlowRowChips(codes = KETERANGAN_CODES, selected = ket.takeIf { it in KETERANGAN_CODES }, onSelect = { ket = it })
+    Spacer(Modifier.height(8.dp))
+    OutlinedTextField(
+        value = ket,
+        onValueChange = { ket = it.uppercase() },
+        modifier = Modifier.fillMaxWidth(),
+        placeholder = { Text("Ketik keterangan lain jika tidak ada di atas", color = colors.textFaint) },
+        colors = outlinedFieldColors(),
+        shape = RoundedCornerShape(12.dp),
+        textStyle = AppType.FieldText.copy(color = colors.textPrimary),
+        singleLine = true,
+    )
+
+    Spacer(Modifier.height(14.dp))
+    FieldLabel("Yard aktual (opsional)")
+    OutlinedTextField(
+        value = yardInput,
+        onValueChange = { yardInput = it },
+        modifier = Modifier.fillMaxWidth(),
+        placeholder = {
+            val hint = if (standardYard != null) "Standar: ${formatYard(standardYard)}y — cth: 70 atau +70" else "cth: 70 atau +70"
+            Text(hint, color = colors.textFaint)
+        },
+        colors = outlinedFieldColors(),
+        shape = RoundedCornerShape(12.dp),
+        textStyle = AppType.FieldText.copy(color = colors.textPrimary),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+        singleLine = true,
+    )
 
     Spacer(Modifier.height(20.dp))
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -199,8 +235,11 @@ private fun KendalaStep(onBack: () -> Unit, onConfirm: (String) -> Unit) {
             border = BorderStroke(1.dp, colors.border),
         ) { Text("Kembali") }
         Button(
-            onClick = { selected?.let(onConfirm) },
-            enabled = selected != null,
+            onClick = {
+                val cmd = listOf(ket.trim(), yardInput.trim()).filter { it.isNotEmpty() }.joinToString(" ")
+                if (cmd.isNotBlank()) onConfirm(cmd)
+            },
+            enabled = ket.isNotBlank(),
             modifier = Modifier.weight(1f).height(48.dp),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Cyan600),

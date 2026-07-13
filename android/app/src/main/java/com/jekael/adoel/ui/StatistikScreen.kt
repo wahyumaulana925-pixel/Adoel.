@@ -77,6 +77,7 @@ import com.jekael.adoel.ui.theme.Dimens
 import com.jekael.adoel.ui.theme.LocalAppColors
 import com.jekael.adoel.ui.theme.Motion
 import com.jekael.adoel.ui.theme.elevatedListCard
+import com.jekael.adoel.ui.theme.fabricTextureBold
 import com.jekael.adoel.ui.theme.floatingHeaderCard
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -103,7 +104,7 @@ fun StatistikScreen(
         // Same "floating header overlays a full-bleed scrollable list" concept as MainScreen —
         // the list is measured/laid out from the very top and scrolls behind the header, instead
         // of just sitting in a Column below it.
-        Box(modifier = Modifier.fillMaxSize().background(colors.bg)) {
+        Box(modifier = Modifier.fillMaxSize().background(colors.bg).fabricTextureBold()) {
             if (history.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     EmptyState(

@@ -67,6 +67,7 @@ internal fun SettingsDrawer(
             modifier = Modifier
                 .fillMaxSize()
                 .background(colors.bg)
+                .fabricTextureBold()
                 .onGloballyPositioned { panelWidthPx = it.size.width.toFloat() }
                 .offset { IntOffset(dragOffset.value.roundToInt(), 0) }
                 .pointerInput(Unit) {

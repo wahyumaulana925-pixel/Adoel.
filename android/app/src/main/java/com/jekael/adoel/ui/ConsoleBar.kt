@@ -167,6 +167,11 @@ internal fun ConsoleBar(
                         ),
                         keyboardOptions = KeyboardOptions(
                             capitalization = KeyboardCapitalization.Characters,
+                            // Estimasi commands are always digits (durasi/yard/bacaan jam) — a
+                            // numeric keyboard cuts out an extra keyboard-switch tap per command.
+                            // Doffing needs letters too (keterangan like HB), so it keeps the
+                            // regular keyboard.
+                            keyboardType = if (mode == Mode.ESTIMASI) KeyboardType.Number else KeyboardType.Text,
                             imeAction = ImeAction.Send,
                         ),
                         keyboardActions = KeyboardActions(onSend = { onSend() }),

@@ -4,13 +4,14 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.*
@@ -35,9 +36,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jekael.adoel.data.*
 import com.jekael.adoel.ui.theme.*
-import kotlin.math.abs
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
+/** Which swipe direction triggered a doff completion — drives the celebration icon/color/exit
+ * direction in RadarCard (see completingKind below). */
+private enum class DoffCompletionKind { NORMAL, MATCHING }
 
 private data class UrgencyStyle(
     val accent: Color,
@@ -66,7 +70,13 @@ fun RadarCard(
     est: Estimasi,
     mesin: MesinData?,
     nowAbs: Long,
+    // Swipe right: doffing normal. Swipe left: doffing dengan keterangan "Matching" (cek kualitas
+    // kain dari beam baru) — same instant-commit shape as onDoff, just a different keterangan
+    // token, so Teks and Terpandu behave identically here (no confirmation sheet either way; the
+    // full Ada-keterangan/kendala flow is only reached from the Doffing console's own entry point).
     onDoff: () -> Unit,
+    onDoffMatching: () -> Unit,
+    // Hapus moved off the swipe gesture (which now means Matching, not delete) onto long-press.
     onHapus: () -> Unit,
     onQuickEdit: () -> Unit,
     modifier: Modifier = Modifier,
@@ -101,13 +111,16 @@ fun RadarCard(
         lerp(colors.bgElevated, clr.accent, clr.tintFraction)
     }
 
-    // Celebrate completion — card slides out + checkmark pops before the state is actually
-    // mutated. Hapus deliberately does NOT get this treatment: it's gated by a ConfirmDialog
-    // (see handleHapusEst in MainScreen.kt), so animating the card away on tap — before the user
-    // has even confirmed — would hide it during the dialog and leave it stuck gone after Batal,
-    // since nothing would ever reset the animation. Hapus instead relies on the LazyColumn's own
-    // Modifier.animateItem() to reflow smoothly once the deletion is actually confirmed.
-    var completing by remember(est.mcNo) { mutableStateOf(false) }
+    // Celebrate completion — card slides out + an icon pops before the state is actually mutated.
+    // Normal and Matching get different icon/color/exit-direction so the two feel distinguishable
+    // at a glance (Emerald checkmark sliding right vs Sky "verified" badge sliding left). Hapus
+    // deliberately does NOT get this treatment: it's gated by a ConfirmDialog (see handleHapusEst
+    // in MainScreen.kt), so animating the card away before the user has even confirmed would hide
+    // it during the dialog and leave it stuck gone after Batal, since nothing would reset it.
+    // Hapus instead relies on the LazyColumn's own Modifier.animateItem() to reflow once the
+    // deletion is actually confirmed, plus its own long-press "charge" animation below.
+    var completingKind by remember(est.mcNo) { mutableStateOf<DoffCompletionKind?>(null) }
+    val completing = completingKind != null
     val scope = rememberCoroutineScope()
     val exitProgress by animateFloatAsState(
         targetValue = if (completing) 1f else 0f,
@@ -119,6 +132,15 @@ fun RadarCard(
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
         label = "checkScale",
     )
+    val completionColor = if (completingKind == DoffCompletionKind.MATCHING) Sky500 else Emerald500
+    val completionIcon = if (completingKind == DoffCompletionKind.MATCHING) Icons.Filled.Verified else Icons.Filled.CheckCircle
+    val exitDirection = if (completingKind == DoffCompletionKind.MATCHING) -1f else 1f
+
+    // Long-press to hapus: a "charge up" red tint/scale while held (distinct from the swipe-driven
+    // completions above, which slide the card away) so an operator gets feedback during the hold
+    // itself, not just a sudden confirm dialog. Cancelled/reset if released or dragged before the
+    // system long-press timeout fires.
+    val pressCharge = remember(est.mcNo) { Animatable(0f) }
 
     // Staggered fade+rise entrance when a batch of cards first appears (e.g. switching into
     // ESTIMASI mode from empty), instead of every card popping in at once — keyed to mcNo so it
@@ -131,17 +153,21 @@ fun RadarCard(
         entranceOffsetY.animateTo(0f, tween(220, easing = FastOutSlowInEasing))
     }
 
-    fun triggerDoff() {
+    fun triggerDoff(kind: DoffCompletionKind) {
         if (completing) return
-        completing = true
+        completingKind = kind
         scope.launch {
             delay(420)
-            onDoff()
+            when (kind) {
+                DoffCompletionKind.NORMAL -> onDoff()
+                DoffCompletionKind.MATCHING -> onDoffMatching()
+            }
         }
     }
 
-    // Swipe right = doff, swipe left = hapus — the only way to act on a card now that the
-    // always-visible buttons are gone (see SwipeActionBackground for the reveal panel).
+    // Swipe right = doffing normal, swipe left = doffing dengan keterangan Matching, long-press =
+    // hapus — the only ways to act on a card now that the always-visible buttons are gone (see
+    // SwipeActionBackground for the swipe reveal panel).
     val density = LocalDensity.current
     val swipeThresholdPx = with(density) { Dimens.SwipeThreshold.toPx() }
     val maxSwipePx = with(density) { Dimens.SwipeMax.toPx() }
@@ -150,11 +176,8 @@ fun RadarCard(
     fun settleSwipe() {
         val value = offsetX.value
         when {
-            value >= swipeThresholdPx -> triggerDoff() // exitProgress takes over the slide-out from here
-            value <= -swipeThresholdPx -> {
-                onHapus()
-                scope.launch { offsetX.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy)) }
-            }
+            value >= swipeThresholdPx -> triggerDoff(DoffCompletionKind.NORMAL) // exitProgress takes over from here
+            value <= -swipeThresholdPx -> triggerDoff(DoffCompletionKind.MATCHING)
             else -> scope.launch { offsetX.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy)) }
         }
     }
@@ -164,26 +187,32 @@ fun RadarCard(
             offsetX = offsetX.value,
             thresholdPx = swipeThresholdPx,
             rightIcon = Icons.Outlined.Check,
-            leftIcon = Icons.Outlined.Delete,
+            leftIcon = Icons.Filled.Verified,
             rightColor = Emerald500,
-            leftColor = Red500,
+            leftColor = Sky500,
         )
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .graphicsLayer {
-                    translationX = offsetX.value + exitProgress * size.width
+                    translationX = offsetX.value + exitProgress * exitDirection * size.width
                     translationY = entranceOffsetY.value
+                    scaleX = 1f - 0.03f * pressCharge.value
+                    scaleY = 1f - 0.03f * pressCharge.value
                     alpha = (1f - exitProgress) * entranceAlpha.value
                 }
-                .elevatedListCard(backgroundColor = faceBg)
+                .elevatedListCard(backgroundColor = lerp(faceBg, Red500, 0.16f * pressCharge.value))
                 // Swipe is the fast path, but TalkBack intercepts swipe gestures for its own
                 // navigation before they ever reach this card — without this, a screen-reader
                 // user would have no way at all to doff or delete. These custom actions surface
                 // in TalkBack's local context menu as a non-gesture alternative to the swipe above.
                 .semantics(mergeDescendants = true) {
                     customActions = listOf(
-                        CustomAccessibilityAction("Doff mesin ${est.mcNo}") { triggerDoff(); true },
+                        CustomAccessibilityAction("Doff mesin ${est.mcNo}") { triggerDoff(DoffCompletionKind.NORMAL); true },
+                        CustomAccessibilityAction("Doff mesin ${est.mcNo} dengan keterangan Matching") {
+                            triggerDoff(DoffCompletionKind.MATCHING)
+                            true
+                        },
                         CustomAccessibilityAction("Hapus estimasi Mc ${est.mcNo}") { onHapus(); true },
                     )
                 }
@@ -192,13 +221,30 @@ fun RadarCard(
                     detectHorizontalDragGestures(
                         onDragEnd = { settleSwipe() },
                         onDragCancel = {
-                            scope.launch { offsetX.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy)) }
+                            scope.launch {
+                                offsetX.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy))
+                            }
                         },
                         onHorizontalDrag = { change, dragAmount ->
                             change.consume()
                             scope.launch {
                                 offsetX.snapTo((offsetX.value + dragAmount).coerceIn(-maxSwipePx, maxSwipePx))
                             }
+                        },
+                    )
+                }
+                .pointerInput(completing) {
+                    if (completing) return@pointerInput
+                    detectTapGestures(
+                        onLongPress = {
+                            scope.launch { pressCharge.snapTo(0f) }
+                            onHapus()
+                        },
+                        onPress = {
+                            val chargeJob = scope.launch { pressCharge.animateTo(1f, tween(450, easing = LinearEasing)) }
+                            tryAwaitRelease()
+                            chargeJob.cancel()
+                            scope.launch { pressCharge.animateTo(0f, tween(150)) }
                         },
                     )
                 },
@@ -216,7 +262,7 @@ fun RadarCard(
                 )
             }
 
-            // Content — swipe right to doff, swipe left to hapus (see SwipeActionBackground above).
+            // Content — swipe right = doff, swipe left = doff+Matching, long-press = hapus.
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -318,7 +364,8 @@ fun RadarCard(
                 }
             }
 
-            // Celebrate completion — checkmark pops in while the card slides/fades out
+            // Celebrate completion — icon pops in while the card slides/fades out. Which icon and
+            // which direction depends on completingKind (see its assignment above).
             if (checkScale > 0f) {
                 Box(
                     modifier = Modifier.matchParentSize(),
@@ -327,12 +374,12 @@ fun RadarCard(
                     Box(
                         modifier = Modifier
                             .matchParentSize()
-                            .background(Emerald500.copy(alpha = 0.14f)),
+                            .background(completionColor.copy(alpha = 0.14f)),
                     )
                     Icon(
-                        imageVector = Icons.Filled.CheckCircle,
+                        imageVector = completionIcon,
                         contentDescription = null,
-                        tint = Emerald500,
+                        tint = completionColor,
                         modifier = Modifier
                             .size(56.dp)
                             .graphicsLayer { scaleX = checkScale; scaleY = checkScale },

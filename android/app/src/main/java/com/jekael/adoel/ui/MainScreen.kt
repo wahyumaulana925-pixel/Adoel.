@@ -264,6 +264,7 @@ fun MainScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(colors.bg)
+            .fabricTextureBold()
             .systemBarsPadding(),
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -335,13 +336,13 @@ fun MainScreen(
                             nowAbs = nowAbs,
                             radarFilter = radarFilter,
                             onRadarFilterChange = { radarFilter = it },
-                            onDoff = { mcNo ->
-                                if (inputStyle == InputStyle.TERPANDU) {
-                                    activeOverlay = ActiveOverlay.GuidedDoffing(mcNo)
-                                } else {
-                                    handlers.handleDoff(mcNo)
-                                }
-                            },
+                            // Swipe on an Estimasi card is a quick, instant action in both input
+                            // styles now — Teks and Terpandu no longer diverge here. The full
+                            // Ada-keterangan/kendala chooser sheet is only reachable from the
+                            // Doffing console's own "Mulai" entry point (see GuidedDoffing wiring
+                            // below), not from swiping a card.
+                            onDoff = { mcNo -> handlers.handleDoff(mcNo) },
+                            onDoffMatching = { mcNo -> handlers.handleDoff(mcNo, "MATCHING") },
                             onHapus = { mcNo -> handlers.handleHapusEst(mcNo) },
                             onQuickEdit = { mcNo ->
                                 activeOverlay = if (inputStyle == InputStyle.TERPANDU) {
