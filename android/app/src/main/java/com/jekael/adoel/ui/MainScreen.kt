@@ -376,6 +376,17 @@ fun MainScreen(
             sendShowCheck = sendPulse.showCheck,
             inputErrorFlash = errorFlash.active,
             inputHint = inputHint,
+            onGuidedStart = { mcNo ->
+                if (state.db[mcNo] == null) {
+                    uiVm.showToast("⚠ Mc $mcNo tidak ditemukan")
+                } else {
+                    activeOverlay = if (mode == Mode.ESTIMASI) {
+                        ActiveOverlay.GuidedEstimasi(mcNo)
+                    } else {
+                        ActiveOverlay.GuidedDoffing(mcNo)
+                    }
+                }
+            },
             onHeightMeasured = { consoleBarHeight = it },
             modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
         )

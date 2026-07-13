@@ -16,6 +16,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,6 +34,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -61,6 +65,7 @@ internal fun ConsoleBar(
     sendShowCheck: Boolean,
     inputErrorFlash: Boolean,
     inputHint: String?,
+    onGuidedStart: (mcNo: String) -> Unit,
     onHeightMeasured: (Dp) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -206,22 +211,49 @@ internal fun ConsoleBar(
                     }
                 }
             } else {
-                // Terpandu placeholder — Batch 4/5 wire this to actually open the guided sheet
-                // when a radar/doffing card is tapped; for now it just states the gesture so the
-                // toggle is never a dead end.
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 56.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(colors.bgElevated2)
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    contentAlignment = Alignment.CenterStart,
+                // Terpandu: type just the machine number (no syntax to recall) to open the guided
+                // sheet for it directly — this is the entry point for a machine that doesn't have
+                // a radar card yet (e.g. its very first estimasi); tapping an existing RadarCard
+                // (see MainScreen's onQuickEdit/onDoff wiring) is the faster path once one exists.
+                var guidedMcNoInput by remember(mode) { mutableStateOf("") }
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        text = "Ketuk mesin di daftar untuk mulai",
-                        style = AppType.FieldText.copy(color = colors.textFaint),
+                    OutlinedTextField(
+                        value = guidedMcNoInput,
+                        onValueChange = { guidedMcNoInput = it.filter(Char::isDigit).take(3) },
+                        modifier = Modifier.weight(1f),
+                        placeholder = { Text("Nomor mesin, cth: 31", color = colors.textFaint) },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Violet500,
+                            unfocusedBorderColor = colors.border,
+                            cursorColor = Violet500,
+                            focusedContainerColor = colors.bgElevated2,
+                            unfocusedContainerColor = colors.bgElevated2,
+                        ),
+                        shape = RoundedCornerShape(50.dp),
+                        textStyle = TextStyle(
+                            color = colors.textPrimary,
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                        ),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = {
+                            if (guidedMcNoInput.isNotBlank()) { onGuidedStart(guidedMcNoInput); guidedMcNoInput = "" }
+                        }),
+                        singleLine = true,
                     )
+                    Button(
+                        onClick = {
+                            if (guidedMcNoInput.isNotBlank()) { onGuidedStart(guidedMcNoInput); guidedMcNoInput = "" }
+                        },
+                        enabled = guidedMcNoInput.isNotBlank(),
+                        modifier = Modifier.height(56.dp),
+                        shape = RoundedCornerShape(50.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Violet500),
+                    ) { Text("Mulai", fontWeight = FontWeight.SemiBold) }
                 }
             }
         }
