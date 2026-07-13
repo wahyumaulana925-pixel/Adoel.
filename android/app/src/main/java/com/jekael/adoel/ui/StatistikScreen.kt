@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
@@ -51,6 +52,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jekael.adoel.data.MesinData
+import com.jekael.adoel.data.MesinTipe
 import com.jekael.adoel.data.ShiftRecord
 import com.jekael.adoel.data.buildShareShiftText
 import com.jekael.adoel.data.formatDeltaMin
@@ -65,6 +67,7 @@ import com.jekael.adoel.ui.components.EmptyState
 import com.jekael.adoel.ui.components.LinearProgressBar
 import com.jekael.adoel.ui.components.SlidePanel
 import com.jekael.adoel.ui.components.SwipeableCard
+import com.jekael.adoel.ui.components.mesinTipeColor
 import com.jekael.adoel.ui.theme.AppType
 import com.jekael.adoel.ui.theme.Cyan400
 import com.jekael.adoel.ui.theme.Cyan500
@@ -133,6 +136,7 @@ fun StatistikScreen(
                     item {
                         AggregateStatsCard(
                             history = history,
+                            db = db,
                             totalDoff = totalDoff,
                             avgPerShift = avgPerShift,
                             selectedShiftId = expandedShiftId,
@@ -186,6 +190,7 @@ fun StatistikScreen(
 @Composable
 private fun AggregateStatsCard(
     history: List<ShiftRecord>,
+    db: Map<String, MesinData>,
     totalDoff: Int,
     avgPerShift: Float,
     selectedShiftId: Int?,
@@ -219,6 +224,67 @@ private fun AggregateStatsCard(
         }
         Spacer(Modifier.height(12.dp))
         DoffCountChart(history = history, selectedShiftId = selectedShiftId, onBarClick = onBarClick)
+        Spacer(Modifier.height(14.dp))
+        TipeBreakdownBar(history = history, db = db)
+    }
+}
+
+/** Small per-[MesinTipe] breakdown of doffs across all archived history — same color language as
+ * RadarCard's type icon/dot (Batch 1) and DoffingSection's row dot, so "which color means which
+ * machine type" never has to be relearned between screens. */
+@Composable
+private fun TipeBreakdownBar(history: List<ShiftRecord>, db: Map<String, MesinData>) {
+    val colors = LocalAppColors.current
+    val counts = remember(history, db) {
+        val order = listOf(MesinTipe.TAPPET, MesinTipe.CAM, MesinTipe.D405, MesinTipe.D408)
+        val byTipe = history.asSequence().flatMap { it.aktual }.mapNotNull { db[it.mcNo]?.tipe }
+            .groupingBy { it }.eachCount()
+        order.mapNotNull { tipe -> byTipe[tipe]?.let { tipe to it } }
+    }
+    val total = counts.sumOf { it.second }
+    if (total == 0) return
+
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(RoundedCornerShape(3.dp)),
+        ) {
+            counts.forEachIndexed { index, (tipe, count) ->
+                // Same stagger-then-grow entrance as DoffCountChart's bars, reusing the identical
+                // Animatable + delayed-LaunchedEffect pattern (and its stagger-step token) instead
+                // of inventing a new animation shape for this second chart on the same screen.
+                val animatedFraction = remember(tipe) { Animatable(0f) }
+                LaunchedEffect(tipe, count) {
+                    delay(index * Motion.CHART_STAGGER_STEP_MS)
+                    animatedFraction.animateTo(count.toFloat(), animationSpec = tween(450, easing = FastOutSlowInEasing))
+                }
+                Box(
+                    modifier = Modifier
+                        .weight(animatedFraction.value.coerceAtLeast(0.001f))
+                        .fillMaxHeight()
+                        .background(mesinTipeColor(tipe)),
+                )
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            counts.forEach { (tipe, count) ->
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .clip(CircleShape)
+                            .background(mesinTipeColor(tipe)),
+                    )
+                    Text(
+                        text = "${tipe.name} $count",
+                        style = TextStyle(fontSize = 10.sp, color = colors.textFaint),
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -409,11 +475,27 @@ private fun ShiftRow(
                     // menunjukkannya alih-alih diam-diam menghilang begitu shift diarsipkan.
                     val yard = entry.customYard ?: db[entry.mcNo]?.targetYard
                     val corakLine = if (yard != null) "$corak · ${formatYard(yard)}y" else corak
+                    // entry.ket is "$jam($extra)" when there's a keterangan code, or just $jam
+                    // when there isn't (see DoffViewModel.prosesBarisUmum) — entry.jam is already
+                    // shown on the right below, so showing the raw `ket` here too used to repeat
+                    // it a second time (or, with no keterangan, show the identical string twice).
+                    // Strip the jam back out and show only the code, if there is one.
+                    val ketCode = entry.ket.removePrefix(entry.jam).removeSurrounding("(", ")")
+                    val line = if (ketCode.isNotEmpty()) "$corakLine · $ketCode" else corakLine
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("Mc ${entry.mcNo} · $corakLine · ${entry.ket}", style = AppType.Caption.copy(color = colors.textSecondary))
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .clip(CircleShape)
+                                    .background(db[entry.mcNo]?.tipe?.let(::mesinTipeColor) ?: colors.textFaint),
+                            )
+                            Text("Mc ${entry.mcNo} · $line", style = AppType.Caption.copy(color = colors.textSecondary))
+                        }
                         Text(entry.jam, style = AppType.Caption.copy(color = colors.textFaint))
                     }
                 }

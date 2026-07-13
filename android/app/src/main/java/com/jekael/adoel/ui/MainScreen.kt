@@ -61,6 +61,7 @@ fun MainScreen(
     // Console command bar — the one and only way to record estimasi/doffing. Saveable so a
     // rotation or process death mid-shift doesn't drop what the operator is in the middle of.
     var mode by rememberSaveable { mutableStateOf(Mode.AKTUAL) }
+    var inputStyle by rememberSaveable { mutableStateOf(InputStyle.TEKS) }
     var input by rememberSaveable { mutableStateOf("") }
     var radarFilter by rememberSaveable { mutableStateOf("") }
     var doffFilter by rememberSaveable { mutableStateOf("") }
@@ -185,12 +186,9 @@ fun MainScreen(
         if (mode != Mode.ESTIMASI) return@remember null
         val mcNo = input.trim().substringBefore(' ')
         if (mcNo.isEmpty() || !mcNo.matches(Regex("^\\d{1,3}$"))) return@remember null
-        when (state.db[mcNo]?.tipe) {
-            MesinTipe.TAPPET, MesinTipe.CAM -> "Mc $mcNo → sisa menit, cth: $mcNo 45"
-            MesinTipe.D405 -> "Mc $mcNo → yard berjalan, cth: $mcNo 280"
-            MesinTipe.D408 -> "Mc $mcNo → jam counter, cth: $mcNo 12.30"
-            null -> null
-        }
+        val tipe = state.db[mcNo]?.tipe ?: return@remember null
+        val hint = estimasiFieldHint(tipe)
+        "Mc $mcNo → ${hint.label.replaceFirstChar { it.lowercase() }}, cth: $mcNo ${hint.example}"
     }
     // Flags doff entries left over from a shift the operator forgot to close via "Selesai Shift"
     // before the next 06.00/14.00/22.00 boundary — otherwise they'd silently get archived together
@@ -317,9 +315,21 @@ fun MainScreen(
                             nowAbs = nowAbs,
                             radarFilter = radarFilter,
                             onRadarFilterChange = { radarFilter = it },
-                            onDoff = { mcNo -> handlers.handleDoff(mcNo) },
+                            onDoff = { mcNo ->
+                                if (inputStyle == InputStyle.TERPANDU) {
+                                    activeOverlay = ActiveOverlay.GuidedDoffing(mcNo)
+                                } else {
+                                    handlers.handleDoff(mcNo)
+                                }
+                            },
                             onHapus = { mcNo -> handlers.handleHapusEst(mcNo) },
-                            onQuickEdit = { mcNo -> activeOverlay = ActiveOverlay.QuickEditMesin(mcNo) },
+                            onQuickEdit = { mcNo ->
+                                activeOverlay = if (inputStyle == InputStyle.TERPANDU) {
+                                    ActiveOverlay.GuidedEstimasi(mcNo)
+                                } else {
+                                    ActiveOverlay.QuickEditMesin(mcNo)
+                                }
+                            },
                         )
                     }
                     Mode.AKTUAL -> {
@@ -356,6 +366,8 @@ fun MainScreen(
         ConsoleBar(
             mode = mode,
             onModeSelect = { mode = it },
+            inputStyle = inputStyle,
+            onInputStyleSelect = { inputStyle = it },
             input = input,
             onInputChange = { input = it },
             inputFocus = inputFocus,
@@ -469,6 +481,40 @@ fun MainScreen(
                 doffVm.setMesin(quickEditMcNo, mesin.copy(corak = corak, targetYard = targetYard))
                 uiVm.showToast("Mc $quickEditMcNo disimpan ✓")
                 activeOverlay = ActiveOverlay.None
+            },
+        )
+    }
+
+    val guidedEstimasiMcNo = (activeOverlay as? ActiveOverlay.GuidedEstimasi)?.mcNo
+    if (guidedEstimasiMcNo != null) {
+        GuidedEstimasiSheet(
+            mcNo = guidedEstimasiMcNo,
+            mesin = state.db[guidedEstimasiMcNo],
+            onDismiss = { activeOverlay = ActiveOverlay.None },
+            onSubmit = { value ->
+                handlers.handleCommand(Mode.ESTIMASI, value) {
+                    activeOverlay = ActiveOverlay.None
+                }
+            },
+        )
+    }
+
+    val guidedDoffingMcNo = (activeOverlay as? ActiveOverlay.GuidedDoffing)?.mcNo
+    if (guidedDoffingMcNo != null) {
+        GuidedDoffingSheet(
+            mcNo = guidedDoffingMcNo,
+            mesin = state.db[guidedDoffingMcNo],
+            estimasi = state.estimasi[guidedDoffingMcNo],
+            onDismiss = { activeOverlay = ActiveOverlay.None },
+            onSubmitDoffing = { value ->
+                handlers.handleCommand(Mode.AKTUAL, value) {
+                    activeOverlay = ActiveOverlay.None
+                }
+            },
+            onSubmitCounterUpdate = { value ->
+                handlers.handleCommand(Mode.ESTIMASI, value) {
+                    activeOverlay = ActiveOverlay.None
+                }
             },
         )
     }

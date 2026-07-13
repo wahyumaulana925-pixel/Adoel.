@@ -15,6 +15,7 @@ import androidx.core.graphics.drawable.toBitmap
 import com.jekael.adoel.MainActivity
 import com.jekael.adoel.R
 import com.jekael.adoel.data.Estimasi
+import com.jekael.adoel.data.REMINDER_LEAD_MIN
 import com.jekael.adoel.data.formatYard
 import com.jekael.adoel.data.nowAbsMin
 
@@ -24,9 +25,6 @@ private const val BRAND_COLOR = 0xFF0891B2.toInt()
 object NotificationHelper {
     const val CHANNEL_ID = "doff_alerts"
 
-    // A heads-up alert fires this many minutes before the estimated doff time, in addition
-    // to the alert at the estimate itself, so the operator has time to walk over.
-    private const val REMINDER_LEAD_MIN = 5L
     private const val REMINDER_ID_OFFSET = 100_000
 
     // The launcher bitmap never changes at runtime, so decode+scale it once instead of on every

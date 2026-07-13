@@ -1,11 +1,13 @@
 package com.jekael.adoel.ui.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.stickyHeader
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -24,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import com.jekael.adoel.data.*
 import com.jekael.adoel.ui.theme.*
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun MesinTab(
     state: DoffState,
@@ -58,6 +61,14 @@ internal fun MesinTab(
             }
             .sortedBy { (k, _) -> k.toIntOrNull() ?: 0 }
     }
+    // Grouped per MesinTipe (fixed order, same as the physical floor's layout-by-machine-type
+    // sheet) with a sticky header per group — same icon/color language as RadarCard (Batch 1) so
+    // "what kind of machine is this" reads the same across Radar, Pengaturan, and Statistik.
+    val groupedEntries = remember(entries) {
+        val order = listOf(MesinTipe.TAPPET, MesinTipe.CAM, MesinTipe.D405, MesinTipe.D408)
+        val byTipe = entries.groupBy { (_, v) -> v.tipe }
+        order.mapNotNull { tipe -> byTipe[tipe]?.let { tipe to it } }
+    }
 
     // A search that's exactly a bare mc number not yet configured (corak masih "-")
     // gets offered as "configure this new machine" instead of showing up empty-handed.
@@ -68,60 +79,94 @@ internal fun MesinTab(
         } else null
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         // Scrolls behind the floating header/tab-switcher card above instead of being pushed
         // down by it — see the Box-overlay comment on SettingsDrawer's root.
-        Spacer(Modifier.height(10.dp + headerHeight + 16.dp))
-        OutlinedTextField(
-            value = search,
-            onValueChange = { search = it },
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Cari nomor / corak, atau ketik nomor baru", color = colors.textFaint) },
-            colors = outlinedFieldColors(),
-            shape = RoundedCornerShape(12.dp),
-            textStyle = AppType.FieldText.copy(color = colors.textPrimary),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { unconfigured?.let { (n, m) -> loadFrom(n, m) } }),
-            singleLine = true,
-        )
-        Row(
-            modifier = Modifier
-                .clickable { showAll = !showAll }
-                .padding(vertical = 2.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Checkbox(
-                checked = showAll,
-                onCheckedChange = { showAll = it },
-                colors = CheckboxDefaults.colors(checkedColor = Cyan500, uncheckedColor = colors.border),
-            )
-            Text(
-                "Tampilkan semua (termasuk corak \"-\")",
-                style = AppType.BodySmall.copy(color = colors.textSecondary),
-            )
+        item(key = "top_spacer") { Spacer(Modifier.height(10.dp + headerHeight + 16.dp)) }
+        item(key = "search") {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = search,
+                    onValueChange = { search = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("Cari nomor / corak, atau ketik nomor baru", color = colors.textFaint) },
+                    colors = outlinedFieldColors(),
+                    shape = RoundedCornerShape(12.dp),
+                    textStyle = AppType.FieldText.copy(color = colors.textPrimary),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { unconfigured?.let { (n, m) -> loadFrom(n, m) } }),
+                    singleLine = true,
+                )
+                Row(
+                    modifier = Modifier
+                        .clickable { showAll = !showAll }
+                        .padding(vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Checkbox(
+                        checked = showAll,
+                        onCheckedChange = { showAll = it },
+                        colors = CheckboxDefaults.colors(checkedColor = Cyan500, uncheckedColor = colors.border),
+                    )
+                    Text(
+                        "Tampilkan semua (termasuk corak \"-\")",
+                        style = AppType.BodySmall.copy(color = colors.textSecondary),
+                    )
+                }
+
+                if (unconfigured != null) {
+                    val (n, m) = unconfigured
+                    OutlinedButton(
+                        onClick = { loadFrom(n, m) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Cyan500),
+                        border = BorderStroke(1.dp, Cyan500),
+                    ) { Text("Konfigurasi Mc $n (belum diatur)") }
+                }
+
+                HorizontalDivider(color = colors.border)
+            }
         }
 
-        if (unconfigured != null) {
-            val (n, m) = unconfigured
-            OutlinedButton(
-                onClick = { loadFrom(n, m) },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Cyan500),
-                border = BorderStroke(1.dp, Cyan500),
-            ) { Text("Konfigurasi Mc $n (belum diatur)") }
+        if (groupedEntries.isEmpty()) {
+            item(key = "empty") {
+                Box(Modifier.fillMaxWidth().height(80.dp), contentAlignment = Alignment.Center) {
+                    Text("Tidak ditemukan", color = colors.textFaint, style = AppType.FieldText)
+                }
+            }
         }
-
-        HorizontalDivider(color = colors.border)
-
-        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            entries.forEach { (k, v) ->
+        groupedEntries.forEach { (tipe, rows) ->
+            stickyHeader(key = "head_${tipe.name}") {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(colors.bg)
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(
+                        imageVector = mesinTipeIcon(tipe),
+                        contentDescription = null,
+                        tint = mesinTipeColor(tipe),
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Text(
+                        text = tipe.name,
+                        style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = mesinTipeColor(tipe)),
+                    )
+                    Text(
+                        text = "${rows.size}",
+                        style = AppType.Caption.copy(color = colors.textFaint),
+                    )
+                }
+            }
+            items(rows, key = { (k, _) -> k }) { (k, v) ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -132,7 +177,6 @@ internal fun MesinTab(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(k, style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary), modifier = Modifier.width(32.dp))
-                    Text(v.tipe.name, style = TextStyle(fontSize = 11.sp, letterSpacing = 1.sp, color = colors.textMuted), modifier = Modifier.width(56.dp))
                     Text(
                         v.corak,
                         style = AppType.FieldText.copy(color = colors.textPrimary),
@@ -143,14 +187,8 @@ internal fun MesinTab(
                     if (v.targetYard != null) Text("${formatYard(v.targetYard)}y", style = TextStyle(fontSize = 11.sp, color = colors.textFaint))
                 }
             }
-            if (entries.isEmpty()) {
-                Box(Modifier.fillMaxWidth().height(80.dp), contentAlignment = Alignment.Center) {
-                    Text("Tidak ditemukan", color = colors.textFaint, style = AppType.FieldText)
-                }
-            }
         }
-
-        Spacer(Modifier.height(8.dp))
+        item(key = "bottom_spacer") { Spacer(Modifier.height(8.dp)) }
     }
 
     val mcNo = activeMcNo

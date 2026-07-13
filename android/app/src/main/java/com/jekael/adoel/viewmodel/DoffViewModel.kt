@@ -125,10 +125,6 @@ class DoffViewModel @JvmOverloads constructor(
         if (!mcNo.matches(Regex("^\\d{1,3}$"))) return ProsesResult.Err("Nomor mesin tidak valid")
         val mesin = _state.value.db[mcNo] ?: return ProsesResult.Err("Mc $mcNo tidak ditemukan")
 
-        if (mesin.tipe == MesinTipe.D408 && parts.getOrNull(1)?.equals("c", ignoreCase = true) == true) {
-            return prosesBarisKondisiMesin(ln, nowAbsMin())
-        }
-
         val jam = nowTimeStr()
         var customYard: Double? = null
         val ketTokens = mutableListOf<String>()

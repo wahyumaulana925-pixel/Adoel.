@@ -126,20 +126,20 @@ fun SettingsDrawer(
                     .padding(top = 12.dp)
                     .floatingHeaderCard(),
             ) {
-                Column {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text("Pengaturan", style = AppType.DialogTitle.copy(color = colors.textPrimary))
-                        IconButton(onClick = { requestClose() }) {
-                            CloseIcon()
-                        }
-                    }
+                // Single row: the Mesin/Data toggle doubles as the header's title (no separate
+                // "Pengaturan" label) — was title row + toggle row stacked, one line taller than
+                // it needed to be for what it actually does.
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 20.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     SlidingToggle(
                         labelLeft = "Mesin",
                         labelRight = "Data",
+                        accessibilityLabel = "Pengaturan: Mesin/Data",
                         selectedIndex = if (tab == SettingsTab.MESIN) 0 else 1,
                         onSelect = { tab = if (it == 0) SettingsTab.MESIN else SettingsTab.DATA },
                         containerColor = colors.bgElevated2,
@@ -148,11 +148,11 @@ fun SettingsDrawer(
                         activeTextColorLeft = Zinc950,
                         activeTextColorRight = Zinc950,
                         inactiveTextColor = colors.textSecondary,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp)
-                            .padding(bottom = 14.dp),
+                        modifier = Modifier.weight(1f),
                     )
+                    IconButton(onClick = { requestClose() }) {
+                        CloseIcon()
+                    }
                 }
             }
         }
