@@ -1,13 +1,11 @@
 package com.jekael.adoel.ui.components
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.stickyHeader
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -26,7 +24,6 @@ import androidx.compose.ui.unit.sp
 import com.jekael.adoel.data.*
 import com.jekael.adoel.ui.theme.*
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun MesinTab(
     state: DoffState,
@@ -62,7 +59,7 @@ internal fun MesinTab(
             .sortedBy { (k, _) -> k.toIntOrNull() ?: 0 }
     }
     // Grouped per MesinTipe (fixed order, same as the physical floor's layout-by-machine-type
-    // sheet) with a sticky header per group — same icon/color language as RadarCard (Batch 1) so
+    // sheet) with a header per group — same icon/color language as RadarCard (Batch 1) so
     // "what kind of machine is this" reads the same across Radar, Pengaturan, and Statistik.
     val groupedEntries = remember(entries) {
         val order = listOf(MesinTipe.TAPPET, MesinTipe.CAM, MesinTipe.D405, MesinTipe.D408)
@@ -141,7 +138,7 @@ internal fun MesinTab(
             }
         }
         groupedEntries.forEach { (tipe, rows) ->
-            stickyHeader(key = "head_${tipe.name}") {
+            item(key = "head_${tipe.name}") {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
