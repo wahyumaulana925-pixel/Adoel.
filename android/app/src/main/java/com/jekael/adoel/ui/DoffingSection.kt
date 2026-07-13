@@ -1,7 +1,6 @@
 package com.jekael.adoel.ui
 
 import android.content.Context
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -10,11 +9,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.Flag
-import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -35,26 +31,20 @@ import com.jekael.adoel.ui.components.SwipeableCard
 import com.jekael.adoel.ui.components.mesinTipeColor
 import com.jekael.adoel.ui.theme.*
 
-/** DOFFING mode's list content: header, share/statistik/finish actions, empty state or the
- * recorded-doff rows (newest first). */
+/** DOFFING mode's list content: header, empty state, or the recorded-doff rows (newest first).
+ * Bagikan/Statistik/Selesai Shift used to open here as a row that scrolled away with the list —
+ * they're shift-wide actions, not specific to this list, so they now live in MainScreenHeader's
+ * expandable actions row (reachable from Estimasi too, and never scrolls out of reach). */
 fun LazyListScope.doffingSection(
     state: DoffState,
     aktualReversed: List<AktualEntry>,
     doffFilter: String,
     onDoffFilterChange: (String) -> Unit,
-    onShare: () -> Unit,
-    onStatistik: () -> Unit,
-    onFinish: () -> Unit,
     onEntryClick: (Int) -> Unit,
     onHapusEntry: (Int) -> Unit,
 ) {
     item(key = "doff_header") {
         SectionHeader(title = "Doffing", count = state.aktual.size)
-    }
-    // Always shown — Statistik reads state.history, which survives even when the live aktual
-    // list is empty right after "Selesai Shift".
-    item(key = "doff_actions") {
-        DoffingActions(onShare = onShare, onStatistik = onStatistik, onFinish = onFinish)
     }
     if (state.aktual.isEmpty()) {
         item(key = "doff_empty") {
@@ -113,39 +103,6 @@ fun LazyListScope.doffingSection(
     }
 }
 
-@Composable
-private fun DoffingActions(onShare: () -> Unit, onStatistik: () -> Unit, onFinish: () -> Unit) {
-    val colors = LocalAppColors.current
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        OutlinedButton(
-            onClick = onShare,
-            modifier = Modifier.weight(1f).height(48.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
-            border = BorderStroke(1.dp, colors.border),
-            contentPadding = PaddingValues(0.dp),
-        ) { Icon(imageVector = Icons.Outlined.Share, contentDescription = "Bagikan", modifier = Modifier.size(20.dp)) }
-        OutlinedButton(
-            onClick = onStatistik,
-            modifier = Modifier.weight(1f).height(48.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
-            border = BorderStroke(1.dp, colors.border),
-            contentPadding = PaddingValues(0.dp),
-        ) { Icon(imageVector = Icons.Outlined.BarChart, contentDescription = "Statistik", modifier = Modifier.size(20.dp)) }
-        OutlinedButton(
-            onClick = onFinish,
-            modifier = Modifier.weight(1f).height(48.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = Red400),
-            border = BorderStroke(1.dp, Red700.copy(alpha = 0.5f)),
-            contentPadding = PaddingValues(0.dp),
-        ) { Icon(imageVector = Icons.Outlined.Flag, contentDescription = "Selesai Shift", modifier = Modifier.size(20.dp)) }
-    }
-}
 
 @Composable
 private fun DoffingRow(
@@ -177,7 +134,7 @@ private fun DoffingRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .elevatedListCard(elevation = 5.dp, backgroundColor = colors.bgElevated)
+                .elevatedListCard(backgroundColor = colors.bgElevated)
                 .clickable(onClick = onEdit)
                 .semantics(mergeDescendants = true) {
                     customActions = listOf(

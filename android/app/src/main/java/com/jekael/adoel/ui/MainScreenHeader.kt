@@ -1,16 +1,31 @@
 package com.jekael.adoel.ui
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.Flag
+import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -46,6 +61,14 @@ fun MainScreenHeader(
     showRemaining: Boolean,
     onToggleShowRemaining: () -> Unit,
     onGearClick: () -> Unit,
+    // Shift-wide actions (not tied to whichever mode/list is currently on screen) — expanded via
+    // a dedicated chevron rather than overloading the doff-count column's existing tap (which
+    // already toggles selesai/sisa display), so neither gesture has to give way to the other.
+    actionsExpanded: Boolean,
+    onToggleActionsExpanded: () -> Unit,
+    onShare: () -> Unit,
+    onStatistik: () -> Unit,
+    onFinish: () -> Unit,
     onHeightMeasured: (Dp) -> Unit,
     haptic: HapticFeedback,
     modifier: Modifier = Modifier,
@@ -62,6 +85,7 @@ fun MainScreenHeader(
             .padding(top = 12.dp)
             .floatingHeaderCard(),
     ) {
+      Column {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -171,6 +195,16 @@ fun MainScreenHeader(
                 }
             }
 
+            // Expand/collapse the shift-actions row below (Bagikan/Statistik/Selesai Shift) —
+            // separate from the gear (full Pengaturan) and from the doff-count column's own tap.
+            IconButton(onClick = onToggleActionsExpanded) {
+                Icon(
+                    imageVector = if (actionsExpanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+                    contentDescription = if (actionsExpanded) "Sembunyikan aksi shift" else "Tampilkan aksi shift",
+                    tint = colors.textMuted,
+                )
+            }
+
             // Gear button
             IconButton(
                 onClick = onGearClick,
@@ -178,5 +212,56 @@ fun MainScreenHeader(
                 GearIcon()
             }
         }
+
+        AnimatedVisibility(
+            visible = actionsExpanded,
+            enter = expandVertically(tween(200)) + fadeIn(tween(160)),
+            exit = shrinkVertically(tween(180)) + fadeOut(tween(120)),
+        ) {
+            ShiftActionsRow(
+                onShare = onShare,
+                onStatistik = onStatistik,
+                onFinish = onFinish,
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
+            )
+        }
+      }
+    }
+}
+
+/** Bagikan/Statistik/Selesai Shift — shift-wide actions, available regardless of whether
+ * Estimasi or Doffing is the currently-selected list (moved out of doffingSection, which only
+ * rendered — and scrolled away — while in Doffing mode). */
+@Composable
+private fun ShiftActionsRow(onShare: () -> Unit, onStatistik: () -> Unit, onFinish: () -> Unit, modifier: Modifier = Modifier) {
+    val colors = LocalAppColors.current
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        OutlinedButton(
+            onClick = onShare,
+            modifier = Modifier.weight(1f).height(48.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
+            border = BorderStroke(1.dp, colors.border),
+            contentPadding = PaddingValues(0.dp),
+        ) { Icon(imageVector = Icons.Outlined.Share, contentDescription = "Bagikan", modifier = Modifier.size(20.dp)) }
+        OutlinedButton(
+            onClick = onStatistik,
+            modifier = Modifier.weight(1f).height(48.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
+            border = BorderStroke(1.dp, colors.border),
+            contentPadding = PaddingValues(0.dp),
+        ) { Icon(imageVector = Icons.Outlined.BarChart, contentDescription = "Statistik", modifier = Modifier.size(20.dp)) }
+        OutlinedButton(
+            onClick = onFinish,
+            modifier = Modifier.weight(1f).height(48.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = Red400),
+            border = BorderStroke(1.dp, Red700.copy(alpha = 0.5f)),
+            contentPadding = PaddingValues(0.dp),
+        ) { Icon(imageVector = Icons.Outlined.Flag, contentDescription = "Selesai Shift", modifier = Modifier.size(20.dp)) }
     }
 }

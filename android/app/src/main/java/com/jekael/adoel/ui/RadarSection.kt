@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -102,8 +103,9 @@ internal fun LazyListScope.estimasiSection(
         val renderGroups = groupMenungguRowsForGrid(menungguRows, nowAbs)
         itemsIndexed(renderGroups, key = { _, group -> group.key }) { index, group ->
             val entranceDelayMs = (index * Motion.LIST_STAGGER_STEP_MS).coerceAtMost(Motion.LIST_STAGGER_MAX_MS)
-            if (group.rows.size == 1) {
-                when (val row = group.rows[0]) {
+            when {
+                // A GapRow, or a CardRow within REMINDER_LEAD_MIN/overdue — genuinely wide, full row.
+                group.rows.size == 1 && group.isWide -> when (val row = group.rows[0]) {
                     is MenungguRow.CardRow -> RadarCard(
                         est = row.est,
                         mesin = db[row.est.mcNo],
@@ -118,11 +120,31 @@ internal fun LazyListScope.estimasiSection(
                         gapMin = row.gapMin,
                         nextMcNo = row.nextMcNo,
                         nextAbsMin = row.nextAbsMin,
+                        nowAbs = nowAbs,
                         modifier = Modifier.animateItem(),
                     )
                 }
-            } else {
-                Row(
+                // Grid-eligible but left without a partner (e.g. a GapRow or an odd count broke the
+                // pairing) — stays half-width with an empty second slot instead of expanding to
+                // full width, so it still reads as "not urgent" like its paired siblings.
+                group.rows.size == 1 -> Row(
+                    modifier = Modifier.fillMaxWidth().animateItem(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    val row = group.rows[0] as MenungguRow.CardRow
+                    RadarCard(
+                        est = row.est,
+                        mesin = db[row.est.mcNo],
+                        nowAbs = nowAbs,
+                        onDoff = { onDoff(row.est.mcNo) },
+                        onHapus = { onHapus(row.est.mcNo) },
+                        onQuickEdit = { onQuickEdit(row.est.mcNo) },
+                        modifier = Modifier.weight(1f),
+                        entranceDelayMs = entranceDelayMs,
+                    )
+                    Spacer(Modifier.weight(1f))
+                }
+                else -> Row(
                     modifier = Modifier.fillMaxWidth().animateItem(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
@@ -145,16 +167,17 @@ internal fun LazyListScope.estimasiSection(
     }
 }
 
-/** One render slot in the Menunggu band: either a single full-width row (a GapRow, or a CardRow
- * within [REMINDER_LEAD_MIN] of its estimate/already the kind Segera always shows full width), or
- * a pair of grid-eligible CardRows sharing one row. */
-private class MenungguRenderGroup(val key: String, val rows: List<MenungguRow>)
+/** One render slot in the Menunggu band. [isWide] distinguishes a genuinely urgent/gap full-width
+ * row from a grid-eligible CardRow that just didn't find a pairing partner (e.g. a GapRow forced
+ * a flush, or an odd count) — the latter still renders half-width so it doesn't misleadingly look
+ * as urgent as a real wide card. */
+private class MenungguRenderGroup(val key: String, val rows: List<MenungguRow>, val isWide: Boolean)
 
 private fun groupMenungguRowsForGrid(menungguRows: List<MenungguRow>, nowAbs: Long): List<MenungguRenderGroup> {
     val groups = mutableListOf<MenungguRenderGroup>()
     var pending: MenungguRow.CardRow? = null
     fun flushPending() {
-        pending?.let { groups += MenungguRenderGroup("grid_${it.est.mcNo}", listOf(it)) }
+        pending?.let { groups += MenungguRenderGroup("grid_${it.est.mcNo}", listOf(it), isWide = false) }
         pending = null
     }
     for (row in menungguRows) {
@@ -163,19 +186,22 @@ private fun groupMenungguRowsForGrid(menungguRows: List<MenungguRow>, nowAbs: Lo
             is MenungguRow.CardRow -> (row.est.estAbsMin - nowAbs) <= REMINDER_LEAD_MIN
         }
         if (isWide) {
+            // A GapRow must flush any pending grid card first — it can't be reordered to appear
+            // after the gap just to find a pairing partner, since that would render it later than
+            // its actual chronological position in the list.
             flushPending()
             val key = when (row) {
                 is MenungguRow.CardRow -> row.est.mcNo
                 is MenungguRow.GapRow -> "gap_after_${row.afterMcNo}"
             }
-            groups += MenungguRenderGroup(key, listOf(row))
+            groups += MenungguRenderGroup(key, listOf(row), isWide = true)
         } else {
             val cardRow = row as MenungguRow.CardRow
             val prev = pending
             if (prev == null) {
                 pending = cardRow
             } else {
-                groups += MenungguRenderGroup("grid_${prev.est.mcNo}_${cardRow.est.mcNo}", listOf(prev, cardRow))
+                groups += MenungguRenderGroup("grid_${prev.est.mcNo}_${cardRow.est.mcNo}", listOf(prev, cardRow), isWide = false)
                 pending = null
             }
         }
@@ -210,34 +236,64 @@ private fun UrgencyBandHeader(label: String, color: Color, modifier: Modifier = 
     }
 }
 
-/** Sits between two RadarCards in the Menunggu band when the gap to the next doff is long
- * enough to actually step away — tells the operator how long, and what's next when they're back. */
+/** Sits between two RadarCards in the Menunggu band when the gap to the next doff is long enough
+ * to actually step away. The remaining minutes are the headline (same big/bold treatment as a
+ * RadarCard's countdown) so an operator reads "how long do I have" at a glance instead of doing
+ * the subtraction themselves between the two neighboring cards' times — the whole point of this
+ * card existing. Emerald is used nowhere in the urgency scale (Cyan/Amber/Orange/Red), so this
+ * reads as "good news" rather than competing with any urgency color. */
 @Composable
-private fun BreakGapCard(gapMin: Long, nextMcNo: String, nextAbsMin: Long, modifier: Modifier = Modifier) {
+private fun BreakGapCard(gapMin: Long, nextMcNo: String, nextAbsMin: Long, nowAbs: Long, modifier: Modifier = Modifier) {
     val colors = LocalAppColors.current
-    Row(
+    val remainingMin = (nextAbsMin - nowAbs).coerceAtLeast(0)
+    val elapsedFraction = if (gapMin > 0) (1f - remainingMin.toFloat() / gapMin).coerceIn(0f, 1f) else 1f
+
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(colors.bgElevated2.copy(alpha = 0.5f))
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+            .elevatedListCard(backgroundColor = lerp(colors.bgElevated, Emerald500, 0.08f))
+            .padding(horizontal = 16.dp, vertical = 14.dp),
     ) {
-        Icon(
-            imageVector = Icons.Outlined.FreeBreakfast,
-            contentDescription = null,
-            tint = colors.textMuted,
-            modifier = Modifier.size(18.dp),
-        )
-        Column {
-            Text(
-                text = "Jeda ${formatDeltaMin(gapMin)} — waktu istirahat",
-                style = AppType.LabelSmallBold.copy(color = colors.textSecondary),
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Icon(
+                imageVector = Icons.Outlined.FreeBreakfast,
+                contentDescription = null,
+                tint = Emerald500,
+                modifier = Modifier.size(14.dp),
             )
             Text(
-                text = "Sebelum Mc $nextMcNo · ${absMinToTimeStr(nextAbsMin)}",
-                style = AppType.Caption.copy(color = colors.textFaint),
+                text = "WAKTU ISTIRAHAT",
+                style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = Emerald500),
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = formatDeltaMin(remainingMin),
+            style = TextStyle(
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = (-1).sp,
+                color = colors.textPrimary,
+            ),
+        )
+        Text(
+            text = "Istirahat sampai ${absMinToTimeStr(nextAbsMin)} — sebelum Mc $nextMcNo",
+            style = AppType.Caption.copy(color = colors.textFaint),
+        )
+        Spacer(Modifier.height(8.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(4.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(colors.bgElevated2),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(elapsedFraction)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(Emerald500),
             )
         }
     }

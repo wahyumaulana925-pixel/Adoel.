@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -35,7 +36,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
@@ -152,8 +152,8 @@ fun FloatingEditDialog(
                         .navigationBarsPadding()
                         .padding(16.dp)
                         .heightIn(max = maxCardHeight)
-                        .shadow(elevation = 24.dp, shape = RoundedCornerShape(Dimens.RadiusFloating))
                         .clip(RoundedCornerShape(Dimens.RadiusFloating))
+                        .border(1.dp, colors.border, RoundedCornerShape(Dimens.RadiusFloating))
                         .background(colors.bgElevated)
                         .padding(20.dp)
                         .verticalScroll(rememberScrollState()),

@@ -31,7 +31,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jekael.adoel.data.*
@@ -47,16 +46,19 @@ private data class UrgencyStyle(
     val labelColor: Color,
     val pulse: Boolean,
     val icon: ImageVector?,
-    val elevation: Dp,
+    // Tonal elevation, not shadow: how far the card's face tints from bgElevated toward its own
+    // accent color climbs with urgency — the flat/minimal "raised = urgent" cue, but as a color mix
+    // (no Modifier.shadow RenderNode, so it can never visibly lag a frame behind the card's content
+    // the way a shadow can on a freshly-composed LazyColumn item). OVERDUE ignores this and pulses
+    // instead (see faceBg in RadarCard below).
+    val tintFraction: Float,
 )
 
-// Elevation climbs with urgency — a flat/minimal "raised = urgent" cue on top of the existing
-// color escalation, so the busiest cards also visually sit highest without any new color/style.
 private fun urgency(remaining: Long): UrgencyStyle = when (urgencyLevel(remaining)) {
-    UrgencyLevel.CALM -> UrgencyStyle(Cyan500, Cyan500, Cyan400, Cyan700, false, null, 3.dp)
-    UrgencyLevel.SOON -> UrgencyStyle(Amber500, Amber400, Amber400, Amber700, false, Icons.Outlined.Schedule, 3.dp)
-    UrgencyLevel.IMMINENT -> UrgencyStyle(Orange500, Orange500, Orange400, Orange700, false, Icons.Outlined.Warning, 6.dp)
-    UrgencyLevel.OVERDUE -> UrgencyStyle(Red500, Red500, Red400, Red700, true, Icons.Filled.Warning, 9.dp)
+    UrgencyLevel.CALM -> UrgencyStyle(Cyan500, Cyan500, Cyan400, Cyan700, false, null, 0f)
+    UrgencyLevel.SOON -> UrgencyStyle(Amber500, Amber400, Amber400, Amber700, false, Icons.Outlined.Schedule, 0.08f)
+    UrgencyLevel.IMMINENT -> UrgencyStyle(Orange500, Orange500, Orange400, Orange700, false, Icons.Outlined.Warning, 0.16f)
+    UrgencyLevel.OVERDUE -> UrgencyStyle(Red500, Red500, Red400, Red700, true, Icons.Filled.Warning, 0f)
 }
 
 @Composable
@@ -96,7 +98,7 @@ fun RadarCard(
         )
         lerp(colors.bgElevated, colors.criticalPulseTarget, pulseFraction)
     } else {
-        colors.bgElevated
+        lerp(colors.bgElevated, clr.accent, clr.tintFraction)
     }
 
     // Celebrate completion — card slides out + checkmark pops before the state is actually
@@ -174,7 +176,7 @@ fun RadarCard(
                     translationY = entranceOffsetY.value
                     alpha = (1f - exitProgress) * entranceAlpha.value
                 }
-                .elevatedListCard(elevation = clr.elevation, backgroundColor = faceBg)
+                .elevatedListCard(backgroundColor = faceBg)
                 // Swipe is the fast path, but TalkBack intercepts swipe gestures for its own
                 // navigation before they ever reach this card — without this, a screen-reader
                 // user would have no way at all to doff or delete. These custom actions surface

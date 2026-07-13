@@ -57,14 +57,21 @@ fun MainScreen(
     val state by doffVm.state.collectAsStateWithLifecycle()
     val toast by uiVm.toast.collectAsStateWithLifecycle()
     val confirm by uiVm.confirm.collectAsStateWithLifecycle()
+    // Chosen once in Pengaturan (persisted in DoffState, like themeMode) rather than per-session —
+    // switching it is rare enough that it doesn't need its own control on the main screen.
+    val inputStyle = remember(state.inputStyle) {
+        runCatching { InputStyle.valueOf(state.inputStyle) }.getOrDefault(InputStyle.TEKS)
+    }
 
     // Console command bar — the one and only way to record estimasi/doffing. Saveable so a
     // rotation or process death mid-shift doesn't drop what the operator is in the middle of.
     var mode by rememberSaveable { mutableStateOf(Mode.AKTUAL) }
-    var inputStyle by rememberSaveable { mutableStateOf(InputStyle.TEKS) }
     var input by rememberSaveable { mutableStateOf("") }
     var radarFilter by rememberSaveable { mutableStateOf("") }
     var doffFilter by rememberSaveable { mutableStateOf("") }
+    // Header's Bagikan/Statistik/Selesai Shift row — collapsed by default so the header stays
+    // compact; available from both Estimasi and Doffing since the header itself is shared.
+    var headerActionsExpanded by rememberSaveable { mutableStateOf(false) }
 
     val sendPulse = remember { SendPulseState() }
     LaunchedEffect(sendPulse.key) {
@@ -338,9 +345,6 @@ fun MainScreen(
                             aktualReversed = aktualReversed,
                             doffFilter = doffFilter,
                             onDoffFilterChange = { doffFilter = it },
-                            onShare = { shareHistory(context, state) },
-                            onStatistik = { activeOverlay = ActiveOverlay.Statistik },
-                            onFinish = { handlers.handleFinishShift() },
                             onEntryClick = { id -> activeOverlay = ActiveOverlay.EditAkt(id) },
                             onHapusEntry = { id -> handlers.handleHapusAktual(id) { activeOverlay = ActiveOverlay.None } },
                         )
@@ -357,6 +361,11 @@ fun MainScreen(
             showRemaining = showRemaining,
             onToggleShowRemaining = { showRemaining = !showRemaining },
             onGearClick = { activeOverlay = ActiveOverlay.Settings },
+            actionsExpanded = headerActionsExpanded,
+            onToggleActionsExpanded = { headerActionsExpanded = !headerActionsExpanded },
+            onShare = { shareHistory(context, state) },
+            onStatistik = { activeOverlay = ActiveOverlay.Statistik },
+            onFinish = { handlers.handleFinishShift() },
             onHeightMeasured = { headerHeight = it },
             haptic = haptic,
             modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth(),
@@ -367,7 +376,6 @@ fun MainScreen(
             mode = mode,
             onModeSelect = { mode = it },
             inputStyle = inputStyle,
-            onInputStyleSelect = { inputStyle = it },
             input = input,
             onInputChange = { input = it },
             inputFocus = inputFocus,
@@ -416,6 +424,7 @@ fun MainScreen(
                     doffVm.resetDb()
                 },
                 onSetThemeMode = { mode -> doffVm.setThemeMode(mode.name) },
+                onSetInputStyle = { style -> doffVm.setInputStyle(style.name) },
                 onExportJson = { doffVm.exportJson() },
                 onImport = { json ->
                     uiVm.showConfirm("Pulihkan data dari file ini? Semua data saat ini akan diganti.") {

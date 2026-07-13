@@ -215,8 +215,7 @@ private fun AggregateStatsCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(colors.bgElevated)
+            .elevatedListCard(backgroundColor = colors.bgElevated)
             .padding(16.dp),
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
@@ -428,7 +427,7 @@ private fun ShiftRow(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .elevatedListCard(elevation = 5.dp, backgroundColor = colors.bgElevated)
+                .elevatedListCard(backgroundColor = colors.bgElevated)
                 .clickable { onToggle() }
                 .semantics(mergeDescendants = true) {
                     customActions = listOf(

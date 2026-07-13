@@ -167,7 +167,7 @@ internal fun MesinTab(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .elevatedListCard(elevation = 5.dp, backgroundColor = colors.bgElevated2)
+                        .elevatedListCard(backgroundColor = colors.bgElevated2)
                         .clickable { loadFrom(k, v) }
                         .padding(horizontal = 12.dp, vertical = 10.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),

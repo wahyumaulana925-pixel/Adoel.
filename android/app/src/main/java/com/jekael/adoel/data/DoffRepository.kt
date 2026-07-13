@@ -39,6 +39,7 @@ private data class SerialState(
     val history: List<SerialShiftRecord>?,
     val nextShiftId: Int?,
     val onboardingSeen: Boolean?,
+    val inputStyle: String?,
 )
 
 private data class SerialMesin(
@@ -149,6 +150,7 @@ class DoffRepository private constructor(private val context: Context) : DoffSta
                 },
                 nextShiftId = serial.nextShiftId ?: 1,
                 onboardingSeen = serial.onboardingSeen ?: true,
+                inputStyle = serial.inputStyle ?: "TEKS",
             )
         } catch (e: Exception) {
             // Null is the correct contract for the caller (invalid backup / corrupt blob), but a
@@ -229,6 +231,7 @@ class DoffRepository private constructor(private val context: Context) : DoffSta
             },
             nextShiftId = state.nextShiftId,
             onboardingSeen = state.onboardingSeen,
+            inputStyle = state.inputStyle,
         )
         return gson.toJson(serial)
     }

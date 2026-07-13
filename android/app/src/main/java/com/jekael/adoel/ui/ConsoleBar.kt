@@ -52,7 +52,6 @@ internal fun ConsoleBar(
     mode: Mode,
     onModeSelect: (Mode) -> Unit,
     inputStyle: InputStyle,
-    onInputStyleSelect: (InputStyle) -> Unit,
     input: String,
     onInputChange: (String) -> Unit,
     inputFocus: FocusRequester,
@@ -127,27 +126,6 @@ internal fun ConsoleBar(
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            Spacer(Modifier.height(8.dp))
-
-            // Input-style toggle — Teks (existing one-line command) vs Terpandu (guided sheet).
-            // Orthogonal to the mode toggle above: switching this never changes Mode, it only
-            // changes which input surface renders below for whichever mode is currently active.
-            SlidingToggle(
-                labelLeft = "TEKS",
-                labelRight = "TERPANDU",
-                accessibilityLabel = "Gaya input Teks/Terpandu",
-                selectedIndex = if (inputStyle == InputStyle.TEKS) 0 else 1,
-                onSelect = { onInputStyleSelect(if (it == 0) InputStyle.TEKS else InputStyle.TERPANDU) },
-                containerColor = colors.bgElevated2,
-                activeColorLeft = colors.textMuted,
-                activeColorRight = Violet500,
-                activeTextColorLeft = Zinc950,
-                activeTextColorRight = Zinc100,
-                inactiveTextColor = colors.textMuted,
-                height = 36.dp,
-                modifier = Modifier.fillMaxWidth(),
-            )
-
             Spacer(Modifier.height(10.dp))
 
             if (inputStyle == InputStyle.TEKS) {
@@ -216,6 +194,11 @@ internal fun ConsoleBar(
                 // a radar card yet (e.g. its very first estimasi); tapping an existing RadarCard
                 // (see MainScreen's onQuickEdit/onDoff wiring) is the faster path once one exists.
                 var guidedMcNoInput by remember(mode) { mutableStateOf("") }
+                Text(
+                    text = "Ketik nomor mesin untuk mulai",
+                    style = AppType.Caption.copy(color = colors.textFaint),
+                    modifier = Modifier.padding(start = 4.dp, bottom = 6.dp),
+                )
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,

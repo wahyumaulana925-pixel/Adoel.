@@ -23,6 +23,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.jekael.adoel.data.*
+import com.jekael.adoel.ui.InputStyle
 import com.jekael.adoel.ui.theme.*
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -38,6 +39,7 @@ fun SettingsDrawer(
     onResetMesin: (String) -> Unit,
     onResetDb: () -> Unit,
     onSetThemeMode: (ThemeMode) -> Unit,
+    onSetInputStyle: (InputStyle) -> Unit,
     onExportJson: () -> String,
     onImport: (String) -> Unit,
     showToast: (String) -> Unit,
@@ -108,13 +110,13 @@ fun SettingsDrawer(
             ) { t ->
                 when (t) {
                     SettingsTab.MESIN -> MesinTab(state, headerHeight, onSetMesin, onResetMesin, showToast, showConfirm)
-                    SettingsTab.DATA -> DataTab(state, headerHeight, onResetDb, onSetThemeMode, onExportJson, onImport, showToast, showConfirm)
+                    SettingsTab.DATA -> DataTab(state, headerHeight, onResetDb, onSetThemeMode, onSetInputStyle, onExportJson, onImport, showToast, showConfirm)
                 }
             }
 
             // Header + tab switcher — floating overlay, matching the header/console bar's look
-            // (shadow + rounded corners + a subtle border, since shadows alone barely read on a
-            // near-black dark background).
+            // (tonal background + a subtle border — see floatingHeaderCard's doc for why this
+            // isn't a shadow).
             Box(
                 modifier = Modifier
                     .align(Alignment.TopCenter)

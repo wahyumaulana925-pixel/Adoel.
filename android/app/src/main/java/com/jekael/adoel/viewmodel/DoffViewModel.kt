@@ -235,6 +235,10 @@ class DoffViewModel @JvmOverloads constructor(
         s.copy(themeMode = mode)
     }
 
+    fun setInputStyle(style: String) = updateState { s ->
+        s.copy(inputStyle = style)
+    }
+
     fun setOnboardingSeen() = updateState { s ->
         s.copy(onboardingSeen = true)
     }
