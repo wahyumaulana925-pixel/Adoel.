@@ -32,11 +32,18 @@ fun Modifier.floatingHeaderCard(): Modifier {
 }
 
 /**
- * Tonal list-row card: rounded + background, no shadow (see [floatingHeaderCard] doc for why).
- * [backgroundColor] carries the only hierarchy signal now — a plain row passes [LocalAppColors.bgElevated]/
- * `bgElevated2`, while RadarCard tints it toward its urgency color (see `urgency()` in RadarCard.kt).
+ * Tonal list-row card: rounded + background + a thin border (see [floatingHeaderCard] doc for
+ * why there's no shadow). [backgroundColor] carries the main hierarchy signal — a plain row
+ * passes [LocalAppColors.bgElevated]/`bgElevated2`, while RadarCard tints it toward its urgency
+ * color (see `urgency()` in RadarCard.kt) — but the border is what keeps a card readable as
+ * "raised" even where the tonal jump off [LocalAppColors.bg] is subtle (e.g. light theme), same
+ * as [floatingHeaderCard].
  */
-fun Modifier.elevatedListCard(backgroundColor: Color): Modifier =
-    this
+@Composable
+fun Modifier.elevatedListCard(backgroundColor: Color): Modifier {
+    val colors = LocalAppColors.current
+    return this
         .clip(RoundedCornerShape(Dimens.RadiusCard))
+        .border(1.dp, colors.border, RoundedCornerShape(Dimens.RadiusCard))
         .background(backgroundColor)
+}

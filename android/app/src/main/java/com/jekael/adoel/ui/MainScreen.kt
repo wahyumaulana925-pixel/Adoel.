@@ -226,8 +226,21 @@ fun MainScreen(
     }
     // Flag long idle stretches between two upcoming doffs so the operator knows when it's
     // actually safe to step away, instead of having to eyeball the gap between two times.
-    val menungguRows = remember(menungguList) {
+    val menungguRows = remember(menungguList, segeraList, nowAbs) {
         buildList {
+            // Leading break: a gap card used to anchor to whichever machine sat just before it
+            // in the list — doffing/menghapus that machine removed it from menungguList, which
+            // silently swallowed the card even though the free time itself hadn't gone anywhere
+            // (it's just measured from "now" instead of from that machine's estimate). Only valid
+            // when nothing is overdue (Segera empty) — an operator with something already due
+            // doesn't have free time to call out yet.
+            val first = menungguList.firstOrNull()
+            if (segeraList.isEmpty() && first != null) {
+                val gap = first.estAbsMin - nowAbs
+                if (gap >= BREAK_GAP_THRESHOLD_MIN) {
+                    add(MenungguRow.GapRow(afterMcNo = "now", nextMcNo = first.mcNo, gapMin = gap, nextAbsMin = first.estAbsMin))
+                }
+            }
             menungguList.forEachIndexed { index, est ->
                 add(MenungguRow.CardRow(est))
                 val next = menungguList.getOrNull(index + 1)

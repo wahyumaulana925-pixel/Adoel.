@@ -83,12 +83,21 @@ private val DarkAppColors = AppColors(
     criticalPulseTarget = Color(0xFF3A1414),
 )
 
-// Soft light palette — off-white surfaces instead of stark white, kept low-glare on purpose.
+// Warm-neutral light palette — a soft paper/cream base instead of stark white, kept low-glare
+// on purpose (a plain white bg made list cards/header/console read as almost the same tone as
+// the page once shadows were replaced with tonal elevation — see elevatedListCard/floatingHeaderCard).
+// Text tokens are left on the cool Zinc scale: luminance (what drives WCAG contrast) barely
+// shifts moving Zinc100→WarmBg300 below, so the ratios noted on textFaint below still hold
+// (textPrimary/Secondary/Muted comfortably >7:1, textFaint ~4:1, same as before this change).
+val WarmBg300 = Color(0xFFEDEAE4)
+val WarmBg100 = Color(0xFFF7F5F1)
+val WarmBorder = Color(0xFFD9D3C7)
+
 private val LightAppColors = AppColors(
-    bg = Zinc100,
-    bgElevated = Zinc50,
-    bgElevated2 = Zinc200,
-    border = Zinc300,
+    bg = WarmBg300,
+    bgElevated = WarmBg100,
+    bgElevated2 = Color(0xFFFFFFFF),
+    border = WarmBorder,
     textPrimary = Zinc900,
     textSecondary = Zinc700,
     textMuted = Zinc600,
