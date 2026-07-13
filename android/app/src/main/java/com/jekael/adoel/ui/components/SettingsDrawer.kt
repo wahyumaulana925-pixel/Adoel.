@@ -32,7 +32,7 @@ private enum class SettingsTab { MESIN, DATA }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsDrawer(
+internal fun SettingsDrawer(
     state: DoffState,
     onClose: () -> Unit,
     onSetMesin: (String, MesinData) -> Unit,
