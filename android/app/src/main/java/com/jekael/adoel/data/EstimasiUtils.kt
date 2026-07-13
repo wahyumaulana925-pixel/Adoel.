@@ -18,6 +18,12 @@ const val URGENCY_CALM_OVER_MIN = 30L
  * down to zero, is "mendesak" (orange); at/past zero the card is overdue (red, pulsing). */
 const val URGENCY_SOON_OVER_MIN = 10L
 
+/** Shared "this needs attention right now" threshold: the reminder notification fires this many
+ * minutes before the estimate (see NotificationHelper), and it lines up with the physical warning
+ * light on the machines, which also turns on at 5 minutes remaining — so the radar card grows to
+ * full width at the same instant, not a threshold invented separately for layout. */
+const val REMINDER_LEAD_MIN = 5L
+
 fun urgencyLevel(remainingMin: Long): UrgencyLevel = when {
     remainingMin > URGENCY_CALM_OVER_MIN -> UrgencyLevel.CALM
     remainingMin > URGENCY_SOON_OVER_MIN -> UrgencyLevel.SOON
@@ -56,3 +62,14 @@ fun estAbsD408(
  * target), "295"/"295y" berarti nilai absolut. Delta tanpa target standar jatuh ke absolut. */
 fun resolveYardToken(isDelta: Boolean, value: Double, standardYard: Double?): Double =
     if (isDelta && standardYard != null) standardYard + value else value
+
+/** What a mode-ESTIMASI command's single value field means for a given machine type — one source
+ * for both the Teks console's inline hint (MainScreen's `inputHint`) and Terpandu's guided field
+ * label, so the two input styles can never describe the command differently. */
+data class EstimasiFieldHint(val label: String, val example: String)
+
+fun estimasiFieldHint(tipe: MesinTipe): EstimasiFieldHint = when (tipe) {
+    MesinTipe.TAPPET, MesinTipe.CAM -> EstimasiFieldHint("Sisa waktu (menit)", "45")
+    MesinTipe.D405 -> EstimasiFieldHint("Yard sudah berjalan", "280")
+    MesinTipe.D408 -> EstimasiFieldHint("Bacaan jam counter", "12.30")
+}

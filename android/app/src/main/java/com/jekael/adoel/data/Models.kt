@@ -199,6 +199,11 @@ fun parseDurasi(str: String): Int? {
     return null
 }
 
+/** Canonical keterangan codes, in the order offered as tap targets — single source for
+ * ConsoleBar's Teks chips and GuidedDoffingSheet's Terpandu chips so the two input styles can
+ * never drift to offer a different set. */
+val KETERANGAN_CODES = listOf("HB", "P.LP", "P.SN", "P.OH", "P.EL", "P.Sel")
+
 fun standarisasiKeterangan(raw: String): String {
     val t = raw.trim().lowercase()
     return when {

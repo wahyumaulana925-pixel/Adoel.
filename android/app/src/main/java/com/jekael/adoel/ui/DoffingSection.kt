@@ -32,6 +32,7 @@ import com.jekael.adoel.data.*
 import com.jekael.adoel.ui.components.EmptyState
 import com.jekael.adoel.ui.components.SectionHeader
 import com.jekael.adoel.ui.components.SwipeableCard
+import com.jekael.adoel.ui.components.mesinTipeColor
 import com.jekael.adoel.ui.theme.*
 
 /** DOFFING mode's list content: header, share/statistik/finish actions, empty state or the
@@ -162,13 +163,7 @@ private fun DoffingRow(
         mesin?.targetYard != null -> "$corak · ${formatYard(mesin.targetYard)}y"
         else -> corak
     }
-    val dotColor = when (mesin?.tipe) {
-        MesinTipe.TAPPET -> Teal500
-        MesinTipe.CAM -> Violet500
-        MesinTipe.D405 -> Amber500
-        MesinTipe.D408 -> Sky500
-        null -> colors.textFaint
-    }
+    val dotColor = mesin?.tipe?.let(::mesinTipeColor) ?: colors.textFaint
     // Swipe right = edit (same as tapping the card), swipe left = hapus — matches RadarCard's
     // swipe model. Tap still opens edit too, both as a fallback for anyone who doesn't swipe and
     // because TalkBack can't perform the drag gesture at all (see customActions below for that).

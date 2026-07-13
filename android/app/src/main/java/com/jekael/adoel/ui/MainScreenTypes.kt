@@ -5,6 +5,11 @@ import com.jekael.adoel.data.Estimasi
 
 internal enum class Mode { ESTIMASI, AKTUAL }
 
+/** Orthogonal to [Mode]: which input surface the console shows for whichever mode is active.
+ * TEKS is the existing one-line command field (untouched, the power-user fallback); TERPANDU is
+ * the guided step-by-step sheet. Independent of Mode — all four combinations are valid. */
+internal enum class InputStyle { TEKS, TERPANDU }
+
 /** Gaps at or above this many minutes between two upcoming doffs are worth flagging as a
  * break window — short enough to still be actionable, long enough to actually leave the floor. */
 internal const val BREAK_GAP_THRESHOLD_MIN = 30L
@@ -23,6 +28,8 @@ internal sealed interface ActiveOverlay {
     data object Statistik : ActiveOverlay
     data class EditAkt(val id: Int) : ActiveOverlay
     data class QuickEditMesin(val mcNo: String) : ActiveOverlay
+    data class GuidedEstimasi(val mcNo: String) : ActiveOverlay
+    data class GuidedDoffing(val mcNo: String) : ActiveOverlay
 }
 
 /** Custom Saver for rememberSaveable — ActiveOverlay's variants aren't natively Bundle-storable
@@ -38,6 +45,8 @@ internal val ActiveOverlaySaver = Saver<ActiveOverlay, List<Any?>>(
             is ActiveOverlay.Statistik -> listOf("Statistik", null)
             is ActiveOverlay.EditAkt -> listOf("EditAkt", overlay.id)
             is ActiveOverlay.QuickEditMesin -> listOf("QuickEditMesin", overlay.mcNo)
+            is ActiveOverlay.GuidedEstimasi -> listOf("GuidedEstimasi", overlay.mcNo)
+            is ActiveOverlay.GuidedDoffing -> listOf("GuidedDoffing", overlay.mcNo)
         }
     },
     restore = { saved ->
@@ -46,6 +55,8 @@ internal val ActiveOverlaySaver = Saver<ActiveOverlay, List<Any?>>(
             "Statistik" -> ActiveOverlay.Statistik
             "EditAkt" -> (saved.getOrNull(1) as? Int)?.let { ActiveOverlay.EditAkt(it) } ?: ActiveOverlay.None
             "QuickEditMesin" -> (saved.getOrNull(1) as? String)?.let { ActiveOverlay.QuickEditMesin(it) } ?: ActiveOverlay.None
+            "GuidedEstimasi" -> (saved.getOrNull(1) as? String)?.let { ActiveOverlay.GuidedEstimasi(it) } ?: ActiveOverlay.None
+            "GuidedDoffing" -> (saved.getOrNull(1) as? String)?.let { ActiveOverlay.GuidedDoffing(it) } ?: ActiveOverlay.None
             else -> ActiveOverlay.None
         }
     },
