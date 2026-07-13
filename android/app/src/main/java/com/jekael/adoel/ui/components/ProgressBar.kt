@@ -18,6 +18,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -63,7 +66,24 @@ fun LinearProgressBar(
                 .fillMaxHeight()
                 .fillMaxWidth(animatedFraction.coerceIn(0f, 1f))
                 .clip(RoundedCornerShape(cornerRadius))
-                .background(fillColor),
+                .background(fillColor)
+                // Woven-thread look: cut thin gaps into the fill at a fixed pitch (independent of
+                // the bar's own width) so a short RadarCard bar and a wide header bar both read as
+                // the same "thread" texture rather than one solid block.
+                .drawWithContent {
+                    drawContent()
+                    val pitch = 8.dp.toPx()
+                    val gap = 2.dp.toPx()
+                    var x = pitch
+                    while (x < size.width) {
+                        drawRect(
+                            color = trackColor,
+                            topLeft = Offset(x, 0f),
+                            size = Size(gap, size.height),
+                        )
+                        x += pitch
+                    }
+                },
         )
     }
 }

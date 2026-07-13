@@ -131,8 +131,12 @@ internal fun LazyListScope.estimasiSection(
                 // Grid-eligible but left without a partner (odd count broke the pairing) — stays
                 // half-width with an empty second slot instead of expanding to full width, so it
                 // still reads as "not urgent" like its paired siblings.
+                // height(IntrinsicSize.Max) + each slot's own weight(1f).fillMaxHeight() (see
+                // MenungguGridSlot) make both branches below stretch every paired card/slot to
+                // match the tallest sibling in the row — without it, cards with different corak
+                // text length or an extra type icon end up visibly different heights side by side.
                 group.rows.size == 1 -> Row(
-                    modifier = Modifier.fillMaxWidth().animateItem(),
+                    modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max).animateItem(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     MenungguGridSlot(
@@ -148,7 +152,7 @@ internal fun LazyListScope.estimasiSection(
                     Spacer(Modifier.weight(1f))
                 }
                 else -> Row(
-                    modifier = Modifier.fillMaxWidth().animateItem(),
+                    modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max).animateItem(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     group.rows.forEach { row ->
@@ -191,7 +195,7 @@ private fun RowScope.MenungguGridSlot(
             onDoffMatching = { onDoffMatching(row.est.mcNo) },
             onHapus = { onHapus(row.est.mcNo) },
             onQuickEdit = { onQuickEdit(row.est.mcNo) },
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).fillMaxHeight(),
             entranceDelayMs = entranceDelayMs,
         )
         is MenungguRow.GapRow -> BreakGapCard(
@@ -203,7 +207,7 @@ private fun RowScope.MenungguGridSlot(
             // (that always renders through the solo-wide branch instead) — so this jeda's window
             // hasn't started yet, and the bar should read as not-yet-active rather than fill in.
             isActive = false,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).fillMaxHeight(),
         )
     }
 }
@@ -306,6 +310,9 @@ private fun BreakGapCard(
             .fillMaxWidth()
             .elevatedListCard(backgroundColor = lerp(colors.bgElevated, Emerald500, 0.08f))
             .padding(horizontal = 16.dp, vertical = 14.dp),
+        // Centers this card's content when stretched taller than it needs to match a grid-paired
+        // RadarCard sibling (see MenungguGridSlot) — a no-op when its own height already fits.
+        verticalArrangement = Arrangement.Center,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Icon(

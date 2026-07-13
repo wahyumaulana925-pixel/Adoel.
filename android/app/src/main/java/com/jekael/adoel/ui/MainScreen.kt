@@ -265,12 +265,6 @@ fun MainScreen(
         }
     }
 
-    // Global (unfiltered by radar search) overdue count for the stat-summary row, so those
-    // numbers don't silently shift while an operator is typing into the radar search box.
-    val globalSegeraCount by remember(radarList, nowAbs) {
-        derivedStateOf { radarList.count { it.estAbsMin - nowAbs <= 0 } }
-    }
-
     val doffCount = state.aktual.size
     val totalMc = remember(state.estimasi, state.aktual) {
         (state.estimasi.keys + state.aktual.map { it.mcNo }).toSet().size
@@ -337,12 +331,6 @@ fun MainScreen(
                     staleCount = if (staleShiftDismissed) 0 else staleDoffCount,
                     onFinishClick = { handlers.handleFinishShift() },
                     onDismiss = { staleShiftDismissed = true },
-                )
-
-                statSummarySection(
-                    mesinAktif = radarList.size,
-                    sudahDoff = doffCount,
-                    terlambat = globalSegeraCount,
                 )
 
                 // The console's mode toggle doubles as a page switcher: ESTIMASI shows the

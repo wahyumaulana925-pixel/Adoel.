@@ -28,7 +28,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Share
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -76,6 +75,7 @@ import com.jekael.adoel.ui.theme.Cyan500
 import com.jekael.adoel.ui.theme.Dimens
 import com.jekael.adoel.ui.theme.LocalAppColors
 import com.jekael.adoel.ui.theme.Motion
+import com.jekael.adoel.ui.theme.WovenDivider
 import com.jekael.adoel.ui.theme.elevatedListCard
 import com.jekael.adoel.ui.theme.fabricTextureBold
 import com.jekael.adoel.ui.theme.floatingHeaderCard
@@ -363,7 +363,7 @@ private fun DoffCountChart(history: List<ShiftRecord>, selectedShiftId: Int?, on
                 }
             }
         }
-        HorizontalDivider(color = colors.border, thickness = 1.dp)
+        WovenDivider(thickness = 1.dp)
         Spacer(Modifier.height(4.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),

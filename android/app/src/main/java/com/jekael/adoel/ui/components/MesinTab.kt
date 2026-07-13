@@ -126,7 +126,7 @@ internal fun MesinTab(
                     ) { Text("Konfigurasi Mc $n (belum diatur)") }
                 }
 
-                HorizontalDivider(color = colors.border)
+                WovenDivider()
             }
         }
 

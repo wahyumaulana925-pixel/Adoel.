@@ -1,5 +1,6 @@
 package com.jekael.adoel.ui.theme
 
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
@@ -163,7 +164,10 @@ fun resolveDarkTheme(themeMode: ThemeMode): Boolean = when (themeMode) {
 @Composable
 fun AdoelTheme(themeMode: ThemeMode = ThemeMode.SYSTEM, content: @Composable () -> Unit) {
     val dark = resolveDarkTheme(themeMode)
-    CompositionLocalProvider(LocalAppColors provides if (dark) DarkAppColors else LightAppColors) {
+    CompositionLocalProvider(
+        LocalAppColors provides if (dark) DarkAppColors else LightAppColors,
+        LocalIndication provides FabricWaveIndication,
+    ) {
         MaterialTheme(
             colorScheme = if (dark) DarkScheme else LightScheme,
             typography = AdoelTypography,

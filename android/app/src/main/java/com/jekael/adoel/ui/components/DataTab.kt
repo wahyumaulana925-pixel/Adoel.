@@ -85,7 +85,7 @@ internal fun DataTab(
         }
 
         Spacer(Modifier.height(4.dp))
-        HorizontalDivider(color = colors.border)
+        WovenDivider()
         Spacer(Modifier.height(4.dp))
 
         FieldLabel("Gaya Input")
@@ -100,7 +100,7 @@ internal fun DataTab(
         }
 
         Spacer(Modifier.height(4.dp))
-        HorizontalDivider(color = colors.border)
+        WovenDivider()
         Spacer(Modifier.height(4.dp))
 
         FieldLabel("Cadangan Data")
@@ -131,7 +131,7 @@ internal fun DataTab(
         }
 
         Spacer(Modifier.height(4.dp))
-        HorizontalDivider(color = colors.border)
+        WovenDivider()
         Spacer(Modifier.height(4.dp))
 
         OutlinedButton(
@@ -148,7 +148,7 @@ internal fun DataTab(
         ) { Text("Reset ke Default") }
 
         Spacer(Modifier.height(4.dp))
-        HorizontalDivider(color = colors.border)
+        WovenDivider()
         Spacer(Modifier.height(4.dp))
 
         var aboutOpen by remember { mutableStateOf(false) }

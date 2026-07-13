@@ -1,10 +1,15 @@
 package com.jekael.adoel.ui.theme
 
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -75,3 +80,21 @@ fun Modifier.fabricTextureSubtle(): Modifier = twillTexture(alpha = 0.05f)
  * to read as an actual weave motif since nothing needs to stay legible over it. */
 @Composable
 fun Modifier.fabricTextureBold(): Modifier = twillTexture(alpha = 0.14f)
+
+/** Drop-in replacement for `HorizontalDivider(color = colors.border)` — a dashed rather than solid
+ * line, echoing a single thread rather than a plain rule. (The diagonal twill tile above needs
+ * real vertical extent to read as diagonal, which a 1dp-tall divider doesn't have — a dashed
+ * stroke reads as "thread" at any thickness instead.) */
+@Composable
+fun WovenDivider(modifier: Modifier = Modifier, thickness: Dp = 1.dp) {
+    val color = LocalAppColors.current.border
+    Canvas(modifier = modifier.fillMaxWidth().height(thickness)) {
+        drawLine(
+            color = color,
+            start = Offset(0f, size.height / 2f),
+            end = Offset(size.width, size.height / 2f),
+            strokeWidth = size.height,
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(10.dp.toPx(), 6.dp.toPx()), phase = 0f),
+        )
+    }
+}

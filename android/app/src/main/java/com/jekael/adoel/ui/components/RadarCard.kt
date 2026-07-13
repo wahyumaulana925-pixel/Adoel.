@@ -19,7 +19,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -138,6 +142,13 @@ fun RadarCard(
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
         label = "checkScale",
     )
+    // One-shot diagonal "thread" sweep across the completion tint, echoing the twill-weave
+    // texture direction (see Texture.kt) instead of a generic flash.
+    val weaveSweep by animateFloatAsState(
+        targetValue = if (completing) 1f else 0f,
+        animationSpec = tween(200, easing = FastOutSlowInEasing),
+        label = "weaveSweep",
+    )
     val completionColor = if (completingKind == DoffCompletionKind.MATCHING) Sky500 else Emerald500
     val completionIcon = if (completingKind == DoffCompletionKind.MATCHING) Icons.Filled.Verified else Icons.Filled.CheckCircle
     val exitDirection = if (completingKind == DoffCompletionKind.MATCHING) -1f else 1f
@@ -200,6 +211,10 @@ fun RadarCard(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                // Stretches to match a taller sibling when grid-paired (see MenungguGridSlot),
+                // which relies on the outer Box above actually being given that height via
+                // Modifier.weight(1f).fillMaxHeight() at the call site — a no-op otherwise.
+                .fillMaxHeight()
                 .graphicsLayer {
                     translationX = offsetX.value + exitProgress * exitDirection * size.width
                     translationY = entranceOffsetY.value
@@ -258,6 +273,10 @@ fun RadarCard(
                         },
                     )
                 },
+            // Centers the Row below when this card is stretched taller than its own content to
+            // match a grid-paired sibling (see MenungguGridSlot) — a no-op when the card's own
+            // height already equals its content's, i.e. everywhere outside the grid pairing.
+            contentAlignment = Alignment.Center,
         ) {
             // Decorative full-height overlay — wrapped in matchParentSize() so it resolves
             // against the height the Column below actually ends up with (LazyColumn gives
@@ -390,7 +409,20 @@ fun RadarCard(
                     Box(
                         modifier = Modifier
                             .matchParentSize()
-                            .background(completionColor.copy(alpha = 0.14f)),
+                            .background(completionColor.copy(alpha = 0.14f))
+                            .drawWithContent {
+                                drawContent()
+                                rotate(20f) {
+                                    val bandWidth = size.width * 0.18f
+                                    val travel = size.width * 1.6f
+                                    val x = -bandWidth + weaveSweep * travel
+                                    drawRect(
+                                        color = completionColor.copy(alpha = 0.35f * (1f - weaveSweep)),
+                                        topLeft = Offset(x, -size.height),
+                                        size = Size(bandWidth, size.height * 3f),
+                                    )
+                                }
+                            },
                     )
                     Icon(
                         imageVector = completionIcon,
