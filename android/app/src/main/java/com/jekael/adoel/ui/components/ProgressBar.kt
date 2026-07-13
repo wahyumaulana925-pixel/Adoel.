@@ -36,6 +36,10 @@ fun LinearProgressBar(
     fillColor: Color,
     modifier: Modifier = Modifier,
     width: Dp = 90.dp,
+    // When true, the bar spans whatever width its container gives it instead of the fixed [width]
+    // — RadarCard uses this so the bar reaches the edge of its column instead of reading as a
+    // short stub next to a bunch of empty space.
+    fillMaxWidth: Boolean = false,
     height: Dp = 4.dp,
     cornerRadius: Dp = 2.dp,
 ) {
@@ -49,7 +53,7 @@ fun LinearProgressBar(
 
     Box(
         modifier = modifier
-            .width(width)
+            .then(if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier.width(width))
             .height(height)
             .clip(RoundedCornerShape(cornerRadius))
             .background(trackColor),

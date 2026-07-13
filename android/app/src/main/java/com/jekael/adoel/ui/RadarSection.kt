@@ -10,7 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.FreeBreakfast
+import androidx.compose.material.icons.outlined.HourglassEmpty
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -28,7 +28,10 @@ import com.jekael.adoel.data.*
 import com.jekael.adoel.ui.components.*
 import com.jekael.adoel.ui.theme.*
 
-/** ESTIMASI mode's list content: header + empty state, or the Segera/Menunggu urgency bands. */
+/** ESTIMASI mode's list content: empty state, or the Segera/Menunggu urgency bands (each band's
+ * own count lives in its [UrgencyBandHeader] — no separate "Estimasi N" header above both, since
+ * the mode toggle already says which list this is and the header's shift-progress bar already
+ * covers the overall total). */
 internal fun LazyListScope.estimasiSection(
     radarList: List<Estimasi>,
     segeraList: List<Estimasi>,
@@ -44,9 +47,6 @@ internal fun LazyListScope.estimasiSection(
     onHapus: (String) -> Unit,
     onQuickEdit: (String) -> Unit,
 ) {
-    item(key = "est_header") {
-        SectionHeader(title = "Estimasi", count = radarList.size)
-    }
     if (radarList.isEmpty()) {
         item(key = "est_empty") {
             EmptyState(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp))
@@ -77,7 +77,7 @@ internal fun LazyListScope.estimasiSection(
     }
     if (segeraList.isNotEmpty()) {
         item(key = "segera_head") {
-            UrgencyBandHeader(label = "Segera", color = Red400, modifier = Modifier.animateItem())
+            UrgencyBandHeader(label = "Segera", count = segeraList.size, color = Red400, modifier = Modifier.animateItem())
         }
         itemsIndexed(segeraList, key = { _, est -> est.mcNo }) { index, est ->
             RadarCard(
@@ -95,19 +95,20 @@ internal fun LazyListScope.estimasiSection(
     }
     if (menungguList.isNotEmpty()) {
         item(key = "menunggu_head") {
-            UrgencyBandHeader(label = "Menunggu", color = menungguAccent, modifier = Modifier.animateItem())
+            UrgencyBandHeader(label = "Menunggu", count = menungguList.size, color = menungguAccent, modifier = Modifier.animateItem())
         }
-        // Cards within REMINDER_LEAD_MIN of their estimate (same threshold as the reminder
-        // notification and the machines' own physical warning light) render full width, same as
-        // the always-overdue Segera band above — everything further out is paired two-per-row
-        // into a compact grid instead. GapRow (break-time card) always stays full width alone,
-        // since it's about a time gap, not any single machine's urgency.
+        // The topmost row overall is always wide, whatever it is — the nearest thing on the
+        // operator's plate shouldn't have to wait until it's 5 minutes out to get attention. Below
+        // that, a CardRow is wide once within REMINDER_LEAD_MIN (same threshold as the reminder
+        // notification and the machines' own physical warning light); several such cards next to
+        // each other each get their own full-width row, they don't force-pair. A GapRow that isn't
+        // the topmost row is just another grid-eligible slot like a CardRow — it can sit paired
+        // next to one.
         val renderGroups = groupMenungguRowsForGrid(menungguRows, nowAbs)
         itemsIndexed(renderGroups, key = { _, group -> group.key }) { index, group ->
             val entranceDelayMs = (index * Motion.LIST_STAGGER_STEP_MS).coerceAtMost(Motion.LIST_STAGGER_MAX_MS)
             when {
-                // A GapRow, or a CardRow within REMINDER_LEAD_MIN/overdue — genuinely wide, full row.
-                group.rows.size == 1 && group.isWide -> when (val row = group.rows[0]) {
+                group.isWide -> when (val row = group.rows[0]) {
                     is MenungguRow.CardRow -> RadarCard(
                         est = row.est,
                         mesin = db[row.est.mcNo],
@@ -127,23 +128,21 @@ internal fun LazyListScope.estimasiSection(
                         modifier = Modifier.animateItem(),
                     )
                 }
-                // Grid-eligible but left without a partner (e.g. a GapRow or an odd count broke the
-                // pairing) — stays half-width with an empty second slot instead of expanding to
-                // full width, so it still reads as "not urgent" like its paired siblings.
+                // Grid-eligible but left without a partner (odd count broke the pairing) — stays
+                // half-width with an empty second slot instead of expanding to full width, so it
+                // still reads as "not urgent" like its paired siblings.
                 group.rows.size == 1 -> Row(
                     modifier = Modifier.fillMaxWidth().animateItem(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    val row = group.rows[0] as MenungguRow.CardRow
-                    RadarCard(
-                        est = row.est,
-                        mesin = db[row.est.mcNo],
+                    MenungguGridSlot(
+                        row = group.rows[0],
+                        db = db,
                         nowAbs = nowAbs,
-                        onDoff = { onDoff(row.est.mcNo) },
-                        onDoffMatching = { onDoffMatching(row.est.mcNo) },
-                        onHapus = { onHapus(row.est.mcNo) },
-                        onQuickEdit = { onQuickEdit(row.est.mcNo) },
-                        modifier = Modifier.weight(1f),
+                        onDoff = onDoff,
+                        onDoffMatching = onDoffMatching,
+                        onHapus = onHapus,
+                        onQuickEdit = onQuickEdit,
                         entranceDelayMs = entranceDelayMs,
                     )
                     Spacer(Modifier.weight(1f))
@@ -153,16 +152,14 @@ internal fun LazyListScope.estimasiSection(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     group.rows.forEach { row ->
-                        row as MenungguRow.CardRow
-                        RadarCard(
-                            est = row.est,
-                            mesin = db[row.est.mcNo],
+                        MenungguGridSlot(
+                            row = row,
+                            db = db,
                             nowAbs = nowAbs,
-                            onDoff = { onDoff(row.est.mcNo) },
-                            onDoffMatching = { onDoffMatching(row.est.mcNo) },
-                            onHapus = { onHapus(row.est.mcNo) },
-                            onQuickEdit = { onQuickEdit(row.est.mcNo) },
-                            modifier = Modifier.weight(1f),
+                            onDoff = onDoff,
+                            onDoffMatching = onDoffMatching,
+                            onHapus = onHapus,
+                            onQuickEdit = onQuickEdit,
                             entranceDelayMs = entranceDelayMs,
                         )
                     }
@@ -172,41 +169,78 @@ internal fun LazyListScope.estimasiSection(
     }
 }
 
-/** One render slot in the Menunggu band. [isWide] distinguishes a genuinely urgent/gap full-width
- * row from a grid-eligible CardRow that just didn't find a pairing partner (e.g. a GapRow forced
- * a flush, or an odd count) — the latter still renders half-width so it doesn't misleadingly look
- * as urgent as a real wide card. */
+/** One grid-paired slot in the Menunggu band — either a machine card or a jeda card, laid out
+ * identically (both take [RowScope.weight]) so the two can sit side by side in the same row. */
+@Composable
+private fun RowScope.MenungguGridSlot(
+    row: MenungguRow,
+    db: Map<String, MesinData>,
+    nowAbs: Long,
+    onDoff: (String) -> Unit,
+    onDoffMatching: (String) -> Unit,
+    onHapus: (String) -> Unit,
+    onQuickEdit: (String) -> Unit,
+    entranceDelayMs: Long,
+) {
+    when (row) {
+        is MenungguRow.CardRow -> RadarCard(
+            est = row.est,
+            mesin = db[row.est.mcNo],
+            nowAbs = nowAbs,
+            onDoff = { onDoff(row.est.mcNo) },
+            onDoffMatching = { onDoffMatching(row.est.mcNo) },
+            onHapus = { onHapus(row.est.mcNo) },
+            onQuickEdit = { onQuickEdit(row.est.mcNo) },
+            modifier = Modifier.weight(1f),
+            entranceDelayMs = entranceDelayMs,
+        )
+        is MenungguRow.GapRow -> BreakGapCard(
+            gapMin = row.gapMin,
+            nextMcNo = row.nextMcNo,
+            nextAbsMin = row.nextAbsMin,
+            nowAbs = nowAbs,
+            // Only reached via a grid-paired slot, which by construction is never the topmost row
+            // (that always renders through the solo-wide branch instead) — so this jeda's window
+            // hasn't started yet, and the bar should read as not-yet-active rather than fill in.
+            isActive = false,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+/** One render slot in the Menunggu band. [isWide] distinguishes a genuinely urgent (or topmost)
+ * full-width row from a grid-eligible row that just didn't find a pairing partner (odd count) —
+ * the latter still renders half-width so it doesn't misleadingly look as urgent as a real wide
+ * card. */
 private class MenungguRenderGroup(val key: String, val rows: List<MenungguRow>, val isWide: Boolean)
+
+private fun rowKey(row: MenungguRow): String = when (row) {
+    is MenungguRow.CardRow -> row.est.mcNo
+    is MenungguRow.GapRow -> "gap_after_${row.afterMcNo}"
+}
 
 private fun groupMenungguRowsForGrid(menungguRows: List<MenungguRow>, nowAbs: Long): List<MenungguRenderGroup> {
     val groups = mutableListOf<MenungguRenderGroup>()
-    var pending: MenungguRow.CardRow? = null
+    var pending: MenungguRow? = null
     fun flushPending() {
-        pending?.let { groups += MenungguRenderGroup("grid_${it.est.mcNo}", listOf(it), isWide = false) }
+        pending?.let { groups += MenungguRenderGroup(rowKey(it), listOf(it), isWide = false) }
         pending = null
     }
-    for (row in menungguRows) {
-        val isWide = when (row) {
-            is MenungguRow.GapRow -> true
-            is MenungguRow.CardRow -> (row.est.estAbsMin - nowAbs) <= REMINDER_LEAD_MIN
-        }
+    menungguRows.forEachIndexed { index, row ->
+        // The very first row overall is always wide, regardless of type or urgency — the nearest
+        // thing on the operator's plate (or the jeda before it) shouldn't wait for a threshold to
+        // get attention. Below that, only a CardRow within REMINDER_LEAD_MIN is wide; a GapRow
+        // elsewhere is just another grid-eligible slot, same as any CardRow.
+        val isWide = index == 0 || (row is MenungguRow.CardRow && (row.est.estAbsMin - nowAbs) <= REMINDER_LEAD_MIN)
         if (isWide) {
-            // A GapRow must flush any pending grid card first — it can't be reordered to appear
-            // after the gap just to find a pairing partner, since that would render it later than
-            // its actual chronological position in the list.
             flushPending()
-            val key = when (row) {
-                is MenungguRow.CardRow -> row.est.mcNo
-                is MenungguRow.GapRow -> "gap_after_${row.afterMcNo}"
-            }
-            groups += MenungguRenderGroup(key, listOf(row), isWide = true)
+            groups += MenungguRenderGroup(rowKey(row), listOf(row), isWide = true)
         } else {
-            val cardRow = row as MenungguRow.CardRow
             val prev = pending
             if (prev == null) {
-                pending = cardRow
+                pending = row
             } else {
-                groups += MenungguRenderGroup("grid_${prev.est.mcNo}_${cardRow.est.mcNo}", listOf(prev, cardRow), isWide = false)
+                groups += MenungguRenderGroup("${rowKey(prev)}_${rowKey(row)}", listOf(prev, row), isWide = false)
                 pending = null
             }
         }
@@ -215,8 +249,11 @@ private fun groupMenungguRowsForGrid(menungguRows: List<MenungguRow>, nowAbs: Lo
     return groups
 }
 
+// Carries its own count instead of a separate "Estimasi N"/"Doffing N" header above it — the
+// mode toggle already says which list this is, and the header's own shift-progress bar already
+// covers the overall total, so a second standalone count row was just repeating the same number.
 @Composable
-private fun UrgencyBandHeader(label: String, color: Color, modifier: Modifier = Modifier) {
+private fun UrgencyBandHeader(label: String, count: Int, color: Color, modifier: Modifier = Modifier) {
     val animatedColor by animateColorAsState(color, animationSpec = tween(300), label = "urgencyBandColor")
     Row(
         modifier = modifier
@@ -234,7 +271,7 @@ private fun UrgencyBandHeader(label: String, color: Color, modifier: Modifier = 
                     .background(animatedColor),
             )
             Text(
-                text = label,
+                text = "$label · $count",
                 style = AppType.LabelBold.copy(color = animatedColor),
             )
         }
@@ -246,12 +283,23 @@ private fun UrgencyBandHeader(label: String, color: Color, modifier: Modifier = 
  * RadarCard's countdown) so an operator reads "how long do I have" at a glance instead of doing
  * the subtraction themselves between the two neighboring cards' times — the whole point of this
  * card existing. Emerald is used nowhere in the urgency scale (Cyan/Amber/Orange/Red), so this
- * reads as "good news" rather than competing with any urgency color. */
+ * reads as "good news" rather than competing with any urgency color.
+ *
+ * [isActive] gates the progress bar: only the topmost jeda card (the one whose window has
+ * actually started) fills in — a jeda further down the list is a preview of a gap that hasn't
+ * begun yet, so animating a bar for it would misleadingly suggest it's the current, live gap. */
 @Composable
-private fun BreakGapCard(gapMin: Long, nextMcNo: String, nextAbsMin: Long, nowAbs: Long, modifier: Modifier = Modifier) {
+private fun BreakGapCard(
+    gapMin: Long,
+    nextMcNo: String,
+    nextAbsMin: Long,
+    nowAbs: Long,
+    isActive: Boolean = true,
+    modifier: Modifier = Modifier,
+) {
     val colors = LocalAppColors.current
     val remainingMin = (nextAbsMin - nowAbs).coerceAtLeast(0)
-    val elapsedFraction = if (gapMin > 0) (1f - remainingMin.toFloat() / gapMin).coerceIn(0f, 1f) else 1f
+    val elapsedFraction = if (!isActive) 0f else if (gapMin > 0) (1f - remainingMin.toFloat() / gapMin).coerceIn(0f, 1f) else 1f
 
     Column(
         modifier = modifier
@@ -261,13 +309,13 @@ private fun BreakGapCard(gapMin: Long, nextMcNo: String, nextAbsMin: Long, nowAb
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Icon(
-                imageVector = Icons.Outlined.FreeBreakfast,
+                imageVector = Icons.Outlined.HourglassEmpty,
                 contentDescription = null,
                 tint = Emerald500,
                 modifier = Modifier.size(14.dp),
             )
             Text(
-                text = "WAKTU ISTIRAHAT",
+                text = "JEDA",
                 style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = Emerald500),
             )
         }
@@ -282,7 +330,7 @@ private fun BreakGapCard(gapMin: Long, nextMcNo: String, nextAbsMin: Long, nowAb
             ),
         )
         Text(
-            text = "Istirahat sampai ${absMinToTimeStr(nextAbsMin)} — sebelum Mc $nextMcNo",
+            text = "Jeda sampai ${absMinToTimeStr(nextAbsMin)} — sebelum Mc $nextMcNo",
             style = AppType.Caption.copy(color = colors.textFaint),
         )
         Spacer(Modifier.height(8.dp))

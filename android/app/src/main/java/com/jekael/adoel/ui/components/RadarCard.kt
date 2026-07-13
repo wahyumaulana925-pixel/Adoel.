@@ -94,6 +94,12 @@ fun RadarCard(
     val tipe = mesin?.tipe?.name ?: "?"
     val showDot = remaining <= 5
     val colors = LocalAppColors.current
+    // Doffing before a machine is actually near due doesn't make sense operationally — swipe (and
+    // its screen-reader equivalent) only turns on once the card's within the same lead time as the
+    // reminder notification/physical warning light. The topmost card in Menunggu always renders
+    // wide regardless of this (see groupMenungguRowsForGrid), so wide-ness alone can no longer be
+    // used as a stand-in for "actionable" the way it once could.
+    val swipeEnabled = remaining <= REMINDER_LEAD_MIN
 
     // Only OVERDUE cards actually render the pulse, so only they should pay for it — an
     // unconditional rememberInfiniteTransition here would tick a frame-by-frame animation for
@@ -207,17 +213,21 @@ fun RadarCard(
                 // user would have no way at all to doff or delete. These custom actions surface
                 // in TalkBack's local context menu as a non-gesture alternative to the swipe above.
                 .semantics(mergeDescendants = true) {
-                    customActions = listOf(
-                        CustomAccessibilityAction("Doff mesin ${est.mcNo}") { triggerDoff(DoffCompletionKind.NORMAL); true },
-                        CustomAccessibilityAction("Doff mesin ${est.mcNo} dengan keterangan Matching") {
-                            triggerDoff(DoffCompletionKind.MATCHING)
-                            true
-                        },
-                        CustomAccessibilityAction("Hapus estimasi Mc ${est.mcNo}") { onHapus(); true },
-                    )
+                    customActions = buildList {
+                        if (swipeEnabled) {
+                            add(CustomAccessibilityAction("Doff mesin ${est.mcNo}") { triggerDoff(DoffCompletionKind.NORMAL); true })
+                            add(
+                                CustomAccessibilityAction("Doff mesin ${est.mcNo} dengan keterangan Matching") {
+                                    triggerDoff(DoffCompletionKind.MATCHING)
+                                    true
+                                },
+                            )
+                        }
+                        add(CustomAccessibilityAction("Hapus estimasi Mc ${est.mcNo}") { onHapus(); true })
+                    }
                 }
-                .pointerInput(completing) {
-                    if (completing) return@pointerInput
+                .pointerInput(completing, swipeEnabled) {
+                    if (completing || !swipeEnabled) return@pointerInput
                     detectHorizontalDragGestures(
                         onDragEnd = { settleSwipe() },
                         onDragCancel = {
@@ -282,12 +292,17 @@ fun RadarCard(
                     Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
                             text = est.mcNo,
+                            // A 3-digit mcNo at the 2-digit size wraps mid-number in a half-width
+                            // grid card (e.g. "104" breaking into "10"/"4") — shrink it instead of
+                            // letting it wrap, since maxLines=1 alone would just clip a digit.
                             style = TextStyle(
-                                fontSize = 40.sp,
+                                fontSize = if (est.mcNo.length >= 3) 30.sp else 40.sp,
                                 fontWeight = FontWeight.Black,
                                 letterSpacing = (-2).sp,
                                 color = colors.textPrimary,
                             ),
+                            maxLines = 1,
+                            softWrap = false,
                         )
                         if (mesin != null) {
                             Icon(
@@ -327,7 +342,8 @@ fun RadarCard(
                         fraction = progress,
                         trackColor = colors.bgElevated2,
                         fillColor = clr.barColor,
-                        width = 64.dp,
+                        modifier = Modifier.fillMaxWidth(),
+                        fillMaxWidth = true,
                         height = 3.dp,
                     )
                 }

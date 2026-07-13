@@ -26,15 +26,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jekael.adoel.data.*
 import com.jekael.adoel.ui.components.EmptyState
-import com.jekael.adoel.ui.components.SectionHeader
 import com.jekael.adoel.ui.components.SwipeableCard
 import com.jekael.adoel.ui.components.mesinTipeColor
 import com.jekael.adoel.ui.theme.*
 
-/** DOFFING mode's list content: header, empty state, or the recorded-doff rows (newest first).
- * Bagikan/Statistik/Selesai Shift used to open here as a row that scrolled away with the list —
- * they're shift-wide actions, not specific to this list, so they now live in MainScreenHeader's
- * expandable actions row (reachable from Estimasi too, and never scrolls out of reach). */
+/** DOFFING mode's list content: empty state, or the recorded-doff rows (newest first). No
+ * standalone "Doffing N" header — the mode toggle already says which list this is, each row
+ * carries its own number, and the header's own shift-progress bar covers the overall total, so a
+ * separate count line was just repeating numbers shown elsewhere. Bagikan/Statistik/Selesai Shift
+ * used to open here as a row that scrolled away with the list — they're shift-wide actions, not
+ * specific to this list, so they now live in MainScreenHeader's expandable actions row (reachable
+ * from Estimasi too, and never scrolls out of reach). */
 fun LazyListScope.doffingSection(
     state: DoffState,
     aktualReversed: List<AktualEntry>,
@@ -43,9 +45,6 @@ fun LazyListScope.doffingSection(
     onEntryClick: (Int) -> Unit,
     onHapusEntry: (Int) -> Unit,
 ) {
-    item(key = "doff_header") {
-        SectionHeader(title = "Doffing", count = state.aktual.size)
-    }
     if (state.aktual.isEmpty()) {
         item(key = "doff_empty") {
             EmptyState(

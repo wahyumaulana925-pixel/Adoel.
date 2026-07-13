@@ -224,19 +224,30 @@ fun MainScreen(
             }
         }
     }
+    // Anchor for the leading break (see below) — frozen at the nowAbs value from the moment this
+    // became the nearest upcoming machine with nothing overdue, not recomputed every tick. Keying
+    // remember on (noSegera, mcNo) instead of nowAbs is what makes it "stick": as long as the same
+    // machine stays the nearest one, this keeps returning the nowAbs it captured the first time,
+    // so the gap's total duration stays fixed while only the live remaining time (read straight
+    // from nowAbs in BreakGapCard) shrinks — otherwise both numbers shrink in lockstep and the
+    // progress bar reads permanently empty (elapsedFraction stuck at ~0).
+    val noSegera = segeraList.isEmpty()
+    val firstMenungguMcNo = menungguList.firstOrNull()?.mcNo
+    val leadingGapAnchor = remember(noSegera, firstMenungguMcNo) { nowAbs }
+
     // Flag long idle stretches between two upcoming doffs so the operator knows when it's
     // actually safe to step away, instead of having to eyeball the gap between two times.
-    val menungguRows = remember(menungguList, segeraList, nowAbs) {
+    val menungguRows = remember(menungguList, segeraList, leadingGapAnchor) {
         buildList {
             // Leading break: a gap card used to anchor to whichever machine sat just before it
             // in the list — doffing/menghapus that machine removed it from menungguList, which
             // silently swallowed the card even though the free time itself hadn't gone anywhere
-            // (it's just measured from "now" instead of from that machine's estimate). Only valid
-            // when nothing is overdue (Segera empty) — an operator with something already due
-            // doesn't have free time to call out yet.
+            // (it's just measured from leadingGapAnchor instead of from that machine's estimate).
+            // Only valid when nothing is overdue (Segera empty) — an operator with something
+            // already due doesn't have free time to call out yet.
             val first = menungguList.firstOrNull()
-            if (segeraList.isEmpty() && first != null) {
-                val gap = first.estAbsMin - nowAbs
+            if (noSegera && first != null) {
+                val gap = first.estAbsMin - leadingGapAnchor
                 if (gap >= BREAK_GAP_THRESHOLD_MIN) {
                     add(MenungguRow.GapRow(afterMcNo = "now", nextMcNo = first.mcNo, gapMin = gap, nextAbsMin = first.estAbsMin))
                 }

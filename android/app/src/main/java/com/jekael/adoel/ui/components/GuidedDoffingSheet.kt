@@ -132,36 +132,7 @@ private fun NormalYardStep(standardYard: Double?, onBack: () -> Unit, onConfirm:
     var yardInput by remember(standardYard) {
         mutableStateOf(standardYard?.let { formatYard(it) } ?: "")
     }
-    fun step(delta: Double) {
-        val current = yardInput.trim().replace(',', '.').toDoubleOrNull() ?: standardYard ?: 0.0
-        yardInput = formatYard(current + delta)
-    }
-
-    FieldLabel("Yard aktual")
-    OutlinedTextField(
-        value = yardInput,
-        onValueChange = { yardInput = it },
-        modifier = Modifier.fillMaxWidth(),
-        placeholder = {
-            if (standardYard != null) Text("Standar: ${formatYard(standardYard)}y", color = colors.textFaint)
-        },
-        colors = outlinedFieldColors(),
-        shape = RoundedCornerShape(12.dp),
-        textStyle = AppType.FieldText.copy(color = colors.textPrimary),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-        singleLine = true,
-    )
-    Spacer(Modifier.height(10.dp))
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        listOf(-10.0, -5.0, 5.0, 10.0).forEach { delta ->
-            OutlinedButton(
-                onClick = { step(delta) },
-                shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
-                border = BorderStroke(1.dp, colors.border),
-            ) { Text(if (delta > 0) "+${delta.toInt()}" else "${delta.toInt()}") }
-        }
-    }
+    YardDeltaField(standardYard = standardYard, yardInput = yardInput, onYardInputChange = { yardInput = it })
 
     Spacer(Modifier.height(20.dp))
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -182,17 +153,65 @@ private fun NormalYardStep(standardYard: Double?, onBack: () -> Unit, onConfirm:
     }
 }
 
+/** Yard field for [NormalYardStep] — prefilled from standard, nudged via tap targets since the
+ * numeric keyboard (see ConsoleBar's Estimasi field) has no easy "+"/"-" key to type a delta like
+ * Teks console's "+70". */
+@Composable
+private fun YardDeltaField(standardYard: Double?, yardInput: String, onYardInputChange: (String) -> Unit) {
+    val colors = LocalAppColors.current
+    fun step(delta: Double) {
+        val current = yardInput.trim().replace(',', '.').toDoubleOrNull() ?: standardYard ?: 0.0
+        onYardInputChange(formatYard(current + delta))
+    }
+
+    FieldLabel("Yard aktual")
+    OutlinedTextField(
+        value = yardInput,
+        onValueChange = onYardInputChange,
+        modifier = Modifier.fillMaxWidth(),
+        placeholder = {
+            if (standardYard != null) Text("Standar: ${formatYard(standardYard)}y", color = colors.textFaint)
+        },
+        colors = outlinedFieldColors(),
+        shape = RoundedCornerShape(12.dp),
+        textStyle = AppType.FieldText.copy(color = colors.textPrimary),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+        singleLine = true,
+    )
+    Spacer(Modifier.height(10.dp))
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        listOf(-5.0, -1.0, 1.0, 5.0).forEach { delta ->
+            OutlinedButton(
+                onClick = { step(delta) },
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(horizontal = 2.dp, vertical = 8.dp),
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
+                border = BorderStroke(1.dp, colors.border),
+            ) {
+                Text(
+                    if (delta > 0) "+${delta.toInt()}" else "${delta.toInt()}",
+                    style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold),
+                )
+            }
+        }
+    }
+}
+
 /** Keterangan needs to cover more than the 6 preset codes (e.g. HB = habis beam, not really a
  * "kendala"/problem, just why the cut yard won't match standard) — chips are a quick-fill for the
  * common ones, but the text field underneath stays freely editable so anything not on that list
- * can still be typed, same freedom as the Teks console. Yard is a plain field (no +/-5/+/-10
- * buttons like NormalYardStep): unlike a normal doff, the variance here isn't a fixed step, it's
- * whatever the actual cut came out to — same as typing e.g. "70" or "+70" in Teks. */
+ * can still be typed, same freedom as the Teks console. Yard here is back to a plain manual field
+ * (not [YardDeltaField]'s prefill+buttons) since in practice only HB ever needs a "+" delta —
+ * one toggle button covers that instead of a whole row of tap targets most codes never use. */
 @Composable
 private fun KeteranganStep(standardYard: Double?, onBack: () -> Unit, onConfirm: (String) -> Unit) {
     val colors = LocalAppColors.current
     var ket by remember { mutableStateOf("") }
     var yardInput by remember { mutableStateOf("") }
+    fun toggleDelta() {
+        yardInput = if (yardInput.startsWith("+")) yardInput.removePrefix("+") else "+" + yardInput.removePrefix("-")
+    }
 
     FieldLabel("Keterangan")
     FlowRowChips(codes = KETERANGAN_CODES, selected = ket.takeIf { it in KETERANGAN_CODES }, onSelect = { ket = it })
@@ -210,20 +229,35 @@ private fun KeteranganStep(standardYard: Double?, onBack: () -> Unit, onConfirm:
 
     Spacer(Modifier.height(14.dp))
     FieldLabel("Yard aktual (opsional)")
-    OutlinedTextField(
-        value = yardInput,
-        onValueChange = { yardInput = it },
-        modifier = Modifier.fillMaxWidth(),
-        placeholder = {
-            val hint = if (standardYard != null) "Standar: ${formatYard(standardYard)}y — cth: 70 atau +70" else "cth: 70 atau +70"
-            Text(hint, color = colors.textFaint)
-        },
-        colors = outlinedFieldColors(),
-        shape = RoundedCornerShape(12.dp),
-        textStyle = AppType.FieldText.copy(color = colors.textPrimary),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-        singleLine = true,
-    )
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        OutlinedTextField(
+            value = yardInput,
+            onValueChange = { yardInput = it },
+            modifier = Modifier.weight(1f),
+            placeholder = {
+                val hint = if (standardYard != null) "Standar: ${formatYard(standardYard)}y" else "cth: 70"
+                Text(hint, color = colors.textFaint)
+            },
+            colors = outlinedFieldColors(),
+            shape = RoundedCornerShape(12.dp),
+            textStyle = AppType.FieldText.copy(color = colors.textPrimary),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            singleLine = true,
+        )
+        // Numeric keyboard has no "+" key — only HB in practice ever needs the cut read as a delta
+        // off standard, so one toggle covers that instead of a whole row of +/-N buttons most
+        // keterangan never use.
+        OutlinedButton(
+            onClick = ::toggleDelta,
+            modifier = Modifier.height(56.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = if (yardInput.startsWith("+")) Cyan600 else colors.textSecondary,
+            ),
+            border = BorderStroke(1.dp, if (yardInput.startsWith("+")) Cyan600 else colors.border),
+        ) { Text("+", style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold)) }
+    }
 
     Spacer(Modifier.height(20.dp))
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
