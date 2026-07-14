@@ -19,4 +19,14 @@ object Dimens {
 
     /** Maximum distance a card can be dragged past its resting position. */
     val SwipeMax = 132.dp
+
+    // Spacing scale (Material's 4dp grid) — introduced for the Woven Interface redesign pass.
+    // Apply to components as they're touched during redesign; not retrofitted across the whole
+    // app in one go (a follow-up consistency pass does that once the redesign is stable).
+    val Space4 = 4.dp
+    val Space8 = 8.dp
+    val Space12 = 12.dp
+    val Space16 = 16.dp
+    val Space20 = 20.dp
+    val Space24 = 24.dp
 }

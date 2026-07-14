@@ -58,6 +58,21 @@ fun estAbsD408(
     zone: TimeZone = TimeZone.getDefault(),
 ): Long = jamKeShiftAbs(jamCounterMin, nowEpochMin, zone) + koreksiMin.roundToInt()
 
+/** Pengaturan > Mesin "Hitung Koreksi" helper untuk D408: selisih menit antara jam dinding
+ * sebenarnya dan bacaan jam counter mesin pada saat yang sama — dipakai supaya operator tidak
+ * perlu menghitung manual tiap kali mesin D408 disetel ulang (mis. jam sungguhan 12.48 vs counter
+ * baca 12.30 -> koreksi +18). Dinormalisasi ke rentang terdekat (±720 menit, sama seperti
+ * [jamKeShiftAbs]) supaya pembacaan yang melewati tengah malam tidak menghasilkan selisih besar
+ * yang salah arah. */
+fun selisihKoreksiD408(waktuAktualMin: Int, bacaanCounterMin: Int): Int {
+    val raw = waktuAktualMin - bacaanCounterMin
+    return when {
+        raw < -720 -> raw + 1440
+        raw > 720 -> raw - 1440
+        else -> raw
+    }
+}
+
 /** Token yard pada perintah DOFFING: "+5" berarti delta dari target standar (5 yard melewati
  * target), "295"/"295y" berarti nilai absolut. Delta tanpa target standar jatuh ke absolut. */
 fun resolveYardToken(isDelta: Boolean, value: Double, standardYard: Double?): Double =

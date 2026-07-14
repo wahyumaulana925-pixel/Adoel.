@@ -67,9 +67,14 @@ class AppColors(
     val bannerWarnBg: Color,
     val bannerWarnFg: Color,
     val criticalPulseTarget: Color,
+    // Lets card-style modifiers (see CardStyles.kt) apply a soft drop shadow only in light mode —
+    // on a near-black background a shadow barely registers, so dark mode keeps depth purely from
+    // tonal elevation + border, same as before this flag existed.
+    val isDark: Boolean,
 )
 
 private val DarkAppColors = AppColors(
+    isDark = true,
     bg = Zinc950,
     bgElevated = Zinc900,
     bgElevated2 = Zinc800,
@@ -97,6 +102,7 @@ val WarmBg100 = Color(0xFFF7F5F1)
 val WarmBorder = Color(0xFFD9D3C7)
 
 private val LightAppColors = AppColors(
+    isDark = false,
     bg = WarmBg300,
     bgElevated = WarmBg100,
     bgElevated2 = Color(0xFFFFFFFF),

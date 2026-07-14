@@ -37,6 +37,11 @@ internal fun MesinEditPanel(
     var targetYardText by remember(mcNo) { mutableStateOf(f.targetYard?.let { formatYard(it) } ?: "") }
     var speedText by remember(mcNo) { mutableStateOf(f.speed?.let { formatYard(it) } ?: "") }
     var koreksiText by remember(mcNo) { mutableStateOf(f.koreksi?.let { formatYard(it) } ?: "") }
+    // "Hitung Koreksi" helper (D408 only, see below) — waktuAktualText defaults to the current
+    // wall-clock time so the operator usually only has to type the counter reading, but stays
+    // editable in case they're reading it off a different clock than the phone's.
+    var waktuAktualText by remember(mcNo) { mutableStateOf(absMinToTimeStr(nowAbsMin())) }
+    var bacaanCounterText by remember(mcNo) { mutableStateOf("") }
 
     FloatingEditDialog(onDismissRequest = onClose) {
         Text(
@@ -120,6 +125,54 @@ internal fun MesinEditPanel(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 singleLine = true,
             )
+
+            Spacer(Modifier.height(12.dp))
+            FieldLabel("Hitung Koreksi dari Selisih")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = waktuAktualText,
+                    onValueChange = { waktuAktualText = it },
+                    modifier = Modifier.weight(1f),
+                    label = { Text("Waktu Aktual", color = colors.textFaint) },
+                    placeholder = { Text("12.48", color = colors.textFaint) },
+                    colors = outlinedFieldColors(),
+                    shape = RoundedCornerShape(12.dp),
+                    textStyle = AppType.FieldText.copy(color = colors.textPrimary),
+                    singleLine = true,
+                )
+                OutlinedTextField(
+                    value = bacaanCounterText,
+                    onValueChange = { bacaanCounterText = it },
+                    modifier = Modifier.weight(1f),
+                    label = { Text("Bacaan Counter", color = colors.textFaint) },
+                    placeholder = { Text("12.30", color = colors.textFaint) },
+                    colors = outlinedFieldColors(),
+                    shape = RoundedCornerShape(12.dp),
+                    textStyle = AppType.FieldText.copy(color = colors.textPrimary),
+                    singleLine = true,
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = {
+                    val aktualMin = parseJam(waktuAktualText)
+                    val counterMin = parseJam(bacaanCounterText)
+                    when {
+                        aktualMin == null -> showToast("Waktu Aktual tidak valid, format jam.menit (cth 12.48)")
+                        counterMin == null -> showToast("Bacaan Counter tidak valid, format jam.menit (cth 12.30)")
+                        else -> {
+                            val selisih = selisihKoreksiD408(aktualMin, counterMin)
+                            koreksiText = selisih.toString()
+                            onFormChange(f.copy(koreksi = selisih.toDouble()))
+                            showToast("Koreksi diisi otomatis: $selisih menit")
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().height(44.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Cyan600),
+                border = BorderStroke(1.dp, colors.border),
+            ) { Text("Hitung & Isi Koreksi") }
         }
 
         Spacer(Modifier.height(20.dp))
