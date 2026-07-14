@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jekael.adoel.ui.theme.AppType
 import com.jekael.adoel.ui.theme.Cyan600
+import com.jekael.adoel.ui.theme.Dimens
 import com.jekael.adoel.ui.theme.LocalAppColors
 
 /**
@@ -46,7 +47,7 @@ fun OnboardingDialog(onClose: () -> Unit) {
         Button(
             onClick = onClose,
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(Dimens.RadiusControl),
             colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
         ) { Text("Mengerti", fontWeight = FontWeight.SemiBold) }
     }

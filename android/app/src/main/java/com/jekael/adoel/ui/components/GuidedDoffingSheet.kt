@@ -21,6 +21,7 @@ import com.jekael.adoel.data.MesinTipe
 import com.jekael.adoel.data.formatYard
 import com.jekael.adoel.ui.theme.AppType
 import com.jekael.adoel.ui.theme.Cyan600
+import com.jekael.adoel.ui.theme.Dimens
 import com.jekael.adoel.ui.theme.LocalAppColors
 import com.jekael.adoel.ui.theme.Sky500
 
@@ -103,7 +104,7 @@ private fun ChooseStep(
         OutlinedButton(
             onClick = onCancel,
             modifier = Modifier.fillMaxWidth().height(48.dp),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(Dimens.RadiusControl),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
             border = BorderStroke(1.dp, colors.border),
         ) { Text("Batal") }
@@ -139,7 +140,7 @@ private fun NormalYardStep(standardYard: Double?, onBack: () -> Unit, onConfirm:
         OutlinedButton(
             onClick = onBack,
             modifier = Modifier.weight(1f).height(48.dp),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(Dimens.RadiusControl),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
             border = BorderStroke(1.dp, colors.border),
         ) { Text("Kembali") }
@@ -147,7 +148,7 @@ private fun NormalYardStep(standardYard: Double?, onBack: () -> Unit, onConfirm:
             onClick = { if (yardInput.isNotBlank()) onConfirm(yardInput.trim()) },
             enabled = yardInput.isNotBlank(),
             modifier = Modifier.weight(1f).height(48.dp),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(Dimens.RadiusControl),
             colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
         ) { Text("Simpan", fontWeight = FontWeight.SemiBold) }
     }
@@ -173,7 +174,7 @@ private fun YardDeltaField(standardYard: Double?, yardInput: String, onYardInput
             if (standardYard != null) Text("Standar: ${formatYard(standardYard)}y", color = colors.textFaint)
         },
         colors = outlinedFieldColors(),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(Dimens.RadiusControl),
         textStyle = AppType.FieldText.copy(color = colors.textPrimary),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         singleLine = true,
@@ -222,7 +223,7 @@ private fun KeteranganStep(standardYard: Double?, onBack: () -> Unit, onConfirm:
         modifier = Modifier.fillMaxWidth(),
         placeholder = { Text("Ketik keterangan lain jika tidak ada di atas", color = colors.textFaint) },
         colors = outlinedFieldColors(),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(Dimens.RadiusControl),
         textStyle = AppType.FieldText.copy(color = colors.textPrimary),
         singleLine = true,
     )
@@ -239,7 +240,7 @@ private fun KeteranganStep(standardYard: Double?, onBack: () -> Unit, onConfirm:
                 Text(hint, color = colors.textFaint)
             },
             colors = outlinedFieldColors(),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(Dimens.RadiusControl),
             textStyle = AppType.FieldText.copy(color = colors.textPrimary),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             singleLine = true,
@@ -251,7 +252,7 @@ private fun KeteranganStep(standardYard: Double?, onBack: () -> Unit, onConfirm:
             onClick = ::toggleDelta,
             modifier = Modifier.height(56.dp),
             contentPadding = PaddingValues(horizontal = 16.dp),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(Dimens.RadiusControl),
             colors = ButtonDefaults.outlinedButtonColors(
                 contentColor = if (yardInput.startsWith("+")) Cyan600 else colors.textSecondary,
             ),
@@ -264,7 +265,7 @@ private fun KeteranganStep(standardYard: Double?, onBack: () -> Unit, onConfirm:
         OutlinedButton(
             onClick = onBack,
             modifier = Modifier.weight(1f).height(48.dp),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(Dimens.RadiusControl),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
             border = BorderStroke(1.dp, colors.border),
         ) { Text("Kembali") }
@@ -275,7 +276,7 @@ private fun KeteranganStep(standardYard: Double?, onBack: () -> Unit, onConfirm:
             },
             enabled = ket.isNotBlank(),
             modifier = Modifier.weight(1f).height(48.dp),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(Dimens.RadiusControl),
             colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
         ) { Text("Simpan", fontWeight = FontWeight.SemiBold) }
     }
@@ -293,7 +294,7 @@ private fun CounterUpdateStep(onBack: () -> Unit, onConfirm: (String) -> Unit) {
         modifier = Modifier.fillMaxWidth(),
         placeholder = { Text("cth: 12.30", color = colors.textFaint) },
         colors = outlinedFieldColors(),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(Dimens.RadiusControl),
         textStyle = AppType.FieldText.copy(color = colors.textPrimary),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         singleLine = true,
@@ -304,7 +305,7 @@ private fun CounterUpdateStep(onBack: () -> Unit, onConfirm: (String) -> Unit) {
         OutlinedButton(
             onClick = onBack,
             modifier = Modifier.weight(1f).height(48.dp),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(Dimens.RadiusControl),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
             border = BorderStroke(1.dp, colors.border),
         ) { Text("Kembali") }
@@ -312,7 +313,7 @@ private fun CounterUpdateStep(onBack: () -> Unit, onConfirm: (String) -> Unit) {
             onClick = { if (bacaan.isNotBlank()) onConfirm(bacaan.trim()) },
             enabled = bacaan.isNotBlank(),
             modifier = Modifier.weight(1f).height(48.dp),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(Dimens.RadiusControl),
             colors = ButtonDefaults.buttonColors(containerColor = Sky500),
         ) { Text("Simpan", fontWeight = FontWeight.SemiBold) }
     }

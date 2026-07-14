@@ -131,7 +131,7 @@ fun ConfirmDialog(
                         TextButton(
                             onClick = { requestClose { current.onConfirm() } },
                             modifier = Modifier.height(48.dp),
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(Dimens.RadiusControl),
                             colors = ButtonDefaults.textButtonColors(contentColor = Red400),
                         ) {
                             Text("Ya", style = TextStyle(fontWeight = FontWeight.Bold))

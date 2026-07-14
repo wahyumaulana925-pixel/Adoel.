@@ -18,7 +18,7 @@ import com.jekael.adoel.ui.theme.*
 @Composable
 internal fun ChipBtn(label: String, selected: Boolean, onClick: () -> Unit) {
     val colors = LocalAppColors.current
-    val shape = RoundedCornerShape(12.dp)
+    val shape = RoundedCornerShape(Dimens.RadiusControl)
     Box(
         modifier = Modifier
             .heightIn(min = 48.dp)

@@ -91,7 +91,7 @@ internal fun MesinTab(
                     modifier = Modifier.fillMaxWidth(),
                     placeholder = { Text("Cari nomor / corak, atau ketik nomor baru", color = colors.textFaint) },
                     colors = outlinedFieldColors(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(Dimens.RadiusControl),
                     textStyle = AppType.FieldText.copy(color = colors.textPrimary),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = { unconfigured?.let { (n, m) -> loadFrom(n, m) } }),
@@ -120,7 +120,7 @@ internal fun MesinTab(
                     OutlinedButton(
                         onClick = { loadFrom(n, m) },
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(Dimens.RadiusControl),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Cyan500),
                         border = BorderStroke(1.dp, Cyan500),
                     ) { Text("Konfigurasi Mc $n (belum diatur)") }

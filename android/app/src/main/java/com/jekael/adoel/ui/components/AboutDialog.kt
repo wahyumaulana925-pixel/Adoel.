@@ -28,7 +28,7 @@ internal fun AboutDialog(onClose: () -> Unit) {
         Button(
             onClick = onClose,
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(Dimens.RadiusControl),
             colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
         ) { Text("Tutup", fontWeight = FontWeight.SemiBold) }
     }
