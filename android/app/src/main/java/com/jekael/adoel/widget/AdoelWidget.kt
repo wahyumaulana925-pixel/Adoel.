@@ -29,11 +29,11 @@ import com.jekael.adoel.data.DoffRepository
 import com.jekael.adoel.data.nowAbsMin
 import com.jekael.adoel.data.sortedByNearest
 import com.jekael.adoel.ui.theme.Amber500
+import com.jekael.adoel.ui.theme.DarkBg
 import com.jekael.adoel.ui.theme.ThemeMode
-import com.jekael.adoel.ui.theme.Zinc100
+import com.jekael.adoel.ui.theme.WarmBg300
 import com.jekael.adoel.ui.theme.Zinc50
 import com.jekael.adoel.ui.theme.Zinc900
-import com.jekael.adoel.ui.theme.Zinc950
 
 /**
  * Home-screen widget: read-only scrollable list of every pending estimasi (nearest/most-overdue
@@ -52,7 +52,7 @@ class AdoelWidget : GlanceAppWidget() {
         val sorted = sortedByNearest(state.estimasi)
         val openApp = actionStartActivity(Intent(context, MainActivity::class.java))
         val dark = resolveWidgetDarkTheme(context, state.themeMode)
-        val bg = if (dark) Zinc950 else Zinc100
+        val bg = if (dark) DarkBg else WarmBg300
         val textColor = if (dark) Zinc50 else Zinc900
 
         provideContent {

@@ -164,7 +164,7 @@ fun MainScreenHeader(
                     val shiftFraction = doffCount.toFloat() / totalMc
                     val animatedFraction by animateFloatAsState(
                         targetValue = shiftFraction.coerceIn(0f, 1f),
-                        animationSpec = tween(400),
+                        animationSpec = tween(250),
                         label = "shiftProgress",
                     )
                     Column(
@@ -242,7 +242,7 @@ private fun ShiftActionsRow(onShare: () -> Unit, onStatistik: () -> Unit, onFini
         OutlinedButton(
             onClick = onShare,
             modifier = Modifier.weight(1f).height(48.dp),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(Dimens.RadiusControl),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
             border = BorderStroke(1.dp, colors.border),
             contentPadding = PaddingValues(0.dp),
@@ -250,7 +250,7 @@ private fun ShiftActionsRow(onShare: () -> Unit, onStatistik: () -> Unit, onFini
         OutlinedButton(
             onClick = onStatistik,
             modifier = Modifier.weight(1f).height(48.dp),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(Dimens.RadiusControl),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
             border = BorderStroke(1.dp, colors.border),
             contentPadding = PaddingValues(0.dp),
@@ -258,7 +258,7 @@ private fun ShiftActionsRow(onShare: () -> Unit, onStatistik: () -> Unit, onFini
         OutlinedButton(
             onClick = onFinish,
             modifier = Modifier.weight(1f).height(48.dp),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(Dimens.RadiusControl),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = Red400),
             border = BorderStroke(1.dp, Red700.copy(alpha = 0.5f)),
             contentPadding = PaddingValues(0.dp),

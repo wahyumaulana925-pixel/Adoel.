@@ -44,7 +44,7 @@ private class FabricWaveIndicationNode(
                     is PressInteraction.Press -> {
                         pressPosition = interaction.pressPosition
                         progress.snapTo(0f)
-                        progress.animateTo(1f, tween(380, easing = FastOutSlowInEasing))
+                        progress.animateTo(1f, tween(250, easing = FastOutSlowInEasing))
                     }
                     is PressInteraction.Release, is PressInteraction.Cancel -> {
                         progress.animateTo(0f, tween(220))

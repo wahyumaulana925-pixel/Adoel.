@@ -19,21 +19,24 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.jekael.adoel.data.MesinTipe
-import com.jekael.adoel.ui.theme.Amber500
+import com.jekael.adoel.ui.theme.Fuchsia500
+import com.jekael.adoel.ui.theme.Indigo500
 import com.jekael.adoel.ui.theme.LocalAppColors
-import com.jekael.adoel.ui.theme.Sky500
 import com.jekael.adoel.ui.theme.Teal500
 import com.jekael.adoel.ui.theme.Violet500
+import com.jekael.adoel.ui.theme.Zinc500
 
 /** One color per [MesinTipe], reused everywhere a machine's type needs a visual tag (RadarCard,
  * DoffingSection's row dot, Pengaturan > Mesin, Statistik breakdown) — a single source so the
- * "color of a machine type" language can't drift between screens. */
+ * "color of a machine type" language can't drift between screens. Deliberately kept off the 4
+ * status hues (green/amber/red/blue-cyan, see Theme.kt) so a machine-type badge never reads as
+ * a status at a glance. */
 fun mesinTipeColor(tipe: MesinTipe?): Color = when (tipe) {
     MesinTipe.TAPPET -> Teal500
     MesinTipe.CAM -> Violet500
-    MesinTipe.D405 -> Amber500
-    MesinTipe.D408 -> Sky500
-    null -> Color.Gray
+    MesinTipe.D405 -> Indigo500
+    MesinTipe.D408 -> Fuchsia500
+    null -> Zinc500
 }
 
 /** One icon per [MesinTipe] — purely a visual identifier alongside the type label/color, no

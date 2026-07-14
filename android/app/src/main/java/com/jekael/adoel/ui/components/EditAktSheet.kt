@@ -104,7 +104,7 @@ fun EditAktSheet(
                 onValueChange = { corakInput = it },
                 modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
                 colors = outlinedFieldColors(),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(Dimens.RadiusControl),
                 textStyle = AppType.FieldText.copy(color = colors.textPrimary),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                 singleLine = true,
@@ -124,7 +124,7 @@ fun EditAktSheet(
                     }
                 },
                 colors = outlinedFieldColors(),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(Dimens.RadiusControl),
                 textStyle = AppType.FieldText.copy(color = colors.textPrimary),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
                 singleLine = true,
@@ -138,7 +138,7 @@ fun EditAktSheet(
                 onValueChange = { valInput = it },
                 modifier = Modifier.fillMaxWidth(),
                 colors = outlinedFieldColors(),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(Dimens.RadiusControl),
                 textStyle = AppType.FieldText.copy(color = colors.textPrimary),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { doSave() }),
@@ -154,7 +154,7 @@ fun EditAktSheet(
                 OutlinedButton(
                     onClick = onClose,
                     modifier = Modifier.weight(1f).height(48.dp),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(Dimens.RadiusControl),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
                     border = BorderStroke(1.dp, colors.border),
                 ) { Text("Batal") }
@@ -162,7 +162,7 @@ fun EditAktSheet(
                     onClick = { doSave() },
                     enabled = !showCheck,
                     modifier = Modifier.weight(1f).height(48.dp),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(Dimens.RadiusControl),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Cyan600,
                         disabledContainerColor = Emerald500,

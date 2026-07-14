@@ -37,6 +37,10 @@ private val ShuttleSize = 14.dp
  *
  * Replaces a generic spinner with two weaving-themed cues: a shuttle sliding back and forth along
  * its track, and three short "thread" rows fading in one after another underneath it. */
+// Continuous ambient loading loop (the brief's "loading bernuansa weaving"), not a one-shot
+// micro-interaction — outside the 150-250ms range on purpose, same reasoning as RadarCard's
+// PingDot/criticalPulse: a shuttle sweep or thread-fade that fast would flicker instead of read
+// as a calm, continuous motion.
 @Composable
 internal fun LoadingPlaceholder() {
     val colors = LocalAppColors.current

@@ -57,7 +57,7 @@ fun FieldLabel(text: String) {
     Text(
         text = text.uppercase(),
         style = TextStyle(
-            fontSize = 11.sp,
+            fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold,
             letterSpacing = 1.sp,
             color = colors.textMuted,

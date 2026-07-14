@@ -13,6 +13,12 @@ object Dimens {
     /** Corner radius of list cards: radar, doffing rows, shift cards, settings machine rows. */
     val RadiusCard = 14.dp
 
+    /** Corner radius of controls: buttons, form fields, chips, dialog action rows. Was a bare
+     * `12.dp` literal repeated ~50 times across every dialog/sheet before this token existed —
+     * distinct from RadiusCard on purpose (controls read tighter than list cards at the same
+     * radius because they're smaller), not a drift that needs correcting to 14.dp. */
+    val RadiusControl = 12.dp
+
     /** Horizontal drag distance at which a card swipe commits its action. Shared between
      * RadarCard's bespoke swipe and the generic SwipeableCard so all cards feel identical. */
     val SwipeThreshold = 88.dp

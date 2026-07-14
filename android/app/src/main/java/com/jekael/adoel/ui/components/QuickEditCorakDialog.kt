@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import com.jekael.adoel.data.formatYard
 import com.jekael.adoel.ui.theme.AppType
 import com.jekael.adoel.ui.theme.Cyan600
+import com.jekael.adoel.ui.theme.Dimens
 import com.jekael.adoel.ui.theme.LocalAppColors
 
 /**
@@ -61,7 +62,7 @@ fun QuickEditCorakDialog(
             onValueChange = { corakInput = it },
             modifier = Modifier.fillMaxWidth(),
             colors = outlinedFieldColors(),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(Dimens.RadiusControl),
             textStyle = AppType.FieldText.copy(color = colors.textPrimary),
             singleLine = true,
         )
@@ -75,7 +76,7 @@ fun QuickEditCorakDialog(
             modifier = Modifier.fillMaxWidth(),
             placeholder = { Text("opsional", color = colors.textFaint) },
             colors = outlinedFieldColors(),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(Dimens.RadiusControl),
             textStyle = AppType.FieldText.copy(color = colors.textPrimary),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             singleLine = true,
@@ -87,7 +88,7 @@ fun QuickEditCorakDialog(
             OutlinedButton(
                 onClick = onDismiss,
                 modifier = Modifier.weight(1f).height(48.dp),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(Dimens.RadiusControl),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
                 border = BorderStroke(1.dp, colors.border),
             ) { Text("Batal") }
@@ -104,7 +105,7 @@ fun QuickEditCorakDialog(
                     onSave(trimmed, yard)
                 },
                 modifier = Modifier.weight(1f).height(48.dp),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(Dimens.RadiusControl),
                 colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
             ) { Text("Simpan", fontWeight = FontWeight.SemiBold) }
         }

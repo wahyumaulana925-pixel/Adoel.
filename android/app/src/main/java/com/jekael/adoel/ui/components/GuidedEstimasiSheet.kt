@@ -26,6 +26,7 @@ import com.jekael.adoel.data.parseJam
 import com.jekael.adoel.data.sisaMenitD405
 import com.jekael.adoel.ui.theme.AppType
 import com.jekael.adoel.ui.theme.Cyan600
+import com.jekael.adoel.ui.theme.Dimens
 import com.jekael.adoel.ui.theme.LocalAppColors
 import kotlinx.coroutines.delay
 
@@ -69,7 +70,7 @@ fun GuidedEstimasiSheet(
             OutlinedButton(
                 onClick = onDismiss,
                 modifier = Modifier.fillMaxWidth().height(48.dp),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(Dimens.RadiusControl),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
                 border = BorderStroke(1.dp, colors.border),
             ) { Text("Tutup") }
@@ -86,7 +87,7 @@ fun GuidedEstimasiSheet(
             modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
             placeholder = { Text("cth: ${hint.example}", color = colors.textFaint) },
             colors = outlinedFieldColors(),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(Dimens.RadiusControl),
             textStyle = AppType.FieldText.copy(color = colors.textPrimary),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { if (valueInput.isNotBlank()) onSubmit("$mcNo $valueInput") }),
@@ -108,7 +109,7 @@ fun GuidedEstimasiSheet(
             OutlinedButton(
                 onClick = onDismiss,
                 modifier = Modifier.weight(1f).height(48.dp),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(Dimens.RadiusControl),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
                 border = BorderStroke(1.dp, colors.border),
             ) { Text("Batal") }
@@ -116,7 +117,7 @@ fun GuidedEstimasiSheet(
                 onClick = { if (valueInput.isNotBlank()) onSubmit("$mcNo $valueInput") },
                 enabled = valueInput.isNotBlank(),
                 modifier = Modifier.weight(1f).height(48.dp),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(Dimens.RadiusControl),
                 colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
             ) { Text("Simpan", fontWeight = FontWeight.SemiBold) }
         }

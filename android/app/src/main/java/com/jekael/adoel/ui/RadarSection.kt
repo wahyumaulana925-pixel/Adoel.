@@ -258,7 +258,7 @@ private fun groupMenungguRowsForGrid(menungguRows: List<MenungguRow>, nowAbs: Lo
 // covers the overall total, so a second standalone count row was just repeating the same number.
 @Composable
 private fun UrgencyBandHeader(label: String, count: Int, color: Color, modifier: Modifier = Modifier) {
-    val animatedColor by animateColorAsState(color, animationSpec = tween(300), label = "urgencyBandColor")
+    val animatedColor by animateColorAsState(color, animationSpec = tween(250), label = "urgencyBandColor")
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -323,7 +323,7 @@ private fun BreakGapCard(
             )
             Text(
                 text = "JEDA",
-                style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = Emerald500),
+                style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = Emerald500),
             )
         }
         Spacer(Modifier.height(4.dp))

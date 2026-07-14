@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.jekael.adoel.ui.theme.AppType
+import com.jekael.adoel.ui.theme.Dimens
 import com.jekael.adoel.ui.theme.LocalAppColors
 
 /** The three dismissible permission/battery nudges shown above the console list — notification
@@ -35,7 +36,7 @@ fun LazyListScope.permissionBanners(
             TextButton(
                 onClick = onNotifBannerClick,
                 modifier = Modifier.fillMaxWidth().animateItem(),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(Dimens.RadiusControl),
                 colors = ButtonDefaults.textButtonColors(
                     containerColor = colors.bannerWarnBg,
                     contentColor = colors.bannerWarnFg,
@@ -53,7 +54,7 @@ fun LazyListScope.permissionBanners(
             TextButton(
                 onClick = onExactAlarmBannerClick,
                 modifier = Modifier.fillMaxWidth().animateItem(),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(Dimens.RadiusControl),
                 colors = ButtonDefaults.textButtonColors(
                     containerColor = colors.bannerWarnBg,
                     contentColor = colors.bannerWarnFg,
@@ -74,7 +75,7 @@ fun LazyListScope.permissionBanners(
             TextButton(
                 onClick = onBatteryBannerClick,
                 modifier = Modifier.fillMaxWidth().animateItem(),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(Dimens.RadiusControl),
                 colors = ButtonDefaults.textButtonColors(
                     containerColor = colors.bannerWarnBg,
                     contentColor = colors.bannerWarnFg,
@@ -101,7 +102,7 @@ fun LazyListScope.staleShiftBanner(staleCount: Int, onFinishClick: () -> Unit, o
             modifier = Modifier
                 .fillMaxWidth()
                 .animateItem()
-                .clip(RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(Dimens.RadiusControl))
                 .background(colors.bannerWarnBg)
                 .padding(horizontal = 16.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,

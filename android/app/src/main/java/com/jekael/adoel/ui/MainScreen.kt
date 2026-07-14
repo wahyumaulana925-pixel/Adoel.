@@ -220,7 +220,7 @@ fun MainScreen(
             when (menungguList.maxOfOrNull { urgencyLevel(it.estAbsMin - nowAbs) }) {
                 UrgencyLevel.IMMINENT -> Amber600
                 UrgencyLevel.SOON -> Amber400
-                else -> Blue400
+                else -> Cyan400
             }
         }
     }

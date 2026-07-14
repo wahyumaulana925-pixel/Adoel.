@@ -63,9 +63,12 @@ private data class UrgencyStyle(
 )
 
 private fun urgency(remaining: Long): UrgencyStyle = when (urgencyLevel(remaining)) {
-    UrgencyLevel.CALM -> UrgencyStyle(Blue500, Blue500, Blue400, Blue700, false, null, 0f)
-    UrgencyLevel.SOON -> UrgencyStyle(Amber500, Amber400, Amber400, Amber700, false, Icons.Outlined.Schedule, 0.08f)
-    UrgencyLevel.IMMINENT -> UrgencyStyle(Amber600, Amber600, Amber500, Amber700, false, Icons.Outlined.Warning, 0.16f)
+    UrgencyLevel.CALM -> UrgencyStyle(Cyan500, Cyan500, Cyan400, Cyan700, false, null, 0f)
+    // tintFraction kept modest — Amber600 already drives both this background wash AND the
+    // progress bar fill below; stacking a strong wash on top of that read as too dominant/orange
+    // for a card that isn't overdue yet (see clr.barColor/clr.accent usage further down).
+    UrgencyLevel.SOON -> UrgencyStyle(Amber500, Amber400, Amber400, Amber700, false, Icons.Outlined.Schedule, 0.06f)
+    UrgencyLevel.IMMINENT -> UrgencyStyle(Amber600, Amber600, Amber500, Amber700, false, Icons.Outlined.Warning, 0.10f)
     UrgencyLevel.OVERDUE -> UrgencyStyle(Red500, Red500, Red400, Red700, true, Icons.Filled.Warning, 0f)
 }
 
@@ -108,6 +111,8 @@ fun RadarCard(
     // Only OVERDUE cards actually render the pulse, so only they should pay for it — an
     // unconditional rememberInfiniteTransition here would tick a frame-by-frame animation for
     // every card on screen (CALM/SOON/IMMINENT included) for the entire shift, for no visible effect.
+    // Ambient alert breathing, not a micro-interaction — deliberately outside the 150-250ms range
+    // (see PingDot's comment above for why a loop this fast would read as flickering, not calm).
     val faceBg = if (clr.pulse) {
         val criticalPulse = rememberInfiniteTransition(label = "criticalPulse")
         val pulseFraction by criticalPulse.animateFloat(
@@ -134,7 +139,7 @@ fun RadarCard(
     val scope = rememberCoroutineScope()
     val exitProgress by animateFloatAsState(
         targetValue = if (completing) 1f else 0f,
-        animationSpec = tween(420, easing = FastOutSlowInEasing),
+        animationSpec = tween(250, easing = FastOutSlowInEasing),
         label = "exitProgress",
     )
     val checkScale by animateFloatAsState(
@@ -266,6 +271,9 @@ fun RadarCard(
                             onHapus()
                         },
                         onPress = {
+                            // Tied to the system long-press threshold, not a fixed micro-interaction
+                            // duration — this must visually track how long the finger is actually
+                            // down, so it's exempt from the 150-250ms range other animations use.
                             val chargeJob = scope.launch { pressCharge.animateTo(1f, tween(450, easing = LinearEasing)) }
                             tryAwaitRelease()
                             chargeJob.cancel()
@@ -438,6 +446,9 @@ fun RadarCard(
     }
 }
 
+// Continuous ambient indicator, not a one-shot micro-interaction — the 150-250ms range (see
+// Motion.kt) is for animations that respond to something happening; a breathing/ping loop that
+// fast would read as flickering rather than "halus", so it's intentionally left outside that range.
 @Composable
 private fun PingDot(color: Color) {
     val infiniteTransition = rememberInfiniteTransition(label = "ping")

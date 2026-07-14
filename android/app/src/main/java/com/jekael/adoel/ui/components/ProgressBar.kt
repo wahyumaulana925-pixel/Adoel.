@@ -50,7 +50,7 @@ fun LinearProgressBar(
     LaunchedEffect(Unit) { grown = true }
     val animatedFraction by animateFloatAsState(
         targetValue = if (grown) fraction else 0f,
-        animationSpec = tween(600, easing = FastOutSlowInEasing),
+        animationSpec = tween(250, easing = FastOutSlowInEasing),
         label = "progressFraction",
     )
 

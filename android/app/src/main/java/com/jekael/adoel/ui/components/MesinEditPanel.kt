@@ -66,7 +66,7 @@ internal fun MesinEditPanel(
             onValueChange = { onFormChange(f.copy(corak = it)) },
             modifier = Modifier.fillMaxWidth(),
             colors = outlinedFieldColors(),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(Dimens.RadiusControl),
             textStyle = AppType.FieldText.copy(color = colors.textPrimary),
             singleLine = true,
         )
@@ -83,7 +83,7 @@ internal fun MesinEditPanel(
             modifier = Modifier.fillMaxWidth(),
             placeholder = { Text("opsional", color = colors.textFaint) },
             colors = outlinedFieldColors(),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(Dimens.RadiusControl),
             textStyle = AppType.FieldText.copy(color = colors.textPrimary),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             singleLine = true,
@@ -101,7 +101,7 @@ internal fun MesinEditPanel(
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = { Text("cth: 0.158", color = colors.textFaint) },
                 colors = outlinedFieldColors(),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(Dimens.RadiusControl),
                 textStyle = AppType.FieldText.copy(color = colors.textPrimary),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 singleLine = true,
@@ -120,7 +120,7 @@ internal fun MesinEditPanel(
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = { Text("cth: 18", color = colors.textFaint) },
                 colors = outlinedFieldColors(),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(Dimens.RadiusControl),
                 textStyle = AppType.FieldText.copy(color = colors.textPrimary),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 singleLine = true,
@@ -136,7 +136,7 @@ internal fun MesinEditPanel(
                     label = { Text("Waktu Aktual", color = colors.textFaint) },
                     placeholder = { Text("12.48", color = colors.textFaint) },
                     colors = outlinedFieldColors(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(Dimens.RadiusControl),
                     textStyle = AppType.FieldText.copy(color = colors.textPrimary),
                     singleLine = true,
                 )
@@ -147,7 +147,7 @@ internal fun MesinEditPanel(
                     label = { Text("Bacaan Counter", color = colors.textFaint) },
                     placeholder = { Text("12.30", color = colors.textFaint) },
                     colors = outlinedFieldColors(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(Dimens.RadiusControl),
                     textStyle = AppType.FieldText.copy(color = colors.textPrimary),
                     singleLine = true,
                 )
@@ -169,7 +169,7 @@ internal fun MesinEditPanel(
                     }
                 },
                 modifier = Modifier.fillMaxWidth().height(44.dp),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(Dimens.RadiusControl),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = Cyan600),
                 border = BorderStroke(1.dp, colors.border),
             ) { Text("Hitung & Isi Koreksi") }
@@ -181,7 +181,7 @@ internal fun MesinEditPanel(
             OutlinedButton(
                 onClick = onCancel,
                 modifier = Modifier.height(48.dp),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(Dimens.RadiusControl),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
                 border = BorderStroke(1.dp, colors.border),
             ) { Text("Batal") }
@@ -189,7 +189,7 @@ internal fun MesinEditPanel(
                 OutlinedButton(
                     onClick = onReset,
                     modifier = Modifier.height(48.dp),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(Dimens.RadiusControl),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = Red400),
                     border = BorderStroke(1.dp, Red400),
                 ) { Text("Reset") }
@@ -207,7 +207,7 @@ internal fun MesinEditPanel(
                     }
                 },
                 modifier = Modifier.weight(1f).height(48.dp),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(Dimens.RadiusControl),
                 colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
             ) { Text("Simpan", fontWeight = FontWeight.SemiBold) }
         }
