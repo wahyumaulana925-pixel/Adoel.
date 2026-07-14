@@ -164,7 +164,7 @@ fun MainScreenHeader(
                     val shiftFraction = doffCount.toFloat() / totalMc
                     val animatedFraction by animateFloatAsState(
                         targetValue = shiftFraction.coerceIn(0f, 1f),
-                        animationSpec = tween(400),
+                        animationSpec = tween(250),
                         label = "shiftProgress",
                     )
                     Column(

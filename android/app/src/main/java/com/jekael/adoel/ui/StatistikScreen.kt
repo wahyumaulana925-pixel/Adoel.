@@ -204,12 +204,12 @@ private fun AggregateStatsCard(
     LaunchedEffect(Unit) { started = true }
     val animatedTotal by animateIntAsState(
         targetValue = if (started) totalDoff else 0,
-        animationSpec = tween(700, easing = FastOutSlowInEasing),
+        animationSpec = tween(250, easing = FastOutSlowInEasing),
         label = "totalDoff",
     )
     val animatedShifts by animateIntAsState(
         targetValue = if (started) history.size else 0,
-        animationSpec = tween(700, easing = FastOutSlowInEasing),
+        animationSpec = tween(250, easing = FastOutSlowInEasing),
         label = "shiftCount",
     )
 
@@ -260,7 +260,7 @@ private fun TipeBreakdownBar(history: List<ShiftRecord>, db: Map<String, MesinDa
                 val animatedFraction = remember(tipe) { Animatable(0f) }
                 LaunchedEffect(tipe, count) {
                     delay(index * Motion.CHART_STAGGER_STEP_MS)
-                    animatedFraction.animateTo(count.toFloat(), animationSpec = tween(450, easing = FastOutSlowInEasing))
+                    animatedFraction.animateTo(count.toFloat(), animationSpec = tween(250, easing = FastOutSlowInEasing))
                 }
                 Box(
                     modifier = Modifier
@@ -282,7 +282,7 @@ private fun TipeBreakdownBar(history: List<ShiftRecord>, db: Map<String, MesinDa
                     )
                     Text(
                         text = "${tipe.name} $count",
-                        style = TextStyle(fontSize = 10.sp, color = colors.textFaint),
+                        style = TextStyle(fontSize = 12.sp, color = colors.textFaint),
                     )
                 }
             }
@@ -295,7 +295,7 @@ private fun StatFigure(label: String, value: String) {
     val colors = LocalAppColors.current
     Column {
         Text(value, style = AppType.NumberLarge.copy(color = colors.textPrimary))
-        Text(label, style = TextStyle(fontSize = 11.sp, color = colors.textFaint))
+        Text(label, style = TextStyle(fontSize = 12.sp, color = colors.textFaint))
     }
 }
 
@@ -325,7 +325,7 @@ private fun DoffCountChart(history: List<ShiftRecord>, selectedShiftId: Int?, on
                     val animatedFraction = remember { Animatable(0f) }
                     LaunchedEffect(shift.id, targetFraction) {
                         delay(index * Motion.CHART_STAGGER_STEP_MS)
-                        animatedFraction.animateTo(targetFraction, animationSpec = tween(450, easing = FastOutSlowInEasing))
+                        animatedFraction.animateTo(targetFraction, animationSpec = tween(250, easing = FastOutSlowInEasing))
                     }
                     val selected = shift.id == selectedShiftId
                     val barColor by animateColorAsState(
@@ -346,7 +346,7 @@ private fun DoffCountChart(history: List<ShiftRecord>, selectedShiftId: Int?, on
                         Text(
                             "${shift.aktual.size}",
                             style = TextStyle(
-                                fontSize = 10.sp,
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = if (selected) Cyan400 else colors.textSecondary,
                             ),
@@ -375,7 +375,7 @@ private fun DoffCountChart(history: List<ShiftRecord>, selectedShiftId: Int?, on
                     modifier = Modifier.weight(1f),
                     textAlign = TextAlign.Center,
                     maxLines = 1,
-                    style = TextStyle(fontSize = 9.sp, color = colors.textFaint),
+                    style = TextStyle(fontSize = 12.sp, color = colors.textFaint),
                 )
             }
         }
@@ -462,7 +462,7 @@ private fun ShiftRow(
                     if (avgGapMin != null) {
                         Text(
                             "±${formatDeltaMin(avgGapMin.toLong())}/doff",
-                            style = TextStyle(fontSize = 11.sp, color = colors.textFaint),
+                            style = TextStyle(fontSize = 12.sp, color = colors.textFaint),
                         )
                     }
                 }

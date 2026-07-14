@@ -75,7 +75,7 @@ internal fun ConsoleBar(
     // it never needs to be dismissed.
     val errorRingAlpha by animateFloatAsState(
         targetValue = if (inputErrorFlash) 1f else 0f,
-        animationSpec = tween(if (inputErrorFlash) 60 else 500),
+        animationSpec = tween(if (inputErrorFlash) 150 else 250),
         label = "inputErrorRing",
     )
 

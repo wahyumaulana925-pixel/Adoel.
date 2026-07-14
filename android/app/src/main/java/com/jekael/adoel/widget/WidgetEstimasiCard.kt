@@ -22,7 +22,10 @@ import com.jekael.adoel.data.urgencyLevel
 import com.jekael.adoel.ui.theme.Amber500
 import com.jekael.adoel.ui.theme.Amber600
 import com.jekael.adoel.ui.theme.Cyan500
+import com.jekael.adoel.ui.theme.DarkBgElevated
+import com.jekael.adoel.ui.theme.Dimens
 import com.jekael.adoel.ui.theme.Red500
+import com.jekael.adoel.ui.theme.WarmBg100
 import com.jekael.adoel.ui.theme.Zinc50
 import com.jekael.adoel.ui.theme.Zinc900
 
@@ -40,7 +43,7 @@ fun WidgetEstimasiCard(est: Estimasi, mesin: MesinData?, now: Long, dark: Boolea
         UrgencyLevel.IMMINENT -> Amber600
         UrgencyLevel.OVERDUE -> Red500
     }
-    val bg = if (dark) Zinc900 else Zinc50
+    val bg = if (dark) DarkBgElevated else WarmBg100
     val textColor = if (dark) Zinc50 else Zinc900
     val corak = est.corakOverride ?: mesin?.corak ?: "—"
     val yard = est.yardOverride ?: mesin?.targetYard
@@ -49,12 +52,12 @@ fun WidgetEstimasiCard(est: Estimasi, mesin: MesinData?, now: Long, dark: Boolea
     Column(
         modifier = GlanceModifier
             .fillMaxWidth()
-            .cornerRadius(12.dp)
+            .cornerRadius(Dimens.RadiusControl)
             .background(bg)
             .padding(12.dp),
     ) {
         Text("Mc ${est.mcNo}", style = TextStyle(color = ColorProvider(textColor), fontSize = 18.sp, fontWeight = FontWeight.Bold))
-        Text(corakLine, style = TextStyle(color = ColorProvider(textColor), fontSize = 11.sp), maxLines = 1)
+        Text(corakLine, style = TextStyle(color = ColorProvider(textColor), fontSize = 12.sp), maxLines = 1)
         Text(
             text = "Siap jam ${absMinToTimeStr(est.estAbsMin)}",
             style = TextStyle(color = ColorProvider(accent), fontSize = 13.sp, fontWeight = FontWeight.Medium),
