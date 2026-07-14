@@ -25,14 +25,14 @@ val Zinc200 = Color(0xFFE4E4E7)
 val Zinc100 = Color(0xFFF4F4F5)
 val Zinc50 = Color(0xFFFAFAFA)
 
+// Single blue family for both roles the brief assigns to blue — informational status (CALM)
+// and the app's primary action color. Two separate blue-ish families (this used to also carry
+// a parallel Blue400/500/700 trio for CALM only) read as two different colors with no visual
+// cue for why, since they're both just "blue" to the eye.
 val Cyan400 = Color(0xFF22D3EE)
 val Cyan500 = Color(0xFF06B6D4)
 val Cyan600 = Color(0xFF0891B2)
 val Cyan700 = Color(0xFF0E7490)
-
-val Blue400 = Color(0xFF60A5FA)
-val Blue500 = Color(0xFF3B82F6)
-val Blue700 = Color(0xFF1D4ED8)
 
 val Teal500 = Color(0xFF14B8A6)
 
@@ -48,6 +48,15 @@ val Red700 = Color(0xFFB91C1C)
 val Violet500 = Color(0xFF8B5CF6)
 val Sky500 = Color(0xFF0EA5E9)
 val Emerald500 = Color(0xFF10B981)
+
+// True dark-gray neutrals for dark mode surfaces — the brief calls for "abu-abu gelap" (dark
+// gray), not near-black. Zinc950/900/800/700 above sit much closer to black (luminance ~0.4%)
+// than a dark gray; DarkBg and friends target the same jump-in-tone ladder one step lighter and
+// warmer so shadows (see CardStyles.kt) also read against it instead of vanishing.
+val DarkBg = Color(0xFF1C1C1E)
+val DarkBgElevated = Color(0xFF242427)
+val DarkBgElevated2 = Color(0xFF2C2C30)
+val DarkBorder = Color(0xFF3D3D42)
 
 /**
  * Semantic, theme-aware neutral tokens. Every non-brand (Zinc-scale) color used across the
@@ -67,22 +76,18 @@ class AppColors(
     val bannerWarnBg: Color,
     val bannerWarnFg: Color,
     val criticalPulseTarget: Color,
-    // Lets card-style modifiers (see CardStyles.kt) apply a soft drop shadow only in light mode —
-    // on a near-black background a shadow barely registers, so dark mode keeps depth purely from
-    // tonal elevation + border, same as before this flag existed.
     val isDark: Boolean,
 )
 
 private val DarkAppColors = AppColors(
     isDark = true,
-    bg = Zinc950,
-    bgElevated = Zinc900,
-    bgElevated2 = Zinc800,
-    border = Zinc700,
+    bg = DarkBg,
+    bgElevated = DarkBgElevated,
+    bgElevated2 = DarkBgElevated2,
+    border = DarkBorder,
     textPrimary = Zinc100,
-    // Shifted one Zinc step lighter than the original 400/500/600 ladder — textFaint's old
-    // 2.57:1 contrast against Zinc950 fell well short of WCAG AA; this ladder targets
-    // 13.46:1 / 7.76:1 / 4.12:1 respectively while keeping the three tiers visually distinct.
+    // Contrast targets carried over from the old Zinc950 base (13.46:1 / 7.76:1 / 4.12:1) — the
+    // new DarkBg is lighter but still dark enough that this ladder clears WCAG AA the same way.
     textSecondary = Zinc300,
     textMuted = Zinc400,
     textFaint = Zinc500,
@@ -123,8 +128,8 @@ val LocalAppColors = staticCompositionLocalOf { DarkAppColors }
 private val DarkScheme = darkColorScheme(
     primary = Cyan500,
     onPrimary = Zinc950,
-    background = Zinc950,
-    surface = Zinc900,
+    background = DarkBg,
+    surface = DarkBgElevated,
     onBackground = Zinc100,
     onSurface = Zinc100,
 )

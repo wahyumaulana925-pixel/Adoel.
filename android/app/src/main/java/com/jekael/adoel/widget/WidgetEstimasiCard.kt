@@ -21,7 +21,7 @@ import com.jekael.adoel.data.formatYard
 import com.jekael.adoel.data.urgencyLevel
 import com.jekael.adoel.ui.theme.Amber500
 import com.jekael.adoel.ui.theme.Amber600
-import com.jekael.adoel.ui.theme.Blue500
+import com.jekael.adoel.ui.theme.Cyan500
 import com.jekael.adoel.ui.theme.Red500
 import com.jekael.adoel.ui.theme.Zinc50
 import com.jekael.adoel.ui.theme.Zinc900
@@ -35,7 +35,7 @@ import com.jekael.adoel.ui.theme.Zinc900
 fun WidgetEstimasiCard(est: Estimasi, mesin: MesinData?, now: Long, dark: Boolean) {
     val remaining = est.estAbsMin - now
     val accent = when (urgencyLevel(remaining)) {
-        UrgencyLevel.CALM -> Blue500
+        UrgencyLevel.CALM -> Cyan500
         UrgencyLevel.SOON -> Amber500
         UrgencyLevel.IMMINENT -> Amber600
         UrgencyLevel.OVERDUE -> Red500

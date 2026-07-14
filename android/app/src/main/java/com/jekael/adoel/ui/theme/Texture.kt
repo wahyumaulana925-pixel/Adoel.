@@ -72,14 +72,16 @@ private fun Modifier.twillTexture(alpha: Float, spacing: Dp = 7.dp, strokeWidth:
 }
 
 /** For surfaces with text sitting on top — cards, header, console, dialogs/sheets. Kept faint so
- * it never competes with legibility. */
+ * it never competes with legibility. Brief caps all fabric texture at 2-5% opacity; this sits at
+ * the low end since text renders directly over it. */
 @Composable
-fun Modifier.fabricTextureSubtle(): Modifier = twillTexture(alpha = 0.05f)
+fun Modifier.fabricTextureSubtle(): Modifier = twillTexture(alpha = 0.03f)
 
-/** For plain surfaces with no text directly on them — a screen's raw page background. Can afford
- * to read as an actual weave motif since nothing needs to stay legible over it. */
+/** For plain surfaces with no text directly on them — a screen's raw page background. Sits at the
+ * top of the brief's 2-5% opacity cap (was 14% before — well outside "nyaris tidak terlihat") since
+ * nothing needs to stay legible over it. */
 @Composable
-fun Modifier.fabricTextureBold(): Modifier = twillTexture(alpha = 0.14f)
+fun Modifier.fabricTextureBold(): Modifier = twillTexture(alpha = 0.05f)
 
 /** Drop-in replacement for `HorizontalDivider(color = colors.border)` — a dashed rather than solid
  * line, echoing a single thread rather than a plain rule. (The diagonal twill tile above needs

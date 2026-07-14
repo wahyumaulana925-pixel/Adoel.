@@ -10,24 +10,21 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
-// Soft shadow, light mode only — on a near-black dark background a shadow barely registers (see
-// isDark doc on AppColors), so dark mode keeps depth purely from tonal elevation + border, same
-// as before this existed. Kept small/subtle: this is a secondary depth cue layered on top of the
-// tonal system below, not a replacement for it.
+// Soft shadow in both modes — now that dark mode's background (see DarkBg in Theme.kt) is an
+// actual dark gray rather than near-black, a shadow reads against it same as light mode. Kept
+// small/subtle either way: this is a secondary depth cue layered on top of the tonal system
+// below, not a replacement for it.
 private val CardShadowElevation = 3.dp
 
 @Composable
-private fun Modifier.softCardShadow(shape: RoundedCornerShape): Modifier {
-    val colors = LocalAppColors.current
-    return if (colors.isDark) this else this.shadow(elevation = CardShadowElevation, shape = shape, clip = false)
-}
+private fun Modifier.softCardShadow(shape: RoundedCornerShape): Modifier =
+    this.shadow(elevation = CardShadowElevation, shape = shape, clip = false)
 
 /**
  * Tonal elevation as the primary depth cue: depth/hierarchy is read from how much a surface's
- * background tone has lifted off [LocalAppColors.bg] (Material's dark-theme approach — shadows
- * barely read on a near-black background). A thin border stands in for the separation a shadow
- * would have provided in dark mode; light mode additionally gets a subtle [softCardShadow] on top,
- * since shadows do read there.
+ * background tone has lifted off [LocalAppColors.bg]. A thin border stands in for the extra
+ * separation a stronger shadow would give; [softCardShadow] layers a subtle shadow on top in
+ * both modes.
  *
  * Floating header/console-bar card. Shared by MainScreenHeader, ConsoleBar, SettingsDrawer's
  * header, and StatistikScreen's header — kept in one place so the look can't drift between them.
