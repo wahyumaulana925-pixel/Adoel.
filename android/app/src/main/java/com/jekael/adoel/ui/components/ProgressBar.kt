@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -60,12 +60,19 @@ fun LinearProgressBar(
     )
 
     Box(
+        // No .clip() on this shared outer container — it hosts the roll indicator below, which
+        // deliberately overflows past [height] via requiredSize(); clipping here would just crop
+        // that overflow straight back off. Track/fill each clip themselves individually instead.
         modifier = modifier
             .then(if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier.width(width))
-            .height(height)
-            .clip(RoundedCornerShape(cornerRadius))
-            .background(trackColor),
+            .height(height),
     ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(cornerRadius))
+                .background(trackColor),
+        )
         Box(
             modifier = Modifier
                 .fillMaxHeight()
@@ -97,6 +104,9 @@ fun LinearProgressBar(
         // point production has reached, without becoming a literal fabric illustration. Its own
         // diameter grows with [animatedFraction] too (1.6x up to 3.0x the bar's height) so the roll
         // itself visibly thickens as more cloth accumulates, not just travels further right.
+        // requiredSize (not size) — the roll is deliberately taller than the thin track it sits
+        // on, like a spool poking above/below a belt; size() would have Compose coerce it back
+        // down to fit the track's own tight height constraint, squashing it down to invisible.
         if (animatedFraction > 0.02f) {
             val rollDiameter = height * (1.6f + 1.4f * animatedFraction.coerceIn(0f, 1f))
             Box(
@@ -107,7 +117,7 @@ fun LinearProgressBar(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(rollDiameter)
+                        .requiredSize(rollDiameter)
                         .clip(CircleShape)
                         .background(
                             Brush.horizontalGradient(
