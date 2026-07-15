@@ -23,7 +23,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
@@ -79,21 +78,25 @@ fun LinearProgressBar(
                 .fillMaxWidth(animatedFraction.coerceIn(0f, 1f))
                 .clip(RoundedCornerShape(cornerRadius))
                 .background(fillColor)
-                // Woven-thread look: cut thin gaps into the fill at a fixed pitch (independent of
-                // the bar's own width) so a short RadarCard bar and a wide header bar both read as
-                // the same "thread" texture rather than one solid block.
+                // Coiled yarn texture (Master Blueprint §3C): diagonal strokes across the fill,
+                // growing both denser and thicker toward the leading edge nearest the roll —
+                // reads as yarn winding up thicker as more cloth accumulates, rather than a
+                // uniform dashed cut at a fixed pitch regardless of position.
                 .drawWithContent {
                     drawContent()
-                    val pitch = 8.dp.toPx()
-                    val gap = 2.dp.toPx()
-                    var x = pitch
+                    val slant = size.height * 0.8f
+                    val unit = 1.dp.toPx()
+                    var x = -slant
                     while (x < size.width) {
-                        drawRect(
-                            color = trackColor,
-                            topLeft = Offset(x, 0f),
-                            size = Size(gap, size.height),
+                        // 0 at the fill's trailing edge, 1 at its leading edge (near the roll).
+                        val t = (x / size.width).coerceIn(0f, 1f)
+                        drawLine(
+                            color = trackColor.copy(alpha = 0.55f),
+                            start = Offset(x, 0f),
+                            end = Offset(x + slant, size.height),
+                            strokeWidth = (1f + 2f * t) * unit,
                         )
-                        x += pitch
+                        x += (11f - 5f * t) * unit
                     }
                 },
         )
