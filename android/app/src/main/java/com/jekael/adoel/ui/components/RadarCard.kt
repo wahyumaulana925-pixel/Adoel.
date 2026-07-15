@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Texture
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -377,12 +378,24 @@ fun RadarCard(
                             )
                         }
                     }
-                    Text(
-                        text = corakLine,
-                        style = AppType.LabelBold.copy(color = colors.textMuted),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        // Small standard Material icon marking "this line is about the fabric
+                        // itself" (corak/yard) — not a fabric illustration, just a modest visual
+                        // anchor next to the one line of text that's actually about the kain,
+                        // as opposed to the machine/timing info the rest of the card shows.
+                        Icon(
+                            imageVector = Icons.Outlined.Texture,
+                            contentDescription = null,
+                            tint = colors.textFaint,
+                            modifier = Modifier.size(12.dp),
+                        )
+                        Text(
+                            text = corakLine,
+                            style = AppType.LabelBold.copy(color = colors.textMuted),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                     Spacer(Modifier.height(6.dp))
                     LinearProgressBar(
                         fraction = progress,
