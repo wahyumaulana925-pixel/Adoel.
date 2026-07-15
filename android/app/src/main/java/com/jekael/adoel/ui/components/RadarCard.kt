@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Texture
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -290,12 +291,31 @@ fun RadarCard(
             // against the height the Column below actually ends up with (LazyColumn gives
             // this Box unbounded height, so a bare fillMaxHeight() here would collapse to 0).
             Box(modifier = Modifier.matchParentSize()) {
-                // Left accent border
+                // Left accent border — a twisted-thread look (alternating shadow bands down the
+                // solid accent fill) rather than a flat color bar, since this 3dp strip runs down
+                // every single card on Radar and is the one element guaranteed to be on screen at
+                // all times; giving it texture does more for the "woven" identity here than
+                // anywhere else. Shadow bands (not gap-cutting into the card's own background)
+                // so this doesn't need to track the card's dynamically tinted fill color.
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
                         .width(3.dp)
-                        .background(clr.accent),
+                        .background(clr.accent)
+                        .drawWithContent {
+                            drawContent()
+                            val pitch = 5.dp.toPx()
+                            val band = 1.5.dp.toPx()
+                            var y = 0f
+                            while (y < size.height) {
+                                drawRect(
+                                    color = Color.Black.copy(alpha = 0.22f),
+                                    topLeft = Offset(0f, y),
+                                    size = Size(size.width, band),
+                                )
+                                y += pitch
+                            }
+                        },
                 )
             }
 
@@ -358,12 +378,24 @@ fun RadarCard(
                             )
                         }
                     }
-                    Text(
-                        text = corakLine,
-                        style = AppType.LabelBold.copy(color = colors.textMuted),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        // Small standard Material icon marking "this line is about the fabric
+                        // itself" (corak/yard) — not a fabric illustration, just a modest visual
+                        // anchor next to the one line of text that's actually about the kain,
+                        // as opposed to the machine/timing info the rest of the card shows.
+                        Icon(
+                            imageVector = Icons.Outlined.Texture,
+                            contentDescription = null,
+                            tint = colors.textFaint,
+                            modifier = Modifier.size(12.dp),
+                        )
+                        Text(
+                            text = corakLine,
+                            style = AppType.LabelBold.copy(color = colors.textMuted),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                     Spacer(Modifier.height(6.dp))
                     LinearProgressBar(
                         fraction = progress,
