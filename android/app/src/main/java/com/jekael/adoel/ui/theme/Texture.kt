@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
@@ -84,20 +85,32 @@ fun Modifier.fabricTextureSubtle(): Modifier = twillTexture(alpha = 0.05f)
 @Composable
 fun Modifier.fabricTextureBold(): Modifier = twillTexture(alpha = 0.05f)
 
-/** Drop-in replacement for `HorizontalDivider(color = colors.border)` — a dashed rather than solid
- * line, echoing a single thread rather than a plain rule. (The diagonal twill tile above needs
- * real vertical extent to read as diagonal, which a 1dp-tall divider doesn't have — a dashed
- * stroke reads as "thread" at any thickness instead.) */
+/** Drop-in replacement for `HorizontalDivider(color = colors.border)` — two dash patterns on the
+ * same line, phase-shifted by exactly one dash length so the second fills the first's gaps, drawn
+ * in a slightly different tone. Reads as two threads crossing (warp/weft) rather than a plain
+ * dashed rule, without needing extra height for a real diagonal weave tile. */
 @Composable
 fun WovenDivider(modifier: Modifier = Modifier, thickness: Dp = 1.dp) {
-    val color = LocalAppColors.current.border
+    val colors = LocalAppColors.current
+    val warpColor = colors.border
+    val weftColor = lerp(colors.border, Cyan500, 0.35f)
     Canvas(modifier = modifier.fillMaxWidth().height(thickness)) {
+        val dash = 10.dp.toPx()
+        val gap = 6.dp.toPx()
+        val y = size.height / 2f
         drawLine(
-            color = color,
-            start = Offset(0f, size.height / 2f),
-            end = Offset(size.width, size.height / 2f),
+            color = warpColor,
+            start = Offset(0f, y),
+            end = Offset(size.width, y),
             strokeWidth = size.height,
-            pathEffect = PathEffect.dashPathEffect(floatArrayOf(10.dp.toPx(), 6.dp.toPx()), phase = 0f),
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, gap), phase = 0f),
+        )
+        drawLine(
+            color = weftColor,
+            start = Offset(0f, y),
+            end = Offset(size.width, y),
+            strokeWidth = size.height,
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, gap), phase = dash),
         )
     }
 }
