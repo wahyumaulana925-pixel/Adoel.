@@ -110,13 +110,16 @@ private val DarkAppColors = AppColors(
 // (textPrimary/Secondary/Muted comfortably >7:1, textFaint ~4:1, same as before this change).
 val WarmBg300 = Color(0xFFEDEAE4)
 val WarmBg100 = Color(0xFFF7F5F1)
+// The lightest tier — was pure white before, which broke the warm-paper feel every other light
+// surface uses (this shows up as the top-most nested surface, e.g. a card-within-a-card).
+val WarmBg50 = Color(0xFFFDFCFA)
 val WarmBorder = Color(0xFFD9D3C7)
 
 private val LightAppColors = AppColors(
     isDark = false,
     bg = WarmBg300,
     bgElevated = WarmBg100,
-    bgElevated2 = Color(0xFFFFFFFF),
+    bgElevated2 = WarmBg50,
     border = WarmBorder,
     textPrimary = Zinc900,
     textSecondary = Zinc700,
