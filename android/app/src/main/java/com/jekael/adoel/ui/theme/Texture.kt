@@ -71,11 +71,12 @@ private fun Modifier.twillTexture(alpha: Float, spacing: Dp = 7.dp, strokeWidth:
     return this.drawBehind { drawRect(brush = brush) }
 }
 
-/** For surfaces with text sitting on top — cards, header, console, dialogs/sheets. Kept faint so
- * it never competes with legibility. Brief caps all fabric texture at 2-5% opacity; this sits at
- * the low end since text renders directly over it. */
+/** For surfaces with text sitting on top — cards, header, console, dialogs/sheets. Brief caps all
+ * fabric texture at 2-5% opacity; this sits at the top of that range — 3% turned out visually
+ * indistinguishable from no texture at all on RadarCard (the app's most-viewed surface), which
+ * undercut the "woven" identity more than it protected legibility. */
 @Composable
-fun Modifier.fabricTextureSubtle(): Modifier = twillTexture(alpha = 0.03f)
+fun Modifier.fabricTextureSubtle(): Modifier = twillTexture(alpha = 0.05f)
 
 /** For plain surfaces with no text directly on them — a screen's raw page background. Sits at the
  * top of the brief's 2-5% opacity cap (was 14% before — well outside "nyaris tidak terlihat") since

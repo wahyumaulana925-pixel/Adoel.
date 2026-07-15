@@ -290,12 +290,31 @@ fun RadarCard(
             // against the height the Column below actually ends up with (LazyColumn gives
             // this Box unbounded height, so a bare fillMaxHeight() here would collapse to 0).
             Box(modifier = Modifier.matchParentSize()) {
-                // Left accent border
+                // Left accent border — a twisted-thread look (alternating shadow bands down the
+                // solid accent fill) rather than a flat color bar, since this 3dp strip runs down
+                // every single card on Radar and is the one element guaranteed to be on screen at
+                // all times; giving it texture does more for the "woven" identity here than
+                // anywhere else. Shadow bands (not gap-cutting into the card's own background)
+                // so this doesn't need to track the card's dynamically tinted fill color.
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
                         .width(3.dp)
-                        .background(clr.accent),
+                        .background(clr.accent)
+                        .drawWithContent {
+                            drawContent()
+                            val pitch = 5.dp.toPx()
+                            val band = 1.5.dp.toPx()
+                            var y = 0f
+                            while (y < size.height) {
+                                drawRect(
+                                    color = Color.Black.copy(alpha = 0.22f),
+                                    topLeft = Offset(0f, y),
+                                    size = Size(size.width, band),
+                                )
+                                y += pitch
+                            }
+                        },
                 )
             }
 
