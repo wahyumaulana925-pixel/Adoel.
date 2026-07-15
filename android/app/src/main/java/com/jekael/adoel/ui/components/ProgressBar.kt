@@ -94,8 +94,11 @@ fun LinearProgressBar(
         // (it tracks yard progress toward a doff) had no visual cue that it's cloth accumulating,
         // just a bar filling like any generic loader. A shaded circle (dark-light-dark horizontal
         // gradient, like a cylinder's cross-section) reads as a small roll of cloth growing at the
-        // point production has reached, without becoming a literal fabric illustration.
+        // point production has reached, without becoming a literal fabric illustration. Its own
+        // diameter grows with [animatedFraction] too (1.6x up to 3.0x the bar's height) so the roll
+        // itself visibly thickens as more cloth accumulates, not just travels further right.
         if (animatedFraction > 0.02f) {
+            val rollDiameter = height * (1.6f + 1.4f * animatedFraction.coerceIn(0f, 1f))
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
@@ -104,7 +107,7 @@ fun LinearProgressBar(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(height * 2.4f)
+                        .size(rollDiameter)
                         .clip(CircleShape)
                         .background(
                             Brush.horizontalGradient(

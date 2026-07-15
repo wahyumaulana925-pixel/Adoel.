@@ -88,12 +88,14 @@ fun Modifier.fabricTextureBold(): Modifier = twillTexture(alpha = 0.05f)
 /** Drop-in replacement for `HorizontalDivider(color = colors.border)` — two dash patterns on the
  * same line, phase-shifted by exactly one dash length so the second fills the first's gaps, drawn
  * in a slightly different tone. Reads as two threads crossing (warp/weft) rather than a plain
- * dashed rule, without needing extra height for a real diagonal weave tile. */
+ * dashed rule, without needing extra height for a real diagonal weave tile. Thickness/saturation
+ * pushed up from the original 1dp/0.35 mix so the weft thread stays legibly distinct from the warp
+ * even under dim factory-floor lighting. */
 @Composable
-fun WovenDivider(modifier: Modifier = Modifier, thickness: Dp = 1.dp) {
+fun WovenDivider(modifier: Modifier = Modifier, thickness: Dp = 1.5.dp) {
     val colors = LocalAppColors.current
     val warpColor = colors.border
-    val weftColor = lerp(colors.border, Cyan500, 0.35f)
+    val weftColor = lerp(colors.border, Cyan500, 0.45f)
     Canvas(modifier = modifier.fillMaxWidth().height(thickness)) {
         val dash = 10.dp.toPx()
         val gap = 6.dp.toPx()

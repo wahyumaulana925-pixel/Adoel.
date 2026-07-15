@@ -57,12 +57,18 @@ fun Modifier.premiumSurface(base: Color): Modifier = this
  * both modes.
  *
  * Floating header/console-bar card. Shared by MainScreenHeader, ConsoleBar, SettingsDrawer's
- * header, and StatistikScreen's header — kept in one place so the look can't drift between them.
- * Border/background always come from [LocalAppColors] at every current call site, so they're read
- * here directly rather than threaded through as parameters.
+ * header, StatistikScreen's header, and [com.jekael.adoel.ui.components.FloatingEditDialog] —
+ * kept in one place so the look can't drift between them. Border/background always come from
+ * [LocalAppColors] at every current call site, so they're read here directly rather than threaded
+ * through as parameters.
+ *
+ * [textured] defaults on for the outer chrome (header/console/panel headers) but is switched off
+ * for dense text-entry surfaces (FloatingEditDialog) — the twill texture sitting directly behind
+ * a form's own text competed with fly-waste dust actually stuck to the screen on the factory
+ * floor, undercutting legibility exactly where it matters most (Master Blueprint §2B).
  */
 @Composable
-fun Modifier.floatingHeaderCard(): Modifier {
+fun Modifier.floatingHeaderCard(textured: Boolean = true): Modifier {
     val colors = LocalAppColors.current
     val shape = RoundedCornerShape(Dimens.RadiusFloating)
     return this
@@ -70,7 +76,7 @@ fun Modifier.floatingHeaderCard(): Modifier {
         .clip(shape)
         .border(1.dp, colors.border, shape)
         .premiumSurface(colors.bgElevated)
-        .fabricTextureSubtle()
+        .let { if (textured) it.fabricTextureSubtle() else it }
 }
 
 /**

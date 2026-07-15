@@ -148,11 +148,12 @@ fun FloatingEditDialog(
                         .navigationBarsPadding()
                         .padding(16.dp)
                         .heightIn(max = maxCardHeight)
-                        // Reuses the same clip/border/premium-gradient/texture stack every other
-                        // floating surface uses (see CardStyles.kt) instead of a hand-rolled
-                        // duplicate — this sheet previously missed the premium gradient+highlight
-                        // finish because it built its background separately.
-                        .floatingHeaderCard()
+                        // Reuses the same clip/border/premium-gradient stack every other floating
+                        // surface uses (see CardStyles.kt) instead of a hand-rolled duplicate, but
+                        // opts out of the twill texture — this surface is dense text-entry (Master
+                        // Blueprint §2B), where the texture behind the fields it hosts undercuts
+                        // legibility more than it reinforces the woven identity.
+                        .floatingHeaderCard(textured = false)
                         .padding(20.dp)
                         .verticalScroll(rememberScrollState()),
                     content = content,

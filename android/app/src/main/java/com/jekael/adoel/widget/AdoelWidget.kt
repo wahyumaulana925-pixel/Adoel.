@@ -17,6 +17,7 @@ import androidx.glance.background
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
+import androidx.glance.layout.defaultWeight
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.padding
@@ -26,10 +27,16 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.jekael.adoel.MainActivity
 import com.jekael.adoel.data.DoffRepository
+import com.jekael.adoel.data.formatDeltaMin
+import com.jekael.adoel.data.absMinToTimeStr
 import com.jekael.adoel.data.nowAbsMin
+import com.jekael.adoel.data.partitionSegeraMenunggu
+import com.jekael.adoel.data.shiftNumberForEpochMin
 import com.jekael.adoel.data.sortedByNearest
+import com.jekael.adoel.ui.BREAK_GAP_THRESHOLD_MIN
 import com.jekael.adoel.ui.theme.Amber500
 import com.jekael.adoel.ui.theme.DarkBg
+import com.jekael.adoel.ui.theme.Emerald500
 import com.jekael.adoel.ui.theme.ThemeMode
 import com.jekael.adoel.ui.theme.WarmBg300
 import com.jekael.adoel.ui.theme.Zinc50
@@ -54,23 +61,50 @@ class AdoelWidget : GlanceAppWidget() {
         val dark = resolveWidgetDarkTheme(context, state.themeMode)
         val bg = if (dark) DarkBg else WarmBg300
         val textColor = if (dark) Zinc50 else Zinc900
+        val shiftLabel = "Shift ${shiftNumberForEpochMin(now)}"
+        // Mirrors the in-app leading break gap (RadarSection's BreakGapCard): only worth
+        // surfacing when nothing is overdue and the wait to the next doff clears the same
+        // threshold — an operator glancing at the lock screen wants "can I actually step away",
+        // not a running clock down to every upcoming machine.
+        val (segera, menunggu) = partitionSegeraMenunggu(sorted, now)
+        val jedaText = if (segera.isEmpty()) {
+            menunggu.firstOrNull()?.let { next ->
+                val gap = next.estAbsMin - now
+                if (gap >= BREAK_GAP_THRESHOLD_MIN) {
+                    "⏸ JEDA: ${formatDeltaMin(gap)} lagi (s.d ${absMinToTimeStr(next.estAbsMin)})"
+                } else null
+            }
+        } else null
 
         provideContent {
             Column(modifier = GlanceModifier.fillMaxSize().background(bg)) {
-                Row(
+                Column(
                     modifier = GlanceModifier
                         .fillMaxWidth()
                         .padding(12.dp)
                         .clickable(openApp),
                 ) {
-                    Text(
-                        text = "Adoel",
-                        style = TextStyle(color = ColorProvider(textColor), fontSize = 15.sp, fontWeight = FontWeight.Bold),
-                    )
-                    Text(
-                        text = ".",
-                        style = TextStyle(color = ColorProvider(Amber500), fontSize = 15.sp, fontWeight = FontWeight.Bold),
-                    )
+                    Row(modifier = GlanceModifier.fillMaxWidth()) {
+                        Text(
+                            text = "Adoel",
+                            style = TextStyle(color = ColorProvider(textColor), fontSize = 15.sp, fontWeight = FontWeight.Bold),
+                        )
+                        Text(
+                            text = ".",
+                            style = TextStyle(color = ColorProvider(Amber500), fontSize = 15.sp, fontWeight = FontWeight.Bold),
+                        )
+                        Box(modifier = GlanceModifier.defaultWeight()) {}
+                        Text(
+                            text = shiftLabel,
+                            style = TextStyle(color = ColorProvider(textColor), fontSize = 12.sp, fontWeight = FontWeight.Medium),
+                        )
+                    }
+                    if (jedaText != null) {
+                        Text(
+                            text = jedaText,
+                            style = TextStyle(color = ColorProvider(Emerald500), fontSize = 12.sp, fontWeight = FontWeight.Medium),
+                        )
+                    }
                 }
                 if (sorted.isEmpty()) {
                     Box(modifier = GlanceModifier.fillMaxSize().padding(12.dp).clickable(openApp)) {

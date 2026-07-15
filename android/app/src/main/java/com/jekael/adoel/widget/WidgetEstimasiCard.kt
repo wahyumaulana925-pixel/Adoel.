@@ -8,6 +8,7 @@ import androidx.glance.appwidget.cornerRadius
 import androidx.glance.background
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
+import androidx.glance.layout.Row
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
@@ -21,6 +22,7 @@ import com.jekael.adoel.data.UrgencyLevel
 import com.jekael.adoel.data.absMinToTimeStr
 import com.jekael.adoel.data.formatYard
 import com.jekael.adoel.data.urgencyLevel
+import com.jekael.adoel.ui.components.mesinTipeColor
 import com.jekael.adoel.ui.theme.Amber500
 import com.jekael.adoel.ui.theme.Amber600
 import com.jekael.adoel.ui.theme.Cyan500
@@ -63,7 +65,18 @@ fun WidgetEstimasiCard(est: Estimasi, mesin: MesinData?, now: Long, dark: Boolea
         // simplified Row/Column stretching can size reliably without needing cross-axis fill.
         Box(modifier = GlanceModifier.fillMaxWidth().height(3.dp).background(accent)) {}
         Column(modifier = GlanceModifier.padding(12.dp)) {
-            Text("Mc ${est.mcNo}", style = TextStyle(color = ColorProvider(textColor), fontSize = 18.sp, fontWeight = FontWeight.Bold))
+            Row {
+                Text("Mc ${est.mcNo}", style = TextStyle(color = ColorProvider(textColor), fontSize = 18.sp, fontWeight = FontWeight.Bold))
+                if (mesin != null) {
+                    Text(
+                        text = "  ${mesin.tipe.name}",
+                        // Same non-urgency machine-type color as RadarCard/DoffingSection — Glance
+                        // has no custom Canvas drawing, so this stays a colored label rather than
+                        // an icon (see the accent-strip comment above for the same constraint).
+                        style = TextStyle(color = ColorProvider(mesinTipeColor(mesin.tipe)), fontSize = 11.sp, fontWeight = FontWeight.Bold),
+                    )
+                }
+            }
             Text(corakLine, style = TextStyle(color = ColorProvider(textColor), fontSize = 12.sp), maxLines = 1)
             Text(
                 text = "Siap jam ${absMinToTimeStr(est.estAbsMin)}",

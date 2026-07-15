@@ -386,7 +386,7 @@ private fun DoffCountChart(history: List<ShiftRecord>, selectedShiftId: Int?, on
                 }
             }
         }
-        WovenDivider(thickness = 1.dp)
+        WovenDivider()
         Spacer(Modifier.height(4.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),

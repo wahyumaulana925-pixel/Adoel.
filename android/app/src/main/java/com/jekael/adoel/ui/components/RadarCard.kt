@@ -24,12 +24,16 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
@@ -89,6 +93,12 @@ fun RadarCard(
     onQuickEdit: () -> Unit,
     modifier: Modifier = Modifier,
     entranceDelayMs: Long = 0L,
+    // True when grid-paired half-width in the Menunggu band (see MenungguGridSlot) — the smaller
+    // column width shrinks every label on the card, so the type/corak text bumps up the Inter
+    // variable font's weight axis (Bold→ExtraBold) to hold contrast at the smaller size instead of
+    // just reading fainter (Master Blueprint §2A). The mcNo hero number is already at the top of
+    // the axis (Black) regardless of layout, so it needs no further compensation here.
+    isCompact: Boolean = false,
 ) {
     val remaining = est.estAbsMin - nowAbs
     val clr = urgency(remaining)
@@ -102,6 +112,7 @@ fun RadarCard(
     val tipe = mesin?.tipe?.name ?: "?"
     val showDot = remaining <= 5
     val colors = LocalAppColors.current
+    val haptic = LocalHapticFeedback.current
     // Doffing before a machine is actually near due doesn't make sense operationally — swipe (and
     // its screen-reader equivalent) only turns on once the card's within the same lead time as the
     // reminder notification/physical warning light. The topmost card in Menunggu always renders
@@ -179,6 +190,17 @@ fun RadarCard(
     fun triggerDoff(kind: DoffCompletionKind) {
         if (completing) return
         completingKind = kind
+        // Distinct haptic per kind (Master Blueprint §3A/§3B): Normal gets one deep tap — the
+        // cutter closing on a taut roll of finished cloth; Matching gets two sharp ones — a
+        // scissor snipping a quick quality-check sample.
+        when (kind) {
+            DoffCompletionKind.NORMAL -> haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            DoffCompletionKind.MATCHING -> scope.launch {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                delay(90)
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            }
+        }
         scope.launch {
             delay(420)
             when (kind) {
@@ -276,8 +298,21 @@ fun RadarCard(
                             // duration — this must visually track how long the finger is actually
                             // down, so it's exempt from the 150-250ms range other animations use.
                             val chargeJob = scope.launch { pressCharge.animateTo(1f, tween(450, easing = LinearEasing)) }
+                            // OVERDUE-only: a rhythmic pulsing haptic while held, mimicking the
+                            // loom's own mechanical vibration at low RPM (Master Blueprint §3E) —
+                            // a physical cue the operator can feel without having to keep reading
+                            // the screen. ~300 RPM = 5 rev/s, so a pulse roughly every 200ms.
+                            val vibrationJob = if (clr.pulse) {
+                                scope.launch {
+                                    while (true) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        delay(200)
+                                    }
+                                }
+                            } else null
                             tryAwaitRelease()
                             chargeJob.cancel()
+                            vibrationJob?.cancel()
                             scope.launch { pressCharge.animateTo(0f, tween(150)) }
                         },
                     )
@@ -370,7 +405,7 @@ fun RadarCard(
                             text = tipe,
                             style = TextStyle(
                                 fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
+                                fontWeight = if (isCompact) FontWeight.ExtraBold else FontWeight.Bold,
                                 letterSpacing = 2.sp,
                                 color = clr.labelColor,
                             ),
@@ -398,7 +433,10 @@ fun RadarCard(
                         )
                         Text(
                             text = corakLine,
-                            style = AppType.LabelBold.copy(color = colors.textMuted),
+                            style = AppType.LabelBold.copy(
+                                color = colors.textMuted,
+                                fontWeight = if (isCompact) FontWeight.ExtraBold else FontWeight.Bold,
+                            ),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -446,9 +484,12 @@ fun RadarCard(
                 }
             }
 
-            // Celebrate completion — icon pops in while the card slides/fades out. Which icon and
-            // which direction depends on completingKind (see its assignment above).
+            // Celebrate completion — the card visibly "splits" as the tint sweeps in behind a
+            // clipped boundary (straight diagonal for Normal, a jagged swatch-clip edge for
+            // Matching — Master Blueprint §3A/§3B), then the icon pops/spins in. Which shape,
+            // icon, and direction depends on completingKind (see its assignment above).
             if (checkScale > 0f) {
+                val isMatching = completingKind == DoffCompletionKind.MATCHING
                 Box(
                     modifier = Modifier.matchParentSize(),
                     contentAlignment = Alignment.Center,
@@ -456,15 +497,23 @@ fun RadarCard(
                     Box(
                         modifier = Modifier
                             .matchParentSize()
-                            .background(completionColor.copy(alpha = 0.14f))
                             .drawWithContent {
                                 drawContent()
-                                rotate(20f) {
+                                val splitPath = if (isMatching) {
+                                    jaggedSplitPath(size, weaveSweep)
+                                } else {
+                                    diagonalSplitPath(size, weaveSweep)
+                                }
+                                clipPath(splitPath) {
+                                    drawRect(completionColor.copy(alpha = 0.30f))
+                                }
+                                // Bright flash racing along the split boundary as it sweeps across.
+                                rotate(if (isMatching) -12f else 20f) {
                                     val bandWidth = size.width * 0.18f
                                     val travel = size.width * 1.6f
                                     val x = -bandWidth + weaveSweep * travel
                                     drawRect(
-                                        color = completionColor.copy(alpha = 0.35f * (1f - weaveSweep)),
+                                        color = Color.White.copy(alpha = 0.5f * (1f - weaveSweep)),
                                         topLeft = Offset(x, -size.height),
                                         size = Size(bandWidth, size.height * 3f),
                                     )
@@ -477,11 +526,51 @@ fun RadarCard(
                         tint = completionColor,
                         modifier = Modifier
                             .size(56.dp)
-                            .graphicsLayer { scaleX = checkScale; scaleY = checkScale },
+                            .graphicsLayer {
+                                scaleX = checkScale
+                                scaleY = checkScale
+                                // Verified spins in (Matching); CheckCircle just grows in place.
+                                rotationZ = if (isMatching) (1f - checkScale) * -180f else 0f
+                            },
                     )
                 }
             }
         }
+    }
+}
+
+/** Straight diagonal boundary sweeping left-to-right as [progress] goes 0→1 — everything left of
+ * the boundary is inside the returned path (see [clipPath] call site). Slanted like a single
+ * cutter pass through taut cloth, for the routine "Potong Normal" completion. */
+private fun diagonalSplitPath(size: Size, progress: Float): Path {
+    val slant = size.height * 0.55f
+    val edgeX = size.width * progress
+    return Path().apply {
+        moveTo(0f, 0f)
+        lineTo(edgeX, 0f)
+        lineTo(edgeX - slant, size.height)
+        lineTo(0f, size.height)
+        close()
+    }
+}
+
+/** Zigzag boundary sweeping left-to-right as [progress] goes 0→1 — a "swatch clip" sampling snip
+ * rather than a clean blade pass, for the "Potong Matching" quality-check completion. */
+private fun jaggedSplitPath(size: Size, progress: Float): Path {
+    val edgeX = size.width * progress
+    val teeth = 8
+    val toothH = size.height / teeth
+    val toothDepth = size.minDimension * 0.03f
+    return Path().apply {
+        moveTo(0f, 0f)
+        lineTo(edgeX, 0f)
+        for (i in 1..teeth) {
+            val y = (toothH * i).coerceAtMost(size.height)
+            val x = edgeX + (if (i % 2 == 0) toothDepth else -toothDepth)
+            lineTo(x, y)
+        }
+        lineTo(0f, size.height)
+        close()
     }
 }
 

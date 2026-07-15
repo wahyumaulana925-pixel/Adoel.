@@ -197,6 +197,7 @@ private fun RowScope.MenungguGridSlot(
             onQuickEdit = { onQuickEdit(row.est.mcNo) },
             modifier = Modifier.weight(1f).fillMaxHeight(),
             entranceDelayMs = entranceDelayMs,
+            isCompact = true,
         )
         is MenungguRow.GapRow -> BreakGapCard(
             gapMin = row.gapMin,
