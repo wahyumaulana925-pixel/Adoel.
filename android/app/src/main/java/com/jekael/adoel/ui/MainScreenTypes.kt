@@ -3,12 +3,15 @@ package com.jekael.adoel.ui
 import androidx.compose.runtime.saveable.Saver
 import com.jekael.adoel.data.Estimasi
 
+/** Which pure-function path a guided sheet's submission routes through — ESTIMASI feeds
+ * [com.jekael.adoel.viewmodel.DoffViewModel.prosesBarisKondisiMesin], AKTUAL feeds
+ * `prosesBarisUmum`. No longer a console-level input mode (the console is guided-only now, see
+ * ConsoleBar) — this only distinguishes which formula a given submission means. */
 internal enum class Mode { ESTIMASI, AKTUAL }
 
-/** Orthogonal to [Mode]: which input surface the console shows for whichever mode is active.
- * TEKS is the existing one-line command field (untouched, the power-user fallback); TERPANDU is
- * the guided step-by-step sheet. Independent of Mode — all four combinations are valid. */
-internal enum class InputStyle { TEKS, TERPANDU }
+/** Which top-level list is on screen — decoupled from [Mode] now that the console no longer
+ * doubles as a page switcher (see MainScreenHeader's page tab row). */
+internal enum class Page { RADAR, RIWAYAT }
 
 /** Gaps at or above this many minutes between two upcoming doffs are worth flagging as a
  * break window — short enough to still be actionable, long enough to actually leave the floor. */
@@ -30,6 +33,12 @@ internal sealed interface ActiveOverlay {
     data class QuickEditMesin(val mcNo: String) : ActiveOverlay
     data class GuidedEstimasi(val mcNo: String) : ActiveOverlay
     data class GuidedDoffing(val mcNo: String) : ActiveOverlay
+    /** Machine typed into the console has no active estimasi yet — offers "Tambah Estimasi Baru"
+     * vs "Catat Potong (Doff)" instead of guessing which one the operator meant. */
+    data class GuidedActionHub(val mcNo: String) : ActiveOverlay
+    /** Several machine numbers typed into the console at once (comma/space separated) — applies
+     * one Corak+Target Yard to all of them in a single guided sheet. */
+    data class BulkGuidedSetup(val mcNos: List<String>) : ActiveOverlay
 }
 
 /** Custom Saver for rememberSaveable — ActiveOverlay's variants aren't natively Bundle-storable
@@ -47,6 +56,11 @@ internal val ActiveOverlaySaver = Saver<ActiveOverlay, List<Any?>>(
             is ActiveOverlay.QuickEditMesin -> listOf("QuickEditMesin", overlay.mcNo)
             is ActiveOverlay.GuidedEstimasi -> listOf("GuidedEstimasi", overlay.mcNo)
             is ActiveOverlay.GuidedDoffing -> listOf("GuidedDoffing", overlay.mcNo)
+            is ActiveOverlay.GuidedActionHub -> listOf("GuidedActionHub", overlay.mcNo)
+            // mcNos encoded as a single comma-joined string (not a nested List<String>) — keeps
+            // this payload a plain String like every other variant here instead of needing its
+            // own list-of-primitives support from the Bundle-backed SaverScope.
+            is ActiveOverlay.BulkGuidedSetup -> listOf("BulkGuidedSetup", overlay.mcNos.joinToString(","))
         }
     },
     restore = { saved ->
@@ -57,6 +71,10 @@ internal val ActiveOverlaySaver = Saver<ActiveOverlay, List<Any?>>(
             "QuickEditMesin" -> (saved.getOrNull(1) as? String)?.let { ActiveOverlay.QuickEditMesin(it) } ?: ActiveOverlay.None
             "GuidedEstimasi" -> (saved.getOrNull(1) as? String)?.let { ActiveOverlay.GuidedEstimasi(it) } ?: ActiveOverlay.None
             "GuidedDoffing" -> (saved.getOrNull(1) as? String)?.let { ActiveOverlay.GuidedDoffing(it) } ?: ActiveOverlay.None
+            "GuidedActionHub" -> (saved.getOrNull(1) as? String)?.let { ActiveOverlay.GuidedActionHub(it) } ?: ActiveOverlay.None
+            "BulkGuidedSetup" -> (saved.getOrNull(1) as? String)?.let {
+                ActiveOverlay.BulkGuidedSetup(it.split(",").filter(String::isNotBlank))
+            } ?: ActiveOverlay.None
             else -> ActiveOverlay.None
         }
     },

@@ -12,7 +12,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.jekael.adoel.data.*
-import com.jekael.adoel.ui.InputStyle
 import com.jekael.adoel.ui.theme.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -27,7 +26,6 @@ internal fun DataTab(
     headerHeight: Dp,
     onResetDb: () -> Unit,
     onSetThemeMode: (ThemeMode) -> Unit,
-    onSetInputStyle: (InputStyle) -> Unit,
     onExportJson: () -> String,
     onImport: (String) -> Unit,
     showToast: (String) -> Unit,
@@ -38,9 +36,6 @@ internal fun DataTab(
     val scope = rememberCoroutineScope()
     val currentTheme = remember(state.themeMode) {
         runCatching { ThemeMode.valueOf(state.themeMode) }.getOrDefault(ThemeMode.SYSTEM)
-    }
-    val currentInputStyle = remember(state.inputStyle) {
-        runCatching { InputStyle.valueOf(state.inputStyle) }.getOrDefault(InputStyle.TEKS)
     }
 
     // Backup: user picks where to save a .json file; we write the full-state JSON to it.
@@ -82,21 +77,6 @@ internal fun DataTab(
             ChipBtn("Sistem", currentTheme == ThemeMode.SYSTEM) { onSetThemeMode(ThemeMode.SYSTEM) }
             ChipBtn("Gelap", currentTheme == ThemeMode.DARK) { onSetThemeMode(ThemeMode.DARK) }
             ChipBtn("Terang", currentTheme == ThemeMode.LIGHT) { onSetThemeMode(ThemeMode.LIGHT) }
-        }
-
-        Spacer(Modifier.height(4.dp))
-        WovenDivider()
-        Spacer(Modifier.height(4.dp))
-
-        FieldLabel("Gaya Input")
-        Text(
-            "Teks: ketik command satu baris (cepat untuk yang sudah hafal). Terpandu: pilih mesin lalu diarahkan langkah demi langkah.",
-            style = AppType.Caption.copy(color = colors.textMuted),
-        )
-        Spacer(Modifier.height(6.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            ChipBtn("Teks", currentInputStyle == InputStyle.TEKS) { onSetInputStyle(InputStyle.TEKS) }
-            ChipBtn("Terpandu", currentInputStyle == InputStyle.TERPANDU) { onSetInputStyle(InputStyle.TERPANDU) }
         }
 
         Spacer(Modifier.height(4.dp))

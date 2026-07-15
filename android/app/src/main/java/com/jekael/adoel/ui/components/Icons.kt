@@ -9,7 +9,6 @@ import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Numbers
-import androidx.compose.material.icons.outlined.Send
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.runtime.Composable
@@ -76,14 +75,6 @@ fun GearIcon() {
     )
 }
 
-@Composable
-fun SendIcon() {
-    Icon(
-        imageVector = Icons.Outlined.Send,
-        contentDescription = "Send",
-        modifier = Modifier.size(20.dp),
-    )
-}
 
 @Composable
 fun CloseIcon() {

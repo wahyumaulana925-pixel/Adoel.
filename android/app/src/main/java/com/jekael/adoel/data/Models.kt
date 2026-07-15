@@ -57,10 +57,6 @@ data class DoffState(
     // field don't suddenly get the first-run tutorial — it's only explicitly set false in
     // DoffRepository.parseState()'s genuinely-fresh-install fallback (no persisted state at all).
     val onboardingSeen: Boolean = true,
-    // "TEKS" or "TERPANDU" (see InputStyle in ui/MainScreenTypes.kt) — chosen once in Pengaturan,
-    // not per-session, so it belongs alongside themeMode here rather than in MainScreen's
-    // rememberSaveable state.
-    val inputStyle: String = "TEKS",
 )
 
 sealed class ProsesResult {

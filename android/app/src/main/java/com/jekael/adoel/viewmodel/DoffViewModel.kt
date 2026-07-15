@@ -57,6 +57,17 @@ class DoffViewModel @JvmOverloads constructor(
         s.copy(db = s.db + (mcNo to data))
     }
 
+    /** Applies the same corak/target yard to several machines at once (see BulkGuidedSetupSheet) —
+     * a single updateState transform so all of them land in one persisted transaction instead of
+     * racing each other as N separate writes. */
+    fun setMesinBulk(mcNos: List<String>, corak: String, targetYard: Double?) = updateState { s ->
+        val updated = s.db.toMutableMap()
+        mcNos.forEach { mcNo ->
+            updated[mcNo] = (updated[mcNo] ?: MesinData()).copy(corak = corak, targetYard = targetYard)
+        }
+        s.copy(db = updated)
+    }
+
     fun resetMesin(mcNo: String) = updateState { s ->
         val default = buildDefaultDb()[mcNo] ?: MesinData()
         s.copy(db = s.db + (mcNo to default))
@@ -92,10 +103,7 @@ class DoffViewModel @JvmOverloads constructor(
                 nowAbsMin + sisaMenitD405(target, yardBerjalan, speed)
             }
             MesinTipe.D408 -> {
-                var jamCounterStr = parts[1]
-                if (jamCounterStr.equals("c", ignoreCase = true) && parts.size >= 3)
-                    jamCounterStr = parts[2]
-                val jamMin = parseJam(jamCounterStr) ?: return ProsesResult.Err("Jam counter tidak valid")
+                val jamMin = parseJam(parts[1]) ?: return ProsesResult.Err("Jam counter tidak valid")
                 val koreksi = mesin.koreksi ?: return ProsesResult.Err("Menit koreksi kosong")
                 estAbsD408(jamMin, koreksi)
             }
@@ -233,10 +241,6 @@ class DoffViewModel @JvmOverloads constructor(
 
     fun setThemeMode(mode: String) = updateState { s ->
         s.copy(themeMode = mode)
-    }
-
-    fun setInputStyle(style: String) = updateState { s ->
-        s.copy(inputStyle = style)
     }
 
     fun setOnboardingSeen() = updateState { s ->

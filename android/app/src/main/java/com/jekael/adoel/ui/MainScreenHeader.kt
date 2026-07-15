@@ -1,31 +1,18 @@
 package com.jekael.adoel.ui
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BarChart
-import androidx.compose.material.icons.outlined.ExpandLess
-import androidx.compose.material.icons.outlined.ExpandMore
-import androidx.compose.material.icons.outlined.Flag
-import androidx.compose.material.icons.outlined.Share
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -46,13 +33,17 @@ import androidx.compose.ui.unit.sp
 import com.jekael.adoel.data.shiftNumberForEpochMin
 import com.jekael.adoel.ui.components.GearIcon
 import com.jekael.adoel.ui.components.LinearProgressBar
+import com.jekael.adoel.ui.components.SlidingToggle
 import com.jekael.adoel.ui.theme.*
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
-/** Floating header — branding (with a tap-pulse micro-interaction), shift progress, and the
- * settings gear. Reports its own measured height via [onHeightMeasured] so the scrollable list
- * behind it can pad itself to avoid sitting under the card. */
+/** Floating header — branding (with a tap-pulse micro-interaction), shift progress, the
+ * permanently-visible Statistik/Pengaturan icons, and the Radar/Riwayat page tab row (Master
+ * Blueprint §4A/§4E: page switching moved up here, off the console bar, and the two shift-wide
+ * shortcut icons stay on screen instead of hiding behind a chevron). Reports its own measured
+ * height via [onHeightMeasured] so the scrollable list behind it can pad itself to avoid sitting
+ * under the card. */
 @Composable
 fun MainScreenHeader(
     nowAbs: Long,
@@ -61,14 +52,9 @@ fun MainScreenHeader(
     showRemaining: Boolean,
     onToggleShowRemaining: () -> Unit,
     onGearClick: () -> Unit,
-    // Shift-wide actions (not tied to whichever mode/list is currently on screen) — expanded via
-    // a dedicated chevron rather than overloading the doff-count column's existing tap (which
-    // already toggles selesai/sisa display), so neither gesture has to give way to the other.
-    actionsExpanded: Boolean,
-    onToggleActionsExpanded: () -> Unit,
-    onShare: () -> Unit,
     onStatistik: () -> Unit,
-    onFinish: () -> Unit,
+    page: Page,
+    onPageSelect: (Page) -> Unit,
     onHeightMeasured: (Dp) -> Unit,
     haptic: HapticFeedback,
     modifier: Modifier = Modifier,
@@ -157,7 +143,7 @@ fun MainScreenHeader(
                 )
             }
 
-            // Shift progress — centered between branding and the menu icon
+            // Shift progress — centered between branding and the icon buttons
             Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 if (totalMc > 0) {
                     val remainingMc = totalMc - doffCount
@@ -195,73 +181,37 @@ fun MainScreenHeader(
                 }
             }
 
-            // Expand/collapse the shift-actions row below (Bagikan/Statistik/Selesai Shift) —
-            // separate from the gear (full Pengaturan) and from the doff-count column's own tap.
-            IconButton(onClick = onToggleActionsExpanded) {
+            // Statistik + Pengaturan — permanently side by side (Master Blueprint §4E), not
+            // hidden behind an expand chevron anymore.
+            IconButton(onClick = onStatistik) {
                 Icon(
-                    imageVector = if (actionsExpanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
-                    contentDescription = if (actionsExpanded) "Sembunyikan aksi shift" else "Tampilkan aksi shift",
+                    imageVector = Icons.Outlined.BarChart,
+                    contentDescription = "Statistik",
                     tint = colors.textMuted,
                 )
             }
-
-            // Gear button
-            IconButton(
-                onClick = onGearClick,
-            ) {
+            IconButton(onClick = onGearClick) {
                 GearIcon()
             }
         }
 
-        AnimatedVisibility(
-            visible = actionsExpanded,
-            enter = expandVertically(tween(200)) + fadeIn(tween(160)),
-            exit = shrinkVertically(tween(180)) + fadeOut(tween(120)),
-        ) {
-            ShiftActionsRow(
-                onShare = onShare,
-                onStatistik = onStatistik,
-                onFinish = onFinish,
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
-            )
-        }
+        // Page tab — Radar Estimasi vs Riwayat Doffing, decoupled from the console bar (Master
+        // Blueprint §4A): purely a view switcher now, with no bearing on what the console does.
+        SlidingToggle(
+            labelLeft = "Radar",
+            labelRight = "Riwayat",
+            accessibilityLabel = "Halaman: Radar/Riwayat",
+            selectedIndex = if (page == Page.RADAR) 0 else 1,
+            onSelect = { onPageSelect(if (it == 0) Page.RADAR else Page.RIWAYAT) },
+            containerColor = colors.bgElevated2,
+            activeColorLeft = Cyan600,
+            activeColorRight = Cyan600,
+            activeTextColorLeft = Zinc950,
+            activeTextColorRight = Zinc950,
+            inactiveTextColor = colors.textSecondary,
+            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
+            height = 38.dp,
+        )
       }
-    }
-}
-
-/** Bagikan/Statistik/Selesai Shift — shift-wide actions, available regardless of whether
- * Estimasi or Doffing is the currently-selected list (moved out of doffingSection, which only
- * rendered — and scrolled away — while in Doffing mode). */
-@Composable
-private fun ShiftActionsRow(onShare: () -> Unit, onStatistik: () -> Unit, onFinish: () -> Unit, modifier: Modifier = Modifier) {
-    val colors = LocalAppColors.current
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        OutlinedButton(
-            onClick = onShare,
-            modifier = Modifier.weight(1f).height(48.dp),
-            shape = RoundedCornerShape(Dimens.RadiusControl),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
-            border = BorderStroke(1.dp, colors.border),
-            contentPadding = PaddingValues(0.dp),
-        ) { Icon(imageVector = Icons.Outlined.Share, contentDescription = "Bagikan", modifier = Modifier.size(20.dp)) }
-        OutlinedButton(
-            onClick = onStatistik,
-            modifier = Modifier.weight(1f).height(48.dp),
-            shape = RoundedCornerShape(Dimens.RadiusControl),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
-            border = BorderStroke(1.dp, colors.border),
-            contentPadding = PaddingValues(0.dp),
-        ) { Icon(imageVector = Icons.Outlined.BarChart, contentDescription = "Statistik", modifier = Modifier.size(20.dp)) }
-        OutlinedButton(
-            onClick = onFinish,
-            modifier = Modifier.weight(1f).height(48.dp),
-            shape = RoundedCornerShape(Dimens.RadiusControl),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = Red400),
-            border = BorderStroke(1.dp, Red700.copy(alpha = 0.5f)),
-            contentPadding = PaddingValues(0.dp),
-        ) { Icon(imageVector = Icons.Outlined.Flag, contentDescription = "Selesai Shift", modifier = Modifier.size(20.dp)) }
     }
 }

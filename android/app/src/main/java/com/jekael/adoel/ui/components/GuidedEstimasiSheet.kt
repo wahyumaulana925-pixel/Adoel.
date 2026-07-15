@@ -1,6 +1,10 @@
 package com.jekael.adoel.ui.components
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -11,6 +15,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -25,101 +31,174 @@ import com.jekael.adoel.data.parseDurasi
 import com.jekael.adoel.data.parseJam
 import com.jekael.adoel.data.sisaMenitD405
 import com.jekael.adoel.ui.theme.AppType
+import com.jekael.adoel.ui.theme.Cyan500
 import com.jekael.adoel.ui.theme.Cyan600
 import com.jekael.adoel.ui.theme.Dimens
 import com.jekael.adoel.ui.theme.LocalAppColors
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
-/** Terpandu (guided) ESTIMASI entry — Batch 4. One field whose label/keyboard adapt to the tapped
+/** Terpandu (guided) ESTIMASI entry — one field whose label/keyboard adapt to the tapped
  * machine's [MesinTipe], with a live "≈ jam" preview computed from the exact same pure formulas
  * DoffViewModel uses, so what's previewed here is guaranteed to match what actually gets saved.
- * On Simpan, builds the identical "$mcNo $value" string the Teks console would send and hands it
- * to [onSubmit] — the caller is expected to route it through the same handlers.handleCommand path
- * so the overwrite guard, notification scheduling, and toast/haptic feedback all still apply. */
+ * On Simpan, builds the identical "$mcNo $value" string the console used to send in Teks mode and
+ * hands it to [onSubmit] — the caller routes it through handlers.handleCommand so the overwrite
+ * guard, notification scheduling, and toast/haptic feedback all still apply.
+ *
+ * A machine with no corak set yet (fresh install, or one that was never configured in Pengaturan)
+ * gets an inline quick-setup step first instead of being turned away to go set it up elsewhere —
+ * corak/target yard are the two fields that change constantly on the floor (Master Blueprint §4C),
+ * so this dialog is the fast path for them same as [QuickEditCorakDialog] is from a RadarCard tap.
+ */
 @Composable
 fun GuidedEstimasiSheet(
     mcNo: String,
     mesin: MesinData?,
     onDismiss: () -> Unit,
     onSubmit: (value: String) -> Unit,
+    onQuickUpdate: (corak: String, targetYard: Double?) -> Unit,
 ) {
     val colors = LocalAppColors.current
-    val tipe = mesin?.tipe
+    val tipe = mesin?.tipe ?: MesinTipe.TAPPET
+    var needQuickCorakSetup by remember(mcNo) { mutableStateOf(mesin == null || mesin.corak.isBlank() || mesin.corak.trim() == "-") }
+
+    var corakInput by remember(mcNo) { mutableStateOf("") }
+    var targetYardInput by remember(mcNo) { mutableStateOf("") }
     var valueInput by remember(mcNo) { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
 
-    LaunchedEffect(mcNo) {
+    LaunchedEffect(mcNo, needQuickCorakSetup) {
         delay(100)
         focusRequester.requestFocus()
     }
 
     FloatingEditDialog(onDismissRequest = onDismiss) {
         Text(
-            text = "Update Estimasi — Mc $mcNo",
+            text = "Update Estimasi — Mc $mcNo (${tipe.name})",
             style = AppType.DialogTitle.copy(color = colors.textPrimary),
         )
-
         Spacer(Modifier.height(16.dp))
 
-        if (tipe == null) {
-            Text(
-                text = "Mc $mcNo belum diatur — atur corak dulu di Pengaturan",
-                style = AppType.FieldText.copy(color = colors.textFaint),
+        if (needQuickCorakSetup) {
+            FieldLabel("Masukkan Corak Baru")
+            OutlinedTextField(
+                value = corakInput,
+                onValueChange = { corakInput = it.uppercase() },
+                modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
+                placeholder = { Text("cth: 34758", color = colors.textFaint) },
+                colors = outlinedFieldColors(),
+                shape = RoundedCornerShape(Dimens.RadiusControl),
+                textStyle = AppType.FieldText.copy(color = colors.textPrimary),
+                singleLine = true,
             )
+
+            Spacer(Modifier.height(12.dp))
+            FieldLabel("Target Yard (Opsional)")
+            OutlinedTextField(
+                value = targetYardInput,
+                onValueChange = { targetYardInput = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("cth: 303", color = colors.textFaint) },
+                colors = outlinedFieldColors(),
+                shape = RoundedCornerShape(Dimens.RadiusControl),
+                textStyle = AppType.FieldText.copy(color = colors.textPrimary),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                singleLine = true,
+            )
+
             Spacer(Modifier.height(20.dp))
-            OutlinedButton(
-                onClick = onDismiss,
+            Button(
+                onClick = {
+                    if (corakInput.isNotBlank()) {
+                        val yard = targetYardInput.trim().replace(',', '.').toDoubleOrNull()
+                        onQuickUpdate(corakInput.trim(), yard)
+                        needQuickCorakSetup = false
+                    }
+                },
+                enabled = corakInput.isNotBlank(),
                 modifier = Modifier.fillMaxWidth().height(48.dp),
                 shape = RoundedCornerShape(Dimens.RadiusControl),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
-                border = BorderStroke(1.dp, colors.border),
-            ) { Text("Tutup") }
-            return@FloatingEditDialog
-        }
-
-        val hint = estimasiFieldHint(tipe)
-        val preview = remember(valueInput, mesin) { previewEstimasi(tipe, valueInput, mesin) }
-
-        FieldLabel(hint.label)
-        OutlinedTextField(
-            value = valueInput,
-            onValueChange = { valueInput = it },
-            modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
-            placeholder = { Text("cth: ${hint.example}", color = colors.textFaint) },
-            colors = outlinedFieldColors(),
-            shape = RoundedCornerShape(Dimens.RadiusControl),
-            textStyle = AppType.FieldText.copy(color = colors.textPrimary),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { if (valueInput.isNotBlank()) onSubmit("$mcNo $valueInput") }),
-            singleLine = true,
-        )
-
-        Spacer(Modifier.height(10.dp))
-        Text(
-            text = preview?.let { "≈ jam $it" } ?: "Isi untuk melihat perkiraan jam",
-            style = AppType.Caption.copy(color = if (preview != null) Cyan600 else colors.textFaint),
-        )
-
-        Spacer(Modifier.height(20.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            OutlinedButton(
-                onClick = onDismiss,
-                modifier = Modifier.weight(1f).height(48.dp),
-                shape = RoundedCornerShape(Dimens.RadiusControl),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
-                border = BorderStroke(1.dp, colors.border),
-            ) { Text("Batal") }
-            Button(
-                onClick = { if (valueInput.isNotBlank()) onSubmit("$mcNo $valueInput") },
-                enabled = valueInput.isNotBlank(),
-                modifier = Modifier.weight(1f).height(48.dp),
-                shape = RoundedCornerShape(Dimens.RadiusControl),
                 colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
-            ) { Text("Simpan", fontWeight = FontWeight.SemiBold) }
+            ) { Text("Simpan Corak & Lanjut", fontWeight = FontWeight.SemiBold) }
+        } else {
+            val hint = estimasiFieldHint(tipe)
+            val preview = remember(valueInput, mesin) { previewEstimasi(tipe, valueInput, mesin) }
+
+            // One-shot cyan "water jet" pulse sweeping from the Simpan button toward the field's
+            // left edge on submit — echoes the nozzle spraying the weft thread across the loom
+            // (Master Blueprint §3F). Purely decorative on top of the real submit below.
+            val nozzleProgress = remember { Animatable(0f) }
+            val scope = rememberCoroutineScope()
+            fun fireNozzle() {
+                scope.launch {
+                    nozzleProgress.snapTo(0f)
+                    nozzleProgress.animateTo(1f, tween(320, easing = FastOutSlowInEasing))
+                }
+            }
+            fun submit() {
+                if (valueInput.isNotBlank()) {
+                    fireNozzle()
+                    onSubmit("$mcNo $valueInput")
+                }
+            }
+
+            FieldLabel(hint.label)
+            Box(modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = valueInput,
+                    onValueChange = { valueInput = it },
+                    modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
+                    placeholder = { Text("cth: ${hint.example}", color = colors.textFaint) },
+                    colors = outlinedFieldColors(),
+                    shape = RoundedCornerShape(Dimens.RadiusControl),
+                    textStyle = AppType.FieldText.copy(color = colors.textPrimary),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { submit() }),
+                    singleLine = true,
+                )
+                if (nozzleProgress.value > 0f && nozzleProgress.value < 1f) {
+                    Canvas(modifier = Modifier.matchParentSize()) {
+                        val progress = nozzleProgress.value
+                        val y = size.height / 2f
+                        val headX = size.width * (1f - progress)
+                        drawLine(
+                            color = Cyan500.copy(alpha = (1f - progress) * 0.9f),
+                            start = Offset(size.width, y),
+                            end = Offset(headX, y),
+                            strokeWidth = 2.dp.toPx(),
+                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 5.dp.toPx()), phase = progress * 40f),
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(10.dp))
+            Text(
+                text = preview?.let { "≈ jam $it" } ?: "Isi untuk melihat perkiraan jam",
+                style = AppType.Caption.copy(color = if (preview != null) Cyan600 else colors.textFaint),
+            )
+
+            Spacer(Modifier.height(20.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                OutlinedButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.weight(1f).height(48.dp),
+                    shape = RoundedCornerShape(Dimens.RadiusControl),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
+                    border = BorderStroke(1.dp, colors.border),
+                ) { Text("Batal") }
+                Button(
+                    onClick = ::submit,
+                    enabled = valueInput.isNotBlank(),
+                    modifier = Modifier.weight(1f).height(48.dp),
+                    shape = RoundedCornerShape(Dimens.RadiusControl),
+                    colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
+                ) { Text("Simpan", fontWeight = FontWeight.SemiBold) }
+            }
         }
     }
 }

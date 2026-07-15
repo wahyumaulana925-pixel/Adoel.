@@ -9,9 +9,16 @@ import android.os.PowerManager
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,7 +27,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
@@ -57,21 +64,13 @@ fun MainScreen(
     val state by doffVm.state.collectAsStateWithLifecycle()
     val toast by uiVm.toast.collectAsStateWithLifecycle()
     val confirm by uiVm.confirm.collectAsStateWithLifecycle()
-    // Chosen once in Pengaturan (persisted in DoffState, like themeMode) rather than per-session —
-    // switching it is rare enough that it doesn't need its own control on the main screen.
-    val inputStyle = remember(state.inputStyle) {
-        runCatching { InputStyle.valueOf(state.inputStyle) }.getOrDefault(InputStyle.TEKS)
-    }
 
-    // Console command bar — the one and only way to record estimasi/doffing. Saveable so a
-    // rotation or process death mid-shift doesn't drop what the operator is in the middle of.
-    var mode by rememberSaveable { mutableStateOf(Mode.AKTUAL) }
-    var input by rememberSaveable { mutableStateOf("") }
+    // Which top-level list is on screen — a pure view switcher now, decoupled from the console
+    // (see MainScreenHeader's page tab row). Saveable so a rotation or process death doesn't drop
+    // which page the operator was looking at.
+    var page by rememberSaveable { mutableStateOf(Page.RADAR) }
     var radarFilter by rememberSaveable { mutableStateOf("") }
     var doffFilter by rememberSaveable { mutableStateOf("") }
-    // Header's Bagikan/Statistik/Selesai Shift row — collapsed by default so the header stays
-    // compact; available from both Estimasi and Doffing since the header itself is shared.
-    var headerActionsExpanded by rememberSaveable { mutableStateOf(false) }
 
     val sendPulse = remember { SendPulseState() }
     LaunchedEffect(sendPulse.key) {
@@ -122,7 +121,6 @@ fun MainScreen(
     var activeOverlay by rememberSaveable(stateSaver = ActiveOverlaySaver) { mutableStateOf<ActiveOverlay>(ActiveOverlay.None) }
     var showRemaining by rememberSaveable { mutableStateOf(false) }
 
-    val inputFocus = remember { FocusRequester() }
     var consoleBarHeight by remember { mutableStateOf(0.dp) }
     var headerHeight by remember { mutableStateOf(0.dp) }
 
@@ -186,17 +184,6 @@ fun MainScreen(
     val (segeraList, menungguList) = remember(filteredRadarList) {
         derivedStateOf { partitionSegeraMenunggu(filteredRadarList, nowAbs) }
     }.value
-    // Real-time reminder of the expected command syntax for the machine number being typed —
-    // TAPPET/CAM want a duration, D405 wants running yard, D408 wants a jam counter — so an
-    // operator who forgets the format gets a hint before submitting instead of a generic error.
-    val inputHint = remember(input, mode, state.db) {
-        if (mode != Mode.ESTIMASI) return@remember null
-        val mcNo = input.trim().substringBefore(' ')
-        if (mcNo.isEmpty() || !mcNo.matches(Regex("^\\d{1,3}$"))) return@remember null
-        val tipe = state.db[mcNo]?.tipe ?: return@remember null
-        val hint = estimasiFieldHint(tipe)
-        "Mc $mcNo → ${hint.label.replaceFirstChar { it.lowercase() }}, cth: $mcNo ${hint.example}"
-    }
     // Flags doff entries left over from a shift the operator forgot to close via "Selesai Shift"
     // before the next 06.00/14.00/22.00 boundary — otherwise they'd silently get archived together
     // with the new shift's entries the next time Selesai Shift is pressed. Derived so this only
@@ -280,99 +267,106 @@ fun MainScreen(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
 
-            // Main scrollable content — scrolls behind the floating header & console card
-            LazyColumn(
+            // Page body — Radar/Riwayat switch with a "shedding motion" transition (Master
+            // Blueprint §3D): the outgoing and incoming page slide vertically in opposite
+            // directions at once, echoing the loom's heddle frames splitting the warp shed. Each
+            // page keeps its own LazyColumn (and so its own scroll position) rather than sharing
+            // one list whose items change wholesale.
+            AnimatedContent(
+                targetState = page,
                 modifier = Modifier.weight(1f).fillMaxWidth(),
-                contentPadding = PaddingValues(
-                    start = 12.dp, end = 12.dp,
-                    top = 10.dp + headerHeight + 16.dp,
-                    bottom = 10.dp + consoleBarHeight + 16.dp,
-                ),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                permissionBanners(
-                    notifGranted = permission.notifGranted,
-                    exactAlarmGranted = permission.exactAlarmGranted,
-                    batteryUnrestricted = permission.batteryUnrestricted,
-                    onNotifBannerClick = {
-                        if (Build.VERSION.SDK_INT >= 33) {
-                            notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                        }
-                    },
-                    onExactAlarmBannerClick = {
-                        if (Build.VERSION.SDK_INT >= 31) {
-                            val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
-                                data = Uri.parse("package:${context.packageName}")
+                transitionSpec = {
+                    val dir = if (targetState.ordinal > initialState.ordinal) 1 else -1
+                    (slideInVertically(tween(260, easing = FastOutSlowInEasing)) { h -> dir * h } + fadeIn(tween(200)))
+                        .togetherWith(slideOutVertically(tween(260, easing = FastOutSlowInEasing)) { h -> -dir * h } + fadeOut(tween(160)))
+                },
+                label = "pageShedding",
+            ) { p ->
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = PaddingValues(
+                        start = 12.dp, end = 12.dp,
+                        top = 10.dp + headerHeight + 16.dp,
+                        bottom = 10.dp + consoleBarHeight + 16.dp,
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    permissionBanners(
+                        notifGranted = permission.notifGranted,
+                        exactAlarmGranted = permission.exactAlarmGranted,
+                        batteryUnrestricted = permission.batteryUnrestricted,
+                        onNotifBannerClick = {
+                            if (Build.VERSION.SDK_INT >= 33) {
+                                notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                             }
-                            runCatching { context.startActivity(intent) }
-                        }
-                    },
-                    onBatteryBannerClick = {
-                        // On some OEM skins (e.g. OriginOS), tapping "Tetapkan sekarang" on
-                        // the system dialog doesn't grant the exemption directly — it drops
-                        // the user onto an app-battery-usage page where the real toggle is
-                        // one tap deeper and defaults back to "Dioptimalkan". Walk the user
-                        // through it explicitly instead of assuming the dialog alone works.
-                        uiVm.showConfirm(
-                            "Supaya notifikasi tidak telat, ikuti langkah ini (cukup sekali saja):\n\n" +
-                                "1. Pada dialog berikutnya, ketuk \"Tetapkan sekarang\".\n" +
-                                "2. Di halaman \"Penggunaan baterai aplikasi\", KETUK baris \"Izinkan penggunaan latar belakang\" (walau kelihatan sudah aktif).\n" +
-                                "3. Pilih \"Tidak dibatasi\" (bukan \"Dioptimalkan\").",
-                        ) {
-                            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                                data = Uri.parse("package:${context.packageName}")
-                            }
-                            runCatching { context.startActivity(intent) }
-                        }
-                    },
-                )
-
-                staleShiftBanner(
-                    staleCount = if (staleShiftDismissed) 0 else staleDoffCount,
-                    onFinishClick = { handlers.handleFinishShift() },
-                    onDismiss = { staleShiftDismissed = true },
-                )
-
-                // The console's mode toggle doubles as a page switcher: ESTIMASI shows the
-                // estimate rows, DOFFING shows the recorded-doff rows.
-                when (mode) {
-                    Mode.ESTIMASI -> {
-                        estimasiSection(
-                            radarList = radarList,
-                            segeraList = segeraList,
-                            menungguList = menungguList,
-                            menungguRows = menungguRows,
-                            menungguAccent = menungguAccent,
-                            db = state.db,
-                            nowAbs = nowAbs,
-                            radarFilter = radarFilter,
-                            onRadarFilterChange = { radarFilter = it },
-                            // Swipe on an Estimasi card is a quick, instant action in both input
-                            // styles now — Teks and Terpandu no longer diverge here. The full
-                            // Ada-keterangan/kendala chooser sheet is only reachable from the
-                            // Doffing console's own "Mulai" entry point (see GuidedDoffing wiring
-                            // below), not from swiping a card.
-                            onDoff = { mcNo -> handlers.handleDoff(mcNo) },
-                            onDoffMatching = { mcNo -> handlers.handleDoff(mcNo, "MATCHING") },
-                            onHapus = { mcNo -> handlers.handleHapusEst(mcNo) },
-                            onQuickEdit = { mcNo ->
-                                activeOverlay = if (inputStyle == InputStyle.TERPANDU) {
-                                    ActiveOverlay.GuidedEstimasi(mcNo)
-                                } else {
-                                    ActiveOverlay.QuickEditMesin(mcNo)
+                        },
+                        onExactAlarmBannerClick = {
+                            if (Build.VERSION.SDK_INT >= 31) {
+                                val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                                    data = Uri.parse("package:${context.packageName}")
                                 }
-                            },
-                        )
-                    }
-                    Mode.AKTUAL -> {
-                        doffingSection(
-                            state = state,
-                            aktualReversed = aktualReversed,
-                            doffFilter = doffFilter,
-                            onDoffFilterChange = { doffFilter = it },
-                            onEntryClick = { id -> activeOverlay = ActiveOverlay.EditAkt(id) },
-                            onHapusEntry = { id -> handlers.handleHapusAktual(id) { activeOverlay = ActiveOverlay.None } },
-                        )
+                                runCatching { context.startActivity(intent) }
+                            }
+                        },
+                        onBatteryBannerClick = {
+                            // On some OEM skins (e.g. OriginOS), tapping "Tetapkan sekarang" on
+                            // the system dialog doesn't grant the exemption directly — it drops
+                            // the user onto an app-battery-usage page where the real toggle is
+                            // one tap deeper and defaults back to "Dioptimalkan". Walk the user
+                            // through it explicitly instead of assuming the dialog alone works.
+                            uiVm.showConfirm(
+                                "Supaya notifikasi tidak telat, ikuti langkah ini (cukup sekali saja):\n\n" +
+                                    "1. Pada dialog berikutnya, ketuk \"Tetapkan sekarang\".\n" +
+                                    "2. Di halaman \"Penggunaan baterai aplikasi\", KETUK baris \"Izinkan penggunaan latar belakang\" (walau kelihatan sudah aktif).\n" +
+                                    "3. Pilih \"Tidak dibatasi\" (bukan \"Dioptimalkan\").",
+                            ) {
+                                val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                                    data = Uri.parse("package:${context.packageName}")
+                                }
+                                runCatching { context.startActivity(intent) }
+                            }
+                        },
+                    )
+
+                    staleShiftBanner(
+                        staleCount = if (staleShiftDismissed) 0 else staleDoffCount,
+                        onFinishClick = { handlers.handleFinishShift() },
+                        onDismiss = { staleShiftDismissed = true },
+                    )
+
+                    when (p) {
+                        Page.RADAR -> {
+                            estimasiSection(
+                                radarList = radarList,
+                                segeraList = segeraList,
+                                menungguList = menungguList,
+                                menungguRows = menungguRows,
+                                menungguAccent = menungguAccent,
+                                db = state.db,
+                                nowAbs = nowAbs,
+                                radarFilter = radarFilter,
+                                onRadarFilterChange = { radarFilter = it },
+                                onDoff = { mcNo -> handlers.handleDoff(mcNo) },
+                                onDoffMatching = { mcNo -> handlers.handleDoff(mcNo, "MATCHING") },
+                                onHapus = { mcNo -> handlers.handleHapusEst(mcNo) },
+                                // Fast path to the two fields that change constantly on the floor
+                                // (corak/target yard) — the full estimasi timer entry lives behind
+                                // the console's own guided flow instead (Master Blueprint §4C).
+                                onQuickEdit = { mcNo -> activeOverlay = ActiveOverlay.QuickEditMesin(mcNo) },
+                            )
+                        }
+                        Page.RIWAYAT -> {
+                            doffingSection(
+                                state = state,
+                                aktualReversed = aktualReversed,
+                                doffFilter = doffFilter,
+                                onDoffFilterChange = { doffFilter = it },
+                                onEntryClick = { id -> activeOverlay = ActiveOverlay.EditAkt(id) },
+                                onHapusEntry = { id -> handlers.handleHapusAktual(id) { activeOverlay = ActiveOverlay.None } },
+                                onShare = { shareHistory(context, state) },
+                                onFinish = { handlers.handleFinishShift() },
+                            )
+                        }
                     }
                 }
             }
@@ -386,37 +380,39 @@ fun MainScreen(
             showRemaining = showRemaining,
             onToggleShowRemaining = { showRemaining = !showRemaining },
             onGearClick = { activeOverlay = ActiveOverlay.Settings },
-            actionsExpanded = headerActionsExpanded,
-            onToggleActionsExpanded = { headerActionsExpanded = !headerActionsExpanded },
-            onShare = { shareHistory(context, state) },
             onStatistik = { activeOverlay = ActiveOverlay.Statistik },
-            onFinish = { handlers.handleFinishShift() },
+            page = page,
+            onPageSelect = { page = it },
             onHeightMeasured = { headerHeight = it },
             haptic = haptic,
             modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth(),
         )
 
-        // Console command bar — floating card, overlays the list (list scrolls behind it)
+        // Console command bar — floating card, overlays the list (list scrolls behind it). Pure
+        // machine-number entry point (Master Blueprint §4A/§4B): MainScreen decides what happens
+        // next from the machine's own state instead of a mode toggle telling it what to expect.
         ConsoleBar(
-            mode = mode,
-            onModeSelect = { mode = it },
-            inputStyle = inputStyle,
-            input = input,
-            onInputChange = { input = it },
-            inputFocus = inputFocus,
-            onSend = { handlers.handleCommand(mode, input) { input = "" } },
-            sendScale = { sendPulse.scale.value },
-            sendShowCheck = sendPulse.showCheck,
-            inputErrorFlash = errorFlash.active,
-            inputHint = inputHint,
-            onGuidedStart = { mcNo ->
-                if (state.db[mcNo] == null) {
-                    uiVm.showToast("⚠ Mc $mcNo tidak ditemukan")
-                } else {
-                    activeOverlay = if (mode == Mode.ESTIMASI) {
-                        ActiveOverlay.GuidedEstimasi(mcNo)
+            onGuidedStart = { raw ->
+                val mcList = raw.split(Regex("[,\\s]+")).filter(String::isNotBlank).distinct()
+                if (mcList.size > 1) {
+                    val invalid = mcList.filter { state.db[it] == null }
+                    if (invalid.isNotEmpty()) {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        uiVm.showToast("⚠ Mc ${invalid.joinToString(", ")} tidak ditemukan")
                     } else {
-                        ActiveOverlay.GuidedDoffing(mcNo)
+                        activeOverlay = ActiveOverlay.BulkGuidedSetup(mcList)
+                    }
+                } else {
+                    val mcNo = mcList.firstOrNull()
+                    when {
+                        mcNo == null -> Unit
+                        state.db[mcNo] == null -> uiVm.showToast("⚠ Mc $mcNo tidak ditemukan")
+                        // Machine already has an estimasi running — swipe already covers routine
+                        // doff/matching, so typing its number again means "correct the timer".
+                        state.estimasi[mcNo] != null -> activeOverlay = ActiveOverlay.GuidedEstimasi(mcNo)
+                        // No estimasi yet — offer the choice instead of guessing which one the
+                        // operator meant (Master Blueprint §4B, Skenario B & C).
+                        else -> activeOverlay = ActiveOverlay.GuidedActionHub(mcNo)
                     }
                 }
             },
@@ -449,7 +445,6 @@ fun MainScreen(
                     doffVm.resetDb()
                 },
                 onSetThemeMode = { mode -> doffVm.setThemeMode(mode.name) },
-                onSetInputStyle = { style -> doffVm.setInputStyle(style.name) },
                 onExportJson = { doffVm.exportJson() },
                 onImport = { json ->
                     uiVm.showConfirm("Pulihkan data dari file ini? Semua data saat ini akan diganti.") {
@@ -540,6 +535,33 @@ fun MainScreen(
                 handlers.handleCommand(Mode.ESTIMASI, value) {
                     activeOverlay = ActiveOverlay.None
                 }
+            },
+            onQuickUpdate = { corak, targetYard ->
+                val mesin = state.db[guidedEstimasiMcNo] ?: MesinData()
+                doffVm.setMesin(guidedEstimasiMcNo, mesin.copy(corak = corak, targetYard = targetYard))
+            },
+        )
+    }
+
+    val guidedActionHubMcNo = (activeOverlay as? ActiveOverlay.GuidedActionHub)?.mcNo
+    if (guidedActionHubMcNo != null) {
+        GuidedActionHub(
+            mcNo = guidedActionHubMcNo,
+            onDismiss = { activeOverlay = ActiveOverlay.None },
+            onAddEstimasiClick = { activeOverlay = ActiveOverlay.GuidedEstimasi(guidedActionHubMcNo) },
+            onDirectDoffClick = { activeOverlay = ActiveOverlay.GuidedDoffing(guidedActionHubMcNo) },
+        )
+    }
+
+    val bulkGuidedMcNos = (activeOverlay as? ActiveOverlay.BulkGuidedSetup)?.mcNos
+    if (bulkGuidedMcNos != null) {
+        BulkGuidedSetupSheet(
+            mcNos = bulkGuidedMcNos,
+            onDismiss = { activeOverlay = ActiveOverlay.None },
+            onSave = { corak, targetYard ->
+                doffVm.setMesinBulk(bulkGuidedMcNos, corak, targetYard)
+                uiVm.showToast("${bulkGuidedMcNos.size} mesin diperbarui ✓")
+                activeOverlay = ActiveOverlay.None
             },
         )
     }
