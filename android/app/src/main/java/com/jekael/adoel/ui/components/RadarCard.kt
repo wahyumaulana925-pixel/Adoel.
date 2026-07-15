@@ -7,6 +7,7 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Verified
@@ -483,57 +484,63 @@ fun RadarCard(
                     }
                 }
             }
+        }
 
-            // Celebrate completion — the card visibly "splits" as the tint sweeps in behind a
-            // clipped boundary (straight diagonal for Normal, a jagged swatch-clip edge for
-            // Matching — Master Blueprint §3A/§3B), then the icon pops/spins in. Which shape,
-            // icon, and direction depends on completingKind (see its assignment above).
-            if (checkScale > 0f) {
-                val isMatching = completingKind == DoffCompletionKind.MATCHING
+        // Celebrate completion — a sibling of the card Box above, NOT a child of it: that Box's
+        // own graphicsLayer fades its alpha to 0 as exitProgress climbs (see translationX/alpha
+        // above), which was silently fading this celebration out in lockstep with the split still
+        // trying to sweep in — the reveal and the icon pop never really got a chance to be seen
+        // before both vanished together. Living outside that graphicsLayer, this stays at full
+        // opacity for its own duration regardless of how the card underneath is fading/sliding away.
+        // The card visibly "splits" as the tint sweeps in behind a clipped boundary (straight
+        // diagonal for Normal, a jagged swatch-clip edge for Matching — Master Blueprint §3A/§3B),
+        // then the icon pops/spins in. Which shape, icon, and direction depends on completingKind.
+        if (checkScale > 0f) {
+            val isMatching = completingKind == DoffCompletionKind.MATCHING
+            Box(
+                modifier = Modifier.matchParentSize(),
+                contentAlignment = Alignment.Center,
+            ) {
                 Box(
-                    modifier = Modifier.matchParentSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .drawWithContent {
-                                drawContent()
-                                val splitPath = if (isMatching) {
-                                    jaggedSplitPath(size, weaveSweep)
-                                } else {
-                                    diagonalSplitPath(size, weaveSweep)
-                                }
-                                clipPath(splitPath) {
-                                    drawRect(completionColor.copy(alpha = 0.30f))
-                                }
-                                // Bright flash racing along the split boundary as it sweeps across.
-                                rotate(if (isMatching) -12f else 20f) {
-                                    val bandWidth = size.width * 0.18f
-                                    val travel = size.width * 1.6f
-                                    val x = -bandWidth + weaveSweep * travel
-                                    drawRect(
-                                        color = Color.White.copy(alpha = 0.5f * (1f - weaveSweep)),
-                                        topLeft = Offset(x, -size.height),
-                                        size = Size(bandWidth, size.height * 3f),
-                                    )
-                                }
-                            },
-                    )
-                    Icon(
-                        imageVector = completionIcon,
-                        contentDescription = null,
-                        tint = completionColor,
-                        modifier = Modifier
-                            .size(56.dp)
-                            .graphicsLayer {
-                                scaleX = checkScale
-                                scaleY = checkScale
-                                // Verified spins in (Matching); CheckCircle just grows in place.
-                                rotationZ = if (isMatching) (1f - checkScale) * -180f else 0f
-                            },
-                    )
-                }
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clip(RoundedCornerShape(Dimens.RadiusCard))
+                        .drawWithContent {
+                            drawContent()
+                            val splitPath = if (isMatching) {
+                                jaggedSplitPath(size, weaveSweep)
+                            } else {
+                                diagonalSplitPath(size, weaveSweep)
+                            }
+                            clipPath(splitPath) {
+                                drawRect(completionColor.copy(alpha = 0.30f))
+                            }
+                            // Bright flash racing along the split boundary as it sweeps across.
+                            rotate(if (isMatching) -12f else 20f) {
+                                val bandWidth = size.width * 0.18f
+                                val travel = size.width * 1.6f
+                                val x = -bandWidth + weaveSweep * travel
+                                drawRect(
+                                    color = Color.White.copy(alpha = 0.5f * (1f - weaveSweep)),
+                                    topLeft = Offset(x, -size.height),
+                                    size = Size(bandWidth, size.height * 3f),
+                                )
+                            }
+                        },
+                )
+                Icon(
+                    imageVector = completionIcon,
+                    contentDescription = null,
+                    tint = completionColor,
+                    modifier = Modifier
+                        .size(56.dp)
+                        .graphicsLayer {
+                            scaleX = checkScale
+                            scaleY = checkScale
+                            // Verified spins in (Matching); CheckCircle just grows in place.
+                            rotationZ = if (isMatching) (1f - checkScale) * -180f else 0f
+                        },
+                )
             }
         }
     }
