@@ -45,7 +45,7 @@ import java.util.Calendar
  * height via [onHeightMeasured] so the scrollable list behind it can pad itself to avoid sitting
  * under the card. */
 @Composable
-fun MainScreenHeader(
+internal fun MainScreenHeader(
     nowAbs: Long,
     totalMc: Int,
     doffCount: Int,
