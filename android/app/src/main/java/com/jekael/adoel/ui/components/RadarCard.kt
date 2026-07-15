@@ -300,19 +300,26 @@ fun RadarCard(
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
-                        .width(3.dp)
+                        .width(4.dp)
                         .background(clr.accent)
                         .drawWithContent {
                             drawContent()
-                            val pitch = 5.dp.toPx()
-                            val band = 1.5.dp.toPx()
+                            // Alternating dark/light bands (not just a periodic shadow) so this
+                            // reads as a twisted cord's highlight/shadow rotation rather than a
+                            // faint smudge — widened bar + stronger contrast after the first pass
+                            // at this (3dp, one shadow tone, 22% alpha) turned out too subtle to
+                            // confirm by eye on-device.
+                            val pitch = 6.dp.toPx()
+                            val band = 2.5.dp.toPx()
                             var y = 0f
+                            var dark = true
                             while (y < size.height) {
                                 drawRect(
-                                    color = Color.Black.copy(alpha = 0.22f),
+                                    color = if (dark) Color.Black.copy(alpha = 0.38f) else Color.White.copy(alpha = 0.30f),
                                     topLeft = Offset(0f, y),
                                     size = Size(size.width, band),
                                 )
+                                dark = !dark
                                 y += pitch
                             }
                         },

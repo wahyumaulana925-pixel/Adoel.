@@ -9,6 +9,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Texture
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -175,6 +177,15 @@ internal fun MesinTab(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(k, style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary), modifier = Modifier.width(32.dp))
+                    // Same kain marker as RadarCard's corak/yard line — this row is Pengaturan >
+                    // Mesin's equivalent of that line (corak + target yard), so it gets the same
+                    // visual anchor instead of reading as unrelated plain text.
+                    Icon(
+                        imageVector = Icons.Outlined.Texture,
+                        contentDescription = null,
+                        tint = colors.textFaint,
+                        modifier = Modifier.size(12.dp),
+                    )
                     Text(
                         v.corak,
                         style = AppType.FieldText.copy(color = colors.textPrimary),
@@ -182,7 +193,7 @@ internal fun MesinTab(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    if (v.targetYard != null) Text("${formatYard(v.targetYard)}y", style = TextStyle(fontSize = 11.sp, color = colors.textFaint))
+                    if (v.targetYard != null) Text("${formatYard(v.targetYard)}y", style = TextStyle(fontSize = 12.sp, color = colors.textFaint))
                 }
             }
         }

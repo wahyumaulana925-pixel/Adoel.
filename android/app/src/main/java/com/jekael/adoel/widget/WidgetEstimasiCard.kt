@@ -6,8 +6,10 @@ import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceModifier
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.background
+import androidx.glance.layout.Box
 import androidx.glance.layout.Column
 import androidx.glance.layout.fillMaxWidth
+import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
@@ -53,14 +55,20 @@ fun WidgetEstimasiCard(est: Estimasi, mesin: MesinData?, now: Long, dark: Boolea
         modifier = GlanceModifier
             .fillMaxWidth()
             .cornerRadius(Dimens.RadiusControl)
-            .background(bg)
-            .padding(12.dp),
+            .background(bg),
     ) {
-        Text("Mc ${est.mcNo}", style = TextStyle(color = ColorProvider(textColor), fontSize = 18.sp, fontWeight = FontWeight.Bold))
-        Text(corakLine, style = TextStyle(color = ColorProvider(textColor), fontSize = 12.sp), maxLines = 1)
-        Text(
-            text = "Siap jam ${absMinToTimeStr(est.estAbsMin)}",
-            style = TextStyle(color = ColorProvider(accent), fontSize = 13.sp, fontWeight = FontWeight.Medium),
-        )
+        // Top accent strip echoing RadarCard's colored left edge — Glance (the widget toolkit)
+        // has no Canvas/custom drawing API to reuse RadarCard's twisted-thread band effect, so
+        // this stays a plain color block; a horizontal strip (not a side column) is what Glance's
+        // simplified Row/Column stretching can size reliably without needing cross-axis fill.
+        Box(modifier = GlanceModifier.fillMaxWidth().height(3.dp).background(accent)) {}
+        Column(modifier = GlanceModifier.padding(12.dp)) {
+            Text("Mc ${est.mcNo}", style = TextStyle(color = ColorProvider(textColor), fontSize = 18.sp, fontWeight = FontWeight.Bold))
+            Text(corakLine, style = TextStyle(color = ColorProvider(textColor), fontSize = 12.sp), maxLines = 1)
+            Text(
+                text = "Siap jam ${absMinToTimeStr(est.estAbsMin)}",
+                style = TextStyle(color = ColorProvider(accent), fontSize = 13.sp, fontWeight = FontWeight.Medium),
+            )
+        }
     }
 }
