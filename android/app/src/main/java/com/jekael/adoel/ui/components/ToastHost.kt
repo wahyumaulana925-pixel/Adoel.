@@ -48,6 +48,7 @@ fun ToastHost(
                     modifier = Modifier
                         .shadow(elevation = 10.dp, shape = RoundedCornerShape(24.dp), ambientColor = Color.Black.copy(alpha = 0.4f))
                         .background(colors.bgElevated2, RoundedCornerShape(24.dp))
+                        .fabricTextureSubtle()
                         .padding(horizontal = 20.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),

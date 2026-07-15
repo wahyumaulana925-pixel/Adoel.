@@ -29,8 +29,11 @@ private fun Modifier.softCardShadow(shape: RoundedCornerShape): Modifier =
 // so cards read as a single premium material instead of a flat color fill. Both effects are subtle
 // on purpose (this rides on top of the existing tonal/border/shadow depth cues, not a replacement
 // for them) and work unmodified against any base color, including RadarCard's per-urgency tint.
+// Not private: ConfirmDialog uses its own smaller/rounder shape (20.dp, not RadiusFloating/
+// RadiusCard) so it can't go through floatingHeaderCard()/elevatedListCard() below, but should
+// still get the same premium finish as every other floating surface.
 @Composable
-private fun Modifier.premiumSurface(base: Color): Modifier = this
+fun Modifier.premiumSurface(base: Color): Modifier = this
     .background(
         Brush.verticalGradient(
             0f to lerp(base, Color.White, 0.05f),

@@ -7,7 +7,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -21,7 +20,6 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -35,7 +33,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
@@ -46,10 +43,9 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import com.jekael.adoel.ui.theme.Cyan500
-import com.jekael.adoel.ui.theme.Dimens
 import com.jekael.adoel.ui.theme.LocalAppColors
 import com.jekael.adoel.ui.theme.Motion
-import com.jekael.adoel.ui.theme.fabricTextureSubtle
+import com.jekael.adoel.ui.theme.floatingHeaderCard
 
 @Composable
 fun FieldLabel(text: String) {
@@ -98,7 +94,6 @@ fun FloatingEditDialog(
     onDismissRequest: () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val colors = LocalAppColors.current
     var visible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { visible = true }
 
@@ -153,10 +148,11 @@ fun FloatingEditDialog(
                         .navigationBarsPadding()
                         .padding(16.dp)
                         .heightIn(max = maxCardHeight)
-                        .clip(RoundedCornerShape(Dimens.RadiusFloating))
-                        .border(1.dp, colors.border, RoundedCornerShape(Dimens.RadiusFloating))
-                        .background(colors.bgElevated)
-                        .fabricTextureSubtle()
+                        // Reuses the same clip/border/premium-gradient/texture stack every other
+                        // floating surface uses (see CardStyles.kt) instead of a hand-rolled
+                        // duplicate — this sheet previously missed the premium gradient+highlight
+                        // finish because it built its background separately.
+                        .floatingHeaderCard()
                         .padding(20.dp)
                         .verticalScroll(rememberScrollState()),
                     content = content,
