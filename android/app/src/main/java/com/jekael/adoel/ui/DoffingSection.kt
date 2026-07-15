@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Texture
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -156,12 +157,22 @@ private fun DoffingRow(
                     text = entry.mcNo,
                     style = AppType.NumberLarge.copy(color = Cyan500, letterSpacing = (-1).sp),
                 )
-                Text(
-                    text = sub,
-                    style = AppType.LabelBold.copy(color = colors.textMuted),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    // Same kain marker as RadarCard's corak/yard line (see Icons.Outlined.Texture
+                    // there) — this history row shows the identical corak/yard pairing.
+                    Icon(
+                        imageVector = Icons.Outlined.Texture,
+                        contentDescription = null,
+                        tint = colors.textFaint,
+                        modifier = Modifier.size(11.dp),
+                    )
+                    Text(
+                        text = sub,
+                        style = AppType.LabelBold.copy(color = colors.textMuted),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
             Text(
                 text = entry.ket,

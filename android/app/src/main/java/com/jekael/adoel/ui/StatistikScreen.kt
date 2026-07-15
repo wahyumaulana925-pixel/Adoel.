@@ -41,6 +41,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
@@ -357,7 +361,26 @@ private fun DoffCountChart(history: List<ShiftRecord>, selectedShiftId: Int?, on
                                 .fillMaxWidth()
                                 .height((44.dp * animatedFraction.value).coerceAtLeast(4.dp))
                                 .clip(RoundedCornerShape(3.dp))
-                                .background(barColor),
+                                .background(barColor)
+                                // Same twisted-thread banding as RadarCard's left accent — these
+                                // bars were the one other vertical fill left as a flat block after
+                                // that pass, and both read as the same "thread" material now.
+                                .drawWithContent {
+                                    drawContent()
+                                    val pitch = 7.dp.toPx()
+                                    val band = 2.dp.toPx()
+                                    var y = 0f
+                                    var dark = true
+                                    while (y < size.height) {
+                                        drawRect(
+                                            color = if (dark) Color.Black.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.18f),
+                                            topLeft = Offset(0f, y),
+                                            size = Size(size.width, band),
+                                        )
+                                        dark = !dark
+                                        y += pitch
+                                    }
+                                },
                         )
                     }
                 }
