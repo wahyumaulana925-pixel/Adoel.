@@ -126,19 +126,20 @@ fun GuidedEstimasiSheet(
 
             // One-shot cyan "water jet" pulse sweeping from the Simpan button toward the field's
             // left edge on submit — echoes the nozzle spraying the weft thread across the loom
-            // (Master Blueprint §3F). Purely decorative on top of the real submit below.
+            // (Master Blueprint §3F). onSubmit's success path clears activeOverlay synchronously
+            // (see MainScreen's onCleared callback), which tears down this whole dialog the instant
+            // it's called — so the animation has to run to completion *before* onSubmit fires, not
+            // alongside it as fire-and-forget, or the dialog would vanish before a single animated
+            // frame ever reached the screen.
             val nozzleProgress = remember { Animatable(0f) }
             val scope = rememberCoroutineScope()
-            fun fireNozzle() {
+            fun submit() {
+                if (valueInput.isBlank()) return
+                val toSubmit = "$mcNo $valueInput"
                 scope.launch {
                     nozzleProgress.snapTo(0f)
                     nozzleProgress.animateTo(1f, tween(320, easing = FastOutSlowInEasing))
-                }
-            }
-            fun submit() {
-                if (valueInput.isNotBlank()) {
-                    fireNozzle()
-                    onSubmit("$mcNo $valueInput")
+                    onSubmit(toSubmit)
                 }
             }
 
