@@ -284,11 +284,13 @@ private fun UrgencyBandHeader(label: String, count: Int, color: Color, modifier:
 }
 
 /** Sits between two RadarCards in the Menunggu band when the gap to the next doff is long enough
- * to actually step away. The remaining minutes are the headline (same big/bold treatment as a
- * RadarCard's countdown) so an operator reads "how long do I have" at a glance instead of doing
- * the subtraction themselves between the two neighboring cards' times — the whole point of this
- * card existing. Emerald is used nowhere in the urgency scale (Cyan/Amber/Orange/Red), so this
- * reads as "good news" rather than competing with any urgency color.
+ * to actually step away. The break's total length ([gapMin], fixed — not a live countdown) is the
+ * headline (same big/bold treatment as a RadarCard's countdown) so an operator reads "how long is
+ * this break" at a glance instead of doing the subtraction themselves between the two neighboring
+ * cards' times — the whole point of this card existing. The caption below still carries the live
+ * end time so "when does it end" stays answerable too. Emerald is used nowhere in the urgency
+ * scale (Cyan/Amber/Orange/Red), so this reads as "good news" rather than competing with any
+ * urgency color.
  *
  * [isActive] gates the progress bar: only the topmost jeda card (the one whose window has
  * actually started) fills in — a jeda further down the list is a preview of a gap that hasn't
@@ -329,7 +331,10 @@ private fun BreakGapCard(
         }
         Spacer(Modifier.height(4.dp))
         Text(
-            text = formatDeltaMin(remainingMin),
+            // Total break length — fixed, not a live countdown. formatDeltaMin(remainingMin)
+            // used to be here, but that answers "how long until this ends", not "how long is
+            // this break" — the actual question this card exists to answer at a glance.
+            text = formatDeltaMin(gapMin),
             style = TextStyle(
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Black,
@@ -338,7 +343,7 @@ private fun BreakGapCard(
             ),
         )
         Text(
-            text = "Jeda sampai ${absMinToTimeStr(nextAbsMin)} — sebelum Mc $nextMcNo",
+            text = "Sampai ${absMinToTimeStr(nextAbsMin)} (${formatDeltaMin(remainingMin)} lagi) — sebelum Mc $nextMcNo",
             style = AppType.Caption.copy(color = colors.textFaint),
         )
         Spacer(Modifier.height(8.dp))
