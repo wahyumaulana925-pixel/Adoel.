@@ -20,6 +20,11 @@ data class Estimasi(
     val startAbsMin: Long,
     val corakOverride: String? = null,
     val yardOverride: Double? = null,
+    // Non-null while the operator has Jeda'd this machine — the abs-minute timestamp Jeda was
+    // pressed at. Time is frozen from the operator's point of view while paused (see
+    // Estimasi.effectiveRemaining in EstimasiUtils.kt): estAbsMin itself doesn't move until
+    // Lanjutkan shifts it forward by however long the pause lasted (DoffViewModel.resumeEstimasi).
+    val pausedAtAbsMin: Long? = null,
 )
 
 data class AktualEntry(

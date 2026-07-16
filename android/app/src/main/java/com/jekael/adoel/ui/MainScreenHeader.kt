@@ -121,7 +121,14 @@ internal fun MainScreenHeader(
                 ) {
                     Text(
                         text = "Adoel",
-                        style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Black, color = colors.textPrimary, letterSpacing = (-0.5).sp),
+                        // Matches the app icon's brand blue + amber dot instead of a neutral
+                        // textPrimary wordmark, so the in-app header reads as the same identity.
+                        style = TextStyle(
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Black,
+                            color = if (colors.isDark) Cyan400 else Cyan600,
+                            letterSpacing = (-0.5).sp,
+                        ),
                     )
                     Text(
                         text = ".",

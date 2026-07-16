@@ -202,7 +202,7 @@ fun MainScreen(
     // already amber/orange. Derived so this only re-propagates when the accent color itself changes.
     val menungguAccent by remember(menungguList) {
         derivedStateOf {
-            when (menungguList.maxOfOrNull { urgencyLevel(it.estAbsMin - nowAbs) }) {
+            when (menungguList.maxOfOrNull { urgencyLevel(it.effectiveRemaining(nowAbs)) }) {
                 UrgencyLevel.IMMINENT -> Amber600
                 UrgencyLevel.SOON -> Amber400
                 else -> Cyan400
@@ -347,6 +347,8 @@ fun MainScreen(
                                 onDoff = { mcNo -> handlers.handleDoff(mcNo) },
                                 onDoffMatching = { mcNo -> handlers.handleDoff(mcNo, "MATCHING") },
                                 onHapus = { mcNo -> handlers.handleHapusEst(mcNo) },
+                                onJeda = { mcNo -> handlers.handleJeda(mcNo) },
+                                onLanjutkan = { mcNo -> handlers.handleLanjutkan(mcNo) },
                                 // Two distinct tap zones (Master Blueprint v9.2 §2): mcNo/corak
                                 // column edits corak+target yard, the time column edits the
                                 // estimasi's own time — no more one tap target for two fields.
@@ -402,6 +404,7 @@ fun MainScreen(
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     uiVm.showToast("⚠ Mc $mcNo tidak ditemukan")
                 } else {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     // GuidedEstimasiSheet itself detects an unconfigured machine (blank corak) and
                     // offers the quick corak/yard setup inline before the value step (§3) — no
                     // separate routing needed here for that case.
@@ -413,11 +416,18 @@ fun MainScreen(
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     uiVm.showToast("⚠ Mc $mcNo tidak ditemukan")
                 } else {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     activeOverlay = ActiveOverlay.GuidedDoffing(mcNo)
                 }
             },
-            onUndo = { undoRedo.undo() },
-            onRedo = { undoRedo.redo() },
+            onUndo = {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                undoRedo.undo()
+            },
+            onRedo = {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                undoRedo.redo()
+            },
             canUndo = undoRedo.canUndo,
             canRedo = undoRedo.canRedo,
             onHeightMeasured = { consoleBarHeight = it },
@@ -523,6 +533,7 @@ fun MainScreen(
             onDismiss = { activeOverlay = ActiveOverlay.None },
             onSave = { corak, targetYard ->
                 doffVm.setMesin(quickEditMcNo, mesin.copy(corak = corak, targetYard = targetYard))
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 uiVm.showToast("Mc $quickEditMcNo disimpan ✓")
                 activeOverlay = ActiveOverlay.None
             },

@@ -91,14 +91,17 @@ internal fun ConsoleBar(
                     icon = Icons.Outlined.Undo,
                     contentDescription = "Undo",
                     enabled = canUndo,
-                    accent = colors.textSecondary,
+                    // Violet — already this bar's own accent (the text field's focus/cursor
+                    // color), so Undo/Redo read as a pair native to the console itself, distinct
+                    // from Estimasi's Cyan and Doffing's Emerald.
+                    accent = Violet500,
                     onClick = onUndo,
                 )
                 ConsoleIconButton(
                     icon = Icons.Outlined.Redo,
                     contentDescription = "Redo",
                     enabled = canRedo,
-                    accent = colors.textSecondary,
+                    accent = Violet500,
                     onClick = onRedo,
                 )
                 OutlinedTextField(

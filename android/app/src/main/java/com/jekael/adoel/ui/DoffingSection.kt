@@ -2,14 +2,13 @@ package com.jekael.adoel.ui
 
 import android.content.Context
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Flag
@@ -19,7 +18,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
@@ -33,6 +31,7 @@ import com.jekael.adoel.data.*
 import com.jekael.adoel.ui.components.EmptyState
 import com.jekael.adoel.ui.components.SwipeableCard
 import com.jekael.adoel.ui.components.mesinTipeColor
+import com.jekael.adoel.ui.components.mesinTipeIcon
 import com.jekael.adoel.ui.theme.*
 
 /** RIWAYAT page's list content: empty state, or the recorded-doff rows (newest first). Bagikan
@@ -149,7 +148,8 @@ private fun DoffingRow(
         mesin?.targetYard != null -> "$corak · ${formatYard(mesin.targetYard)}y"
         else -> corak
     }
-    val dotColor = mesin?.tipe?.let(::mesinTipeColor) ?: colors.textFaint
+    val tipeColor = mesin?.tipe?.let(::mesinTipeColor) ?: colors.textFaint
+    val tipeIcon = mesin?.tipe?.let(::mesinTipeIcon) ?: Icons.Outlined.Circle
     // Swipe right = edit (same as tapping the card), swipe left = hapus — matches RadarCard's
     // swipe model. Tap still opens edit too, both as a fallback for anyone who doesn't swipe and
     // because TalkBack can't perform the drag gesture at all (see customActions below for that).
@@ -180,7 +180,12 @@ private fun DoffingRow(
                 style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Black, color = colors.textMuted),
                 modifier = Modifier.width(22.dp),
             )
-            Box(Modifier.size(8.dp).clip(CircleShape).background(dotColor))
+            Icon(
+                imageVector = tipeIcon,
+                contentDescription = null,
+                tint = tipeColor,
+                modifier = Modifier.size(14.dp),
+            )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = entry.mcNo,

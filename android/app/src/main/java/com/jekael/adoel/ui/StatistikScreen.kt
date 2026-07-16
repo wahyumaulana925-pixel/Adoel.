@@ -26,8 +26,10 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -73,6 +75,7 @@ import com.jekael.adoel.ui.components.LinearProgressBar
 import com.jekael.adoel.ui.components.SlidePanel
 import com.jekael.adoel.ui.components.SwipeableCard
 import com.jekael.adoel.ui.components.mesinTipeColor
+import com.jekael.adoel.ui.components.mesinTipeIcon
 import com.jekael.adoel.ui.theme.AppType
 import com.jekael.adoel.ui.theme.Cyan400
 import com.jekael.adoel.ui.theme.Cyan500
@@ -513,11 +516,12 @@ private fun ShiftRow(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Box(
-                                modifier = Modifier
-                                    .size(6.dp)
-                                    .clip(CircleShape)
-                                    .background(db[entry.mcNo]?.tipe?.let(::mesinTipeColor) ?: colors.textFaint),
+                            val archiveTipe = db[entry.mcNo]?.tipe
+                            Icon(
+                                imageVector = archiveTipe?.let(::mesinTipeIcon) ?: Icons.Outlined.Circle,
+                                contentDescription = null,
+                                tint = archiveTipe?.let(::mesinTipeColor) ?: colors.textFaint,
+                                modifier = Modifier.size(12.dp),
                             )
                             Text("Mc ${entry.mcNo} · $line", style = AppType.Caption.copy(color = colors.textSecondary))
                         }

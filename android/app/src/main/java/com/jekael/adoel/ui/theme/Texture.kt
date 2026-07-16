@@ -7,17 +7,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlin.math.sin
 
 /**
  * Diagonal twill-weave line texture — a nod to this app's fabric-loom domain (it tracks Water Jet
@@ -86,33 +88,42 @@ fun Modifier.fabricTextureSubtle(): Modifier = twillTexture(alpha = 0.05f)
 fun Modifier.fabricTextureBold(): Modifier = twillTexture(alpha = 0.05f)
 
 /** Drop-in replacement for `HorizontalDivider(color = colors.border)` — two dash patterns on the
- * same line, phase-shifted by exactly one dash length so the second fills the first's gaps, drawn
- * in a slightly different tone. Reads as two threads crossing (warp/weft) rather than a plain
- * dashed rule, without needing extra height for a real diagonal weave tile. Thickness/saturation
- * pushed up from the original 1dp/0.35 mix so the weft thread stays legibly distinct from the warp
- * even under dim factory-floor lighting. */
+ * same wavy line, phase-shifted by exactly one dash length so the second fills the first's gaps,
+ * drawn in a slightly different tone. Reads as two threads crossing (warp/weft) rather than a
+ * plain dashed rule — following a gentle sine curve instead of a flat rule leans further into that
+ * "woven thread" identity than a straight line ever could. Thickness/saturation pushed up from the
+ * original 1dp/0.35 mix so the weft thread stays legibly distinct from the warp even under dim
+ * factory-floor lighting. */
 @Composable
 fun WovenDivider(modifier: Modifier = Modifier, thickness: Dp = 1.5.dp) {
     val colors = LocalAppColors.current
     val warpColor = colors.border
     val weftColor = lerp(colors.border, Cyan500, 0.45f)
-    Canvas(modifier = modifier.fillMaxWidth().height(thickness)) {
+    Canvas(modifier = modifier.fillMaxWidth().height(16.dp)) {
+        val midY = size.height / 2f
+        val amplitude = 3.dp.toPx()
+        val wavelength = 16.dp.toPx()
+        val step = 1.dp.toPx()
         val dash = 10.dp.toPx()
         val gap = 6.dp.toPx()
-        val y = size.height / 2f
-        drawLine(
+        val wavePath = Path().apply {
+            moveTo(0f, midY)
+            var x = 0f
+            while (x <= size.width) {
+                val y = midY + amplitude * sin(2.0 * Math.PI * x / wavelength).toFloat()
+                lineTo(x, y)
+                x += step
+            }
+        }
+        drawPath(
+            path = wavePath,
             color = warpColor,
-            start = Offset(0f, y),
-            end = Offset(size.width, y),
-            strokeWidth = size.height,
-            pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, gap), phase = 0f),
+            style = Stroke(width = thickness.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, gap), phase = 0f)),
         )
-        drawLine(
+        drawPath(
+            path = wavePath,
             color = weftColor,
-            start = Offset(0f, y),
-            end = Offset(size.width, y),
-            strokeWidth = size.height,
-            pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, gap), phase = dash),
+            style = Stroke(width = thickness.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, gap), phase = dash)),
         )
     }
 }

@@ -20,6 +20,7 @@ import com.jekael.adoel.data.Estimasi
 import com.jekael.adoel.data.MesinData
 import com.jekael.adoel.data.UrgencyLevel
 import com.jekael.adoel.data.absMinToTimeStr
+import com.jekael.adoel.data.effectiveRemaining
 import com.jekael.adoel.data.formatYard
 import com.jekael.adoel.data.urgencyLevel
 import com.jekael.adoel.ui.components.mesinTipeColor
@@ -40,7 +41,7 @@ import com.jekael.adoel.ui.theme.Zinc900
  * never theme-aware). */
 @Composable
 fun WidgetEstimasiCard(est: Estimasi, mesin: MesinData?, now: Long, dark: Boolean) {
-    val remaining = est.estAbsMin - now
+    val remaining = est.effectiveRemaining(now)
     val accent = when (urgencyLevel(remaining)) {
         UrgencyLevel.CALM -> Cyan500
         UrgencyLevel.SOON -> Amber500
@@ -79,7 +80,11 @@ fun WidgetEstimasiCard(est: Estimasi, mesin: MesinData?, now: Long, dark: Boolea
             }
             Text(corakLine, style = TextStyle(color = ColorProvider(textColor), fontSize = 12.sp), maxLines = 1)
             Text(
-                text = "Siap jam ${absMinToTimeStr(est.estAbsMin)}",
+                text = if (est.pausedAtAbsMin != null) {
+                    "⏸ Dijeda · siap jam ${absMinToTimeStr(est.estAbsMin)}"
+                } else {
+                    "Siap jam ${absMinToTimeStr(est.estAbsMin)}"
+                },
                 style = TextStyle(color = ColorProvider(accent), fontSize = 13.sp, fontWeight = FontWeight.Medium),
             )
         }

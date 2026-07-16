@@ -109,7 +109,12 @@ fun FloatingEditDialog(
 
     Dialog(
         onDismissRequest = { requestClose() },
-        properties = DialogProperties(usePlatformDefaultWidth = false),
+        // decorFitsSystemWindows = false makes this dialog's own window edge-to-edge, same as the
+        // rest of the app under Android 15's edge-to-edge enforcement — without it, the OS sizes
+        // the dialog window to already avoid the nav bar, so WindowInsets.navigationBars reads as
+        // 0 *inside* the dialog and .navigationBarsPadding()/.imePadding() below have nothing to
+        // push against, leaving the bottom action row pinned under the gesture bar.
+        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
     ) {
         DisableDialogWindowAnimation()
 

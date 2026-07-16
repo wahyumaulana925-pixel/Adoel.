@@ -46,6 +46,8 @@ internal fun LazyListScope.estimasiSection(
     onDoff: (String) -> Unit,
     onDoffMatching: (String) -> Unit,
     onHapus: (String) -> Unit,
+    onJeda: (String) -> Unit,
+    onLanjutkan: (String) -> Unit,
     onQuickEdit: (String) -> Unit,
     onEditWaktu: (String) -> Unit,
 ) {
@@ -76,7 +78,7 @@ internal fun LazyListScope.estimasiSection(
             EmptyState(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
                 title = "Tidak ditemukan",
-                subtitle = "Coba kata kunci lain — cari berdasarkan nomor mesin atau corak",
+                subtitle = "Coba kata kunci lain — cari berdasarkan nomor mesin",
             )
         }
         return
@@ -93,6 +95,8 @@ internal fun LazyListScope.estimasiSection(
                 onDoff = { onDoff(est.mcNo) },
                 onDoffMatching = { onDoffMatching(est.mcNo) },
                 onHapus = { onHapus(est.mcNo) },
+                onJeda = { onJeda(est.mcNo) },
+                onLanjutkan = { onLanjutkan(est.mcNo) },
                 onQuickEdit = { onQuickEdit(est.mcNo) },
                 onEditWaktu = { onEditWaktu(est.mcNo) },
                 modifier = Modifier.animateItem(),
@@ -117,6 +121,8 @@ internal fun LazyListScope.estimasiSection(
                     onDoff = { onDoff(row.est.mcNo) },
                     onDoffMatching = { onDoffMatching(row.est.mcNo) },
                     onHapus = { onHapus(row.est.mcNo) },
+                    onJeda = { onJeda(row.est.mcNo) },
+                    onLanjutkan = { onLanjutkan(row.est.mcNo) },
                     onQuickEdit = { onQuickEdit(row.est.mcNo) },
                     onEditWaktu = { onEditWaktu(row.est.mcNo) },
                     modifier = Modifier.animateItem(),

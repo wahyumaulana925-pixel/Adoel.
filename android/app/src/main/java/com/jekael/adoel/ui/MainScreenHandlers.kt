@@ -5,6 +5,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import com.jekael.adoel.data.Estimasi
 import com.jekael.adoel.data.ProsesResult
+import com.jekael.adoel.data.effectiveRemaining
 import com.jekael.adoel.data.formatDeltaMin
 import com.jekael.adoel.data.nowAbsMin
 import com.jekael.adoel.notification.NotificationHelper
@@ -38,6 +39,7 @@ internal class MainScreenHandlers(
         when (result) {
             is ProsesResult.Ok -> {
                 sendPulse.key++
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 uiVm.showToast(result.msg)
                 onCleared()
                 result.estAbs?.let { NotificationHelper.scheduleNotif(context, result.mcNo, it) }
@@ -54,7 +56,7 @@ internal class MainScreenHandlers(
             Mode.ESTIMASI -> {
                 val mcNo = cmd.substringBefore(' ')
                 val existing = doffVm.state.value.estimasi[mcNo]
-                val remaining = existing?.let { it.estAbsMin - nowAbsMin() }
+                val remaining = existing?.effectiveRemaining(nowAbsMin())
                 // Salah masuk mode ESTIMASI lalu ngetik cepat bisa nggak sadar menimpa timer yang
                 // masih jalan — prosesBarisKondisiMesin tidak punya undo, jadi khusus estimasi yang
                 // masih aktif & mepet (<10 menit lagi), minta konfirmasi dulu, bukan menimpa diam-diam.
@@ -128,6 +130,7 @@ internal class MainScreenHandlers(
         uiVm.showConfirm("Hapus estimasi Mc $mcNo?") {
             val prevEst = doffVm.state.value.estimasi[mcNo]
             doffVm.hapusEstimasi(mcNo)
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
             NotificationHelper.cancelNotif(context, mcNo)
             undoRedo.push(
                 UndoableAction(
@@ -144,10 +147,47 @@ internal class MainScreenHandlers(
         }
     }
 
+    /** Freezes Mc [mcNo]'s countdown (RadarCard's tekan-tahan → Jeda), suppressing its reminder
+     * notification until Lanjutkan reschedules it against the shifted estimate. No confirm dialog
+     * — unlike Hapus this is fully reversible with one more tap (Lanjutkan), so gating it behind a
+     * dialog would just slow down the one action meant to be fast. */
+    fun handleJeda(mcNo: String) {
+        val prevEst = doffVm.state.value.estimasi[mcNo] ?: return
+        doffVm.pauseEstimasi(mcNo)
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        NotificationHelper.cancelNotif(context, mcNo)
+        undoRedo.push(
+            UndoableAction(
+                undo = { doffVm.restoreEstimasi(prevEst); rescheduleEstimasi(prevEst) },
+                redo = { doffVm.pauseEstimasi(mcNo); NotificationHelper.cancelNotif(context, mcNo) },
+            ),
+        )
+        uiVm.showToast("Mc $mcNo dijeda")
+    }
+
+    fun handleLanjutkan(mcNo: String) {
+        val prevEst = doffVm.state.value.estimasi[mcNo] ?: return
+        doffVm.resumeEstimasi(mcNo)
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        val resumedEst = doffVm.state.value.estimasi[mcNo]
+        rescheduleEstimasi(resumedEst)
+        undoRedo.push(
+            UndoableAction(
+                undo = { doffVm.restoreEstimasi(prevEst); rescheduleEstimasi(prevEst) },
+                redo = {
+                    doffVm.resumeEstimasi(mcNo)
+                    rescheduleEstimasi(doffVm.state.value.estimasi[mcNo])
+                },
+            ),
+        )
+        uiVm.showToast("Mc $mcNo dilanjutkan")
+    }
+
     fun handleHapusAktual(id: Int, onCleared: () -> Unit) {
         val entry = doffVm.state.value.aktual.find { it.id == id } ?: return
         uiVm.showConfirm("Hapus riwayat Mc ${entry.mcNo}?") {
             doffVm.hapusAktualById(id)
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
             onCleared()
             undoRedo.push(
                 UndoableAction(
@@ -171,6 +211,7 @@ internal class MainScreenHandlers(
         uiVm.showConfirm("Akhiri shift? ${state.aktual.size} doff & ${state.estimasi.size} estimasi akan diarsipkan ke Riwayat, lalu konsol dikosongkan untuk shift baru.") {
             NotificationHelper.cancelAll(context, state.estimasi.keys.toList())
             doffVm.finishShift()
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
             shiftFinished.key++
         }
     }

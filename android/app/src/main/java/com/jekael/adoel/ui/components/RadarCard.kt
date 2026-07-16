@@ -3,6 +3,7 @@ package com.jekael.adoel.ui.components
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
@@ -13,6 +14,9 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Pause
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Texture
 import androidx.compose.material.icons.outlined.Warning
@@ -53,6 +57,14 @@ import kotlinx.coroutines.launch
  * direction in RadarCard (see completingKind below). */
 private enum class DoffCompletionKind { NORMAL, MATCHING }
 
+/** Which side of the card is showing. FRONT is the normal live card; long-press flips to ACTIONS
+ * (Jeda/Hapus); tapping Jeda there flips straight through to PAUSED (no extra flip — both ACTIONS
+ * and PAUSED sit on the "back" of the card, just different content on it) until Lanjutkan flips
+ * the card back to FRONT. Driven by [Estimasi.pausedAtAbsMin] + a local "is the back revealed"
+ * flag rather than 3 independent booleans, so it's structurally impossible to end up in a
+ * combination that doesn't make sense (e.g. showing ACTIONS on an estimate that's actually paused). */
+private enum class CardFace { FRONT, ACTIONS, PAUSED }
+
 private data class UrgencyStyle(
     val accent: Color,
     val barColor: Color,
@@ -89,8 +101,12 @@ fun RadarCard(
     // full Ada-keterangan/kendala flow is only reached from the Doffing console's own entry point).
     onDoff: () -> Unit,
     onDoffMatching: () -> Unit,
-    // Hapus moved off the swipe gesture (which now means Matching, not delete) onto long-press.
+    // Hapus moved off the swipe gesture (which now means Matching, not delete) onto long-press —
+    // long-press now flips the card to reveal Jeda/Hapus as two explicit buttons instead of
+    // hapus firing directly, so an accidental long-press can no longer delete an estimate outright.
     onHapus: () -> Unit,
+    onJeda: () -> Unit,
+    onLanjutkan: () -> Unit,
     // Tap the mcNo/corak column: edit corak + target yard. Tap the time column (onEditWaktu):
     // edit the estimasi's own time instead — two different fields, two different tap zones,
     // rather than one tap target guessing which the operator meant (Master Blueprint v9.2 §2).
@@ -99,7 +115,9 @@ fun RadarCard(
     modifier: Modifier = Modifier,
     entranceDelayMs: Long = 0L,
 ) {
-    val remaining = est.estAbsMin - nowAbs
+    // Frozen while paused (see Estimasi.pausedAtAbsMin/effectiveRemaining) so a long Jeda doesn't
+    // quietly count itself into OVERDUE against wall-clock time.
+    val remaining = est.effectiveRemaining(nowAbs)
     val clr = urgency(remaining)
     val totalDur = est.estAbsMin - est.startAbsMin
     val elapsed = nowAbs - est.startAbsMin
@@ -169,11 +187,28 @@ fun RadarCard(
     val completionIcon = if (completingKind == DoffCompletionKind.MATCHING) Icons.Filled.Verified else Icons.Filled.CheckCircle
     val exitDirection = if (completingKind == DoffCompletionKind.MATCHING) -1f else 1f
 
-    // Long-press to hapus: a "charge up" red tint/scale while held (distinct from the swipe-driven
-    // completions above, which slide the card away) so an operator gets feedback during the hold
-    // itself, not just a sudden confirm dialog. Cancelled/reset if released or dragged before the
-    // system long-press timeout fires.
+    // Long-press to reveal Jeda/Hapus: a "charge up" red tint/scale while held (distinct from the
+    // swipe-driven completions above, which slide the card away) so an operator gets feedback
+    // during the hold itself, not just a sudden flip. Cancelled/reset if released or dragged before
+    // the system long-press timeout fires.
     val pressCharge = remember(est.mcNo) { Animatable(0f) }
+
+    // Which side of the card is showing — isPaused (from the actual persisted estimate) always
+    // wins over the local "did the operator long-press to reveal actions" flag, so a card that's
+    // genuinely paused shows that face on first composition too (e.g. after a scroll recycles it,
+    // or the app restarts), not just right after Jeda is tapped in the same session.
+    val isPaused = est.pausedAtAbsMin != null
+    var showActionsFace by remember(est.mcNo) { mutableStateOf(false) }
+    LaunchedEffect(isPaused) { if (isPaused) showActionsFace = false }
+    val face = when {
+        isPaused -> CardFace.PAUSED
+        showActionsFace -> CardFace.ACTIONS
+        else -> CardFace.FRONT
+    }
+    val flipRotation = remember(est.mcNo) { Animatable(0f) }
+    LaunchedEffect(face) {
+        flipRotation.animateTo(if (face == CardFace.FRONT) 0f else 180f, tween(420, easing = FastOutSlowInEasing))
+    }
 
     // Staggered fade+rise entrance when a batch of cards first appears (e.g. switching into
     // ESTIMASI mode from empty), instead of every card popping in at once — keyed to mcNo so it
@@ -248,6 +283,8 @@ fun RadarCard(
                     scaleX = 1f - 0.03f * pressCharge.value
                     scaleY = 1f - 0.03f * pressCharge.value
                     alpha = (1f - exitProgress) * entranceAlpha.value
+                    rotationY = flipRotation.value
+                    cameraDistance = 8 * density
                 }
                 .elevatedListCard(backgroundColor = lerp(faceBg, Red500, 0.16f * pressCharge.value))
                 // Swipe is the fast path, but TalkBack intercepts swipe gestures for its own
@@ -255,8 +292,10 @@ fun RadarCard(
                 // user would have no way at all to doff or delete. These custom actions surface
                 // in TalkBack's local context menu as a non-gesture alternative to the swipe above.
                 .semantics(mergeDescendants = true) {
+                    // TalkBack gets these as direct actions regardless of which face is showing —
+                    // it can't perform the flip gesture at all, so it shouldn't need to.
                     customActions = buildList {
-                        if (swipeEnabled) {
+                        if (swipeEnabled && face == CardFace.FRONT) {
                             add(CustomAccessibilityAction("Doff mesin ${est.mcNo}") { triggerDoff(DoffCompletionKind.NORMAL); true })
                             add(
                                 CustomAccessibilityAction("Doff mesin ${est.mcNo} dengan keterangan Matching") {
@@ -265,11 +304,16 @@ fun RadarCard(
                                 },
                             )
                         }
-                        add(CustomAccessibilityAction("Hapus estimasi Mc ${est.mcNo}") { onHapus(); true })
+                        if (isPaused) {
+                            add(CustomAccessibilityAction("Lanjutkan mesin ${est.mcNo}") { onLanjutkan(); true })
+                        } else {
+                            add(CustomAccessibilityAction("Jeda mesin ${est.mcNo}") { onJeda(); true })
+                            add(CustomAccessibilityAction("Hapus estimasi Mc ${est.mcNo}") { onHapus(); true })
+                        }
                     }
                 }
-                .pointerInput(completing, swipeEnabled) {
-                    if (completing || !swipeEnabled) return@pointerInput
+                .pointerInput(completing, swipeEnabled, face) {
+                    if (completing || !swipeEnabled || face != CardFace.FRONT) return@pointerInput
                     detectHorizontalDragGestures(
                         onDragEnd = { settleSwipe() },
                         onDragCancel = {
@@ -285,12 +329,13 @@ fun RadarCard(
                         },
                     )
                 }
-                .pointerInput(completing) {
-                    if (completing) return@pointerInput
+                .pointerInput(completing, face) {
+                    if (completing || face != CardFace.FRONT) return@pointerInput
                     detectTapGestures(
                         onLongPress = {
                             scope.launch { pressCharge.snapTo(0f) }
-                            onHapus()
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            showActionsFace = true
                         },
                         onPress = {
                             // Tied to the system long-press threshold, not a fixed micro-interaction
@@ -321,61 +366,72 @@ fun RadarCard(
             // height already equals its content's, i.e. everywhere outside the grid pairing.
             contentAlignment = Alignment.Center,
         ) {
-            // Decorative full-height overlay — wrapped in matchParentSize() so it resolves
-            // against the height the Column below actually ends up with (LazyColumn gives
-            // this Box unbounded height, so a bare fillMaxHeight() here would collapse to 0).
-            Box(modifier = Modifier.matchParentSize()) {
-                // Left accent border — a twisted-thread look (alternating shadow bands down the
-                // solid accent fill) rather than a flat color bar, since this 3dp strip runs down
-                // every single card on Radar and is the one element guaranteed to be on screen at
-                // all times; giving it texture does more for the "woven" identity here than
-                // anywhere else. Shadow bands (not gap-cutting into the card's own background)
-                // so this doesn't need to track the card's dynamically tinted fill color.
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .width(4.dp)
-                        .background(clr.accent)
-                        .drawWithContent {
-                            drawContent()
-                            // Alternating dark/light bands (not just a periodic shadow) so this
-                            // reads as a twisted cord's highlight/shadow rotation rather than a
-                            // faint smudge — widened bar + stronger contrast after the first pass
-                            // at this (3dp, one shadow tone, 22% alpha) turned out too subtle to
-                            // confirm by eye on-device.
-                            val pitch = 6.dp.toPx()
-                            val band = 2.5.dp.toPx()
-                            var y = 0f
-                            var dark = true
-                            while (y < size.height) {
-                                drawRect(
-                                    color = if (dark) Color.Black.copy(alpha = 0.38f) else Color.White.copy(alpha = 0.30f),
-                                    topLeft = Offset(0f, y),
-                                    size = Size(size.width, band),
-                                )
-                                dark = !dark
-                                y += pitch
-                            }
-                        },
-                )
-            }
+          // Content swaps at the halfway point of the flip (not tied to [face] directly) so the
+          // card visually reads as turning over, not just cross-fading — see the un-mirror Box in
+          // the else branch below for why the back content needs its own counter-rotation.
+          if (flipRotation.value <= 90f) {
+            // Left accent — a rounded pill (all four corners at the card's own radius, so a
+            // 16dp-wide bar reads as a capsule) inset from the edge rather than a flush flat
+            // strip, plus the twisted-thread look (alternating shadow bands down the solid accent
+            // fill) rather than a plain color bar, since this is the one element guaranteed to be
+            // on screen at all times on every card. Shadow bands (not gap-cutting into the card's
+            // own background) so this doesn't need to track the card's dynamically tinted fill color.
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .fillMaxHeight()
+                    .width(16.dp)
+                    .clip(RoundedCornerShape(Dimens.RadiusCard))
+                    .background(clr.accent)
+                    .drawWithContent {
+                        drawContent()
+                        // Alternating dark/light bands (not just a periodic shadow) so this
+                        // reads as a twisted cord's highlight/shadow rotation rather than a
+                        // faint smudge — widened bar + stronger contrast after the first pass
+                        // at this (3dp, one shadow tone, 22% alpha) turned out too subtle to
+                        // confirm by eye on-device.
+                        val pitch = 6.dp.toPx()
+                        val band = 2.5.dp.toPx()
+                        var y = 0f
+                        var dark = true
+                        while (y < size.height) {
+                            drawRect(
+                                color = if (dark) Color.Black.copy(alpha = 0.38f) else Color.White.copy(alpha = 0.30f),
+                                topLeft = Offset(0f, y),
+                                size = Size(size.width, band),
+                            )
+                            dark = !dark
+                            y += pitch
+                        }
+                    },
+            )
 
-            // Content — swipe right = doff, swipe left = doff+Matching, long-press = hapus.
+            // Content — swipe right = doff, swipe left = doff+Matching, long-press = hapus. Start
+            // padding widened to clear the 16dp pill accent bar (was a flush 4dp strip before).
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                    .padding(start = 24.dp, end = 16.dp, top = 16.dp, bottom = 16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 // Left: mc number + type + corak — tappable on its own (separate from the
                 // swipe-the-whole-card drag above) as a fast path to correct corak/target yard,
                 // the two fields that actually change often on the floor, without leaving Radar
-                // for the full Pengaturan > Mesin flow.
+                // for the full Pengaturan > Mesin flow. Also carries its own long-press-to-flip
+                // (mirroring the outer Box's) since this zone's own tap handling would otherwise
+                // swallow the touch before the outer Box's long-press detector ever saw it,
+                // shrinking the effective press-and-hold area down to a thin strip around the
+                // split zones instead of covering the whole card.
                 Column(
                     modifier = Modifier
                         .weight(1f)
-                        .clickable(onClickLabel = "Ubah corak dan target yard Mc ${est.mcNo}", onClick = onQuickEdit),
+                        .combinedClickable(
+                            onClickLabel = "Ubah corak dan target yard Mc ${est.mcNo}",
+                            onClick = onQuickEdit,
+                            onLongClickLabel = "Jeda atau hapus Mc ${est.mcNo}",
+                            onLongClick = { showActionsFace = true },
+                        ),
                 ) {
                     Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
@@ -406,7 +462,10 @@ fun RadarCard(
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 2.sp,
-                                color = clr.labelColor,
+                                // Same per-type color as the icon right before it (Tappet/Cam/D405/
+                                // D408 each have their own), not the urgency color — the machine
+                                // type is its own identity, independent of how close the doff is.
+                                color = mesin?.tipe?.let { mesinTipeColor(it) } ?: colors.textFaint,
                             ),
                             modifier = Modifier.padding(bottom = 4.dp),
                         )
@@ -458,7 +517,15 @@ fun RadarCard(
                     }
                     Column(
                         horizontalAlignment = Alignment.End,
-                        modifier = Modifier.clickable(onClickLabel = "Ubah waktu estimasi Mc ${est.mcNo}", onClick = onEditWaktu),
+                        // Same long-press-to-flip as the mcNo/corak zone above — see that
+                        // comment for why this zone needs its own copy instead of relying on the
+                        // outer Box's detector.
+                        modifier = Modifier.combinedClickable(
+                            onClickLabel = "Ubah waktu estimasi Mc ${est.mcNo}",
+                            onClick = onEditWaktu,
+                            onLongClickLabel = "Jeda atau hapus Mc ${est.mcNo}",
+                            onLongClick = { showActionsFace = true },
+                        ),
                     ) {
                         Text(
                             text = absMinToTimeStr(est.estAbsMin),
@@ -482,6 +549,27 @@ fun RadarCard(
                     }
                 }
             }
+          } else {
+            // Back of the card — pre-rotated another 180° so it reads right-side-up once the
+            // outer graphicsLayer above has turned all the way over, instead of mirrored.
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { rotationY = 180f },
+                contentAlignment = Alignment.Center,
+            ) {
+                when (face) {
+                    CardFace.ACTIONS -> CardActionsFace(
+                        mcNo = est.mcNo,
+                        onJeda = onJeda,
+                        onHapus = onHapus,
+                        onDismiss = { showActionsFace = false },
+                    )
+                    CardFace.PAUSED -> CardPausedFace(mcNo = est.mcNo, onLanjutkan = onLanjutkan)
+                    CardFace.FRONT -> Unit // unreachable — flipRotation only passes 90° once face != FRONT
+                }
+            }
+          }
         }
 
         // Celebrate completion — a sibling of the card Box above, NOT a child of it: that Box's
@@ -541,6 +629,70 @@ fun RadarCard(
                 )
             }
         }
+    }
+}
+
+/** Back-of-card face revealed by a long-press (Master Blueprint v9.2 "Jeda/Hapus") — two explicit
+ * buttons instead of hapus firing directly off the hold itself, so an accidental long-press can no
+ * longer delete an estimate outright. Tapping anywhere else on this face (the padding around the
+ * buttons) dismisses back to the front, same as tapping either button's own indication would just
+ * without picking one — a discoverable "never mind" for an accidental flip. */
+@Composable
+private fun CardActionsFace(
+    mcNo: String,
+    onJeda: () -> Unit,
+    onHapus: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    Box(modifier = Modifier.fillMaxSize().clickable(onClick = onDismiss), contentAlignment = Alignment.Center) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(28.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            CardFaceButton(icon = Icons.Outlined.Pause, label = "Jeda", accent = Amber500, onClick = onJeda)
+            CardFaceButton(icon = Icons.Outlined.Delete, label = "Hapus", accent = Red500, onClick = onHapus)
+        }
+    }
+}
+
+/** Back-of-card face while Mc [mcNo] is Jeda'd — reachable either by tapping Jeda on
+ * [CardActionsFace] or (after a scroll recycle / app restart) directly, since [Estimasi.
+ * pausedAtAbsMin] being non-null always wins over the local "actions revealed" flag. Lanjutkan
+ * shifts the estimate forward by however long it sat paused (DoffViewModel.resumeEstimasi) and
+ * flips the card back to its normal front. */
+@Composable
+private fun CardPausedFace(mcNo: String, onLanjutkan: () -> Unit) {
+    val colors = LocalAppColors.current
+    Column(
+        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            text = "Mc $mcNo sedang dijeda",
+            style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary),
+        )
+        CardFaceButton(icon = Icons.Outlined.PlayArrow, label = "Lanjutkan", accent = Emerald500, onClick = onLanjutkan)
+    }
+}
+
+@Composable
+private fun CardFaceButton(icon: ImageVector, label: String, accent: Color, onClick: () -> Unit) {
+    // No haptic here — [onClick] (onJeda/onHapus/onLanjutkan) already triggers it in
+    // MainScreenHandlers, the single source both this tap and RadarCard's TalkBack custom actions
+    // funnel through (see triggerDoff for the same pattern), so adding one here too would double-buzz.
+    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(accent)
+                .clickable(onClickLabel = label, onClick = onClick),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(imageVector = icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(22.dp))
+        }
+        Text(label, style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = accent))
     }
 }
 

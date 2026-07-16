@@ -9,7 +9,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -30,10 +29,10 @@ fun OnboardingDialog(onClose: () -> Unit) {
         Spacer(Modifier.height(16.dp))
 
         val bullets = listOf(
-            "ESTIMASI: catat kapan mesin akan selesai — nomor mesin + durasi/yard/jam counter, tergantung tipe mesin.",
-            "DOFFING: catat mesin yang sudah selesai — nomor mesin + keterangan bebas, mis. \"31 HB\".",
-            "Corak = kode motif yang sedang dikerjakan mesin, diatur di Pengaturan > Mesin.",
-            "Contoh perintah ESTIMASI: TAPPET/CAM \"31 45\" (sisa menit) · D405 \"31 280\" (yard berjalan) · D408 \"31 12.30\" (jam counter).",
+            "ESTIMASI (⏱): Ketik nomor mesin di konsol bawah, ketuk ikon jam, lalu isi sisa menit (Tappet/Cam), yard berjalan (D405), atau jam counter (D408) sesuai petunjuk di layar.",
+            "DOFFING / POTONG KAIN (✂): Cara cepat — geser kartu mesin di layar Radar ke kanan (Potong Normal) atau ke kiri (Potong Matching). Cara langsung — ketik nomor mesin di konsol bawah, ketuk ikon gunting, lalu pilih tindakan.",
+            "URUNGKAN & ULANG (↩ / ↪): Salah mencatat atau salah hapus? Tombol Undo/Redo di kiri konsol bawah mengembalikan data secara instan.",
+            "KENDALA MESIN & MACET: Jika mesin berhenti/macet (mis. putus lusi), hapus estimasinya (tekan lama kartu radar lalu pilih Hapus) agar perhitungan waktu JEDA istirahat tetap akurat.",
         )
         bullets.forEach {
             Text(

@@ -188,6 +188,25 @@ class DoffViewModel @JvmOverloads constructor(
         s.copy(estimasi = s.estimasi + (est.mcNo to est))
     }
 
+    /** Freezes Mc [mcNo]'s countdown where it stands right now (see Estimasi.pausedAtAbsMin /
+     * effectiveRemaining) — a no-op if already paused or if the estimate no longer exists (e.g.
+     * doffed/deleted out from under a pending Jeda tap). */
+    fun pauseEstimasi(mcNo: String) = updateState { s ->
+        val est = s.estimasi[mcNo] ?: return@updateState s
+        if (est.pausedAtAbsMin != null) return@updateState s
+        s.copy(estimasi = s.estimasi + (mcNo to est.copy(pausedAtAbsMin = nowAbsMin())))
+    }
+
+    /** Un-freezes Mc [mcNo], shifting estAbsMin forward by exactly how long it sat paused so the
+     * remaining time the operator saw right before Lanjutkan is preserved instead of having
+     * silently ticked down (or up, into overdue) the whole time it was paused. */
+    fun resumeEstimasi(mcNo: String) = updateState { s ->
+        val est = s.estimasi[mcNo] ?: return@updateState s
+        val pausedAt = est.pausedAtAbsMin ?: return@updateState s
+        val pausedFor = nowAbsMin() - pausedAt
+        s.copy(estimasi = s.estimasi + (mcNo to est.copy(estAbsMin = est.estAbsMin + pausedFor, pausedAtAbsMin = null)))
+    }
+
     fun hapusAktualById(id: Int) = updateState { s ->
         s.copy(aktual = s.aktual.filter { it.id != id })
     }

@@ -55,6 +55,9 @@ private data class SerialEstimasi(
     val startAbsMin: Long,
     val corakOverride: String?,
     val yardOverride: Double?,
+    // Null on data written before Jeda existed (Gson leaves it null on old data) — same "never
+    // paused" default as a fresh Estimasi.
+    val pausedAtAbsMin: Long? = null,
 )
 
 private data class SerialAktual(
@@ -131,7 +134,7 @@ class DoffRepository private constructor(private val context: Context) : DoffSta
                     )
                 },
                 estimasi = serial.estimasi.mapValues { (_, v) ->
-                    Estimasi(v.mcNo, v.estAbsMin, v.startAbsMin, v.corakOverride, v.yardOverride)
+                    Estimasi(v.mcNo, v.estAbsMin, v.startAbsMin, v.corakOverride, v.yardOverride, v.pausedAtAbsMin)
                 },
                 aktual = dedupeIds(serial.aktual),
                 nextId = maxOf(serial.nextId, (serial.aktual.maxOfOrNull { it.id } ?: 0) + 1),
@@ -143,7 +146,7 @@ class DoffRepository private constructor(private val context: Context) : DoffSta
                         endedAtEpochMin = r.endedAtEpochMin,
                         aktual = r.aktual.map { toAktualEntry(it) },
                         estimasiRemaining = r.estimasiRemaining.mapValues { (_, v) ->
-                            Estimasi(v.mcNo, v.estAbsMin, v.startAbsMin, v.corakOverride, v.yardOverride)
+                            Estimasi(v.mcNo, v.estAbsMin, v.startAbsMin, v.corakOverride, v.yardOverride, v.pausedAtAbsMin)
                         },
                     )
                 },
@@ -211,7 +214,7 @@ class DoffRepository private constructor(private val context: Context) : DoffSta
                 SerialMesin(v.tipe.name, v.corak, v.targetYard, v.speed, v.koreksi)
             },
             estimasi = state.estimasi.mapValues { (_, v) ->
-                SerialEstimasi(v.mcNo, v.estAbsMin, v.startAbsMin, v.corakOverride, v.yardOverride)
+                SerialEstimasi(v.mcNo, v.estAbsMin, v.startAbsMin, v.corakOverride, v.yardOverride, v.pausedAtAbsMin)
             },
             aktual = state.aktual.map(::toSerialAktual),
             nextId = state.nextId,
@@ -223,7 +226,7 @@ class DoffRepository private constructor(private val context: Context) : DoffSta
                     endedAtEpochMin = r.endedAtEpochMin,
                     aktual = r.aktual.map(::toSerialAktual),
                     estimasiRemaining = r.estimasiRemaining.mapValues { (_, v) ->
-                        SerialEstimasi(v.mcNo, v.estAbsMin, v.startAbsMin, v.corakOverride, v.yardOverride)
+                        SerialEstimasi(v.mcNo, v.estAbsMin, v.startAbsMin, v.corakOverride, v.yardOverride, v.pausedAtAbsMin)
                     },
                 )
             },

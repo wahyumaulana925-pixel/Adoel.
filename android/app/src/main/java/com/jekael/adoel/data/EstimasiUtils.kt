@@ -34,8 +34,16 @@ fun urgencyLevel(remainingMin: Long): UrgencyLevel = when {
 fun sortedByNearest(estimasi: Map<String, Estimasi>): List<Estimasi> =
     estimasi.values.sortedBy { it.estAbsMin }
 
+/** Minutes remaining as the operator should actually see it — frozen at whatever it was the
+ * moment Jeda was pressed (see [Estimasi.pausedAtAbsMin]) instead of continuing to count down
+ * against wall-clock time while paused, so a long pause doesn't quietly push a card into Segera/
+ * OVERDUE on its own. Live nowAbs-based countdown resumes the instant Lanjutkan shifts estAbsMin
+ * forward and clears pausedAtAbsMin (DoffViewModel.resumeEstimasi). */
+fun Estimasi.effectiveRemaining(nowAbs: Long): Long =
+    if (pausedAtAbsMin != null) estAbsMin - pausedAtAbsMin else estAbsMin - nowAbs
+
 fun partitionSegeraMenunggu(sorted: List<Estimasi>, nowAbs: Long): Pair<List<Estimasi>, List<Estimasi>> =
-    sorted.partition { it.estAbsMin - nowAbs <= 0 }
+    sorted.partition { it.effectiveRemaining(nowAbs) <= 0 }
 
 /** The single machine most in need of attention right now: earliest overdue, else soonest upcoming. */
 fun nearestUpcoming(estimasi: Map<String, Estimasi>, nowAbs: Long): Estimasi? {
