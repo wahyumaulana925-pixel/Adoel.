@@ -82,8 +82,8 @@ fun LazyListScope.doffingSection(
         item(key = "doff_empty") {
             EmptyState(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
-                title = "Belum ada doff",
-                subtitle = "Doff akan muncul di sini setelah kamu proses baris di ESTIMASI/AKTUAL",
+                title = "Belum Ada Riwayat Doffing",
+                subtitle = "Geser kartu mesin di layar Radar untuk mencatat doff, atau ketuk ikon gunting di konsol bawah untuk mencatat doff langsung.",
             )
         }
         return
@@ -95,7 +95,7 @@ fun LazyListScope.doffingSection(
             ListFilterField(
                 value = doffFilter,
                 onValueChange = onDoffFilterChange,
-                placeholder = "Cari nomor mesin, corak, atau keterangan",
+                placeholder = "Cari nomor mesin",
                 modifier = Modifier.fillMaxWidth().animateItem(),
             )
         }
@@ -107,10 +107,7 @@ fun LazyListScope.doffingSection(
         aktualReversed.withIndex().toList()
     } else {
         aktualReversed.withIndex().filter { (_, entry) ->
-            val corak = entry.corakOverride ?: state.db[entry.mcNo]?.corak ?: ""
-            entry.mcNo.contains(doffFilter, ignoreCase = true) ||
-                corak.contains(doffFilter, ignoreCase = true) ||
-                entry.ket.contains(doffFilter, ignoreCase = true)
+            entry.mcNo.contains(doffFilter, ignoreCase = true)
         }
     }
     if (filteredIndexed.isEmpty()) {

@@ -91,15 +91,13 @@ fun RadarCard(
     onDoffMatching: () -> Unit,
     // Hapus moved off the swipe gesture (which now means Matching, not delete) onto long-press.
     onHapus: () -> Unit,
+    // Tap the mcNo/corak column: edit corak + target yard. Tap the time column (onEditWaktu):
+    // edit the estimasi's own time instead — two different fields, two different tap zones,
+    // rather than one tap target guessing which the operator meant (Master Blueprint v9.2 §2).
     onQuickEdit: () -> Unit,
+    onEditWaktu: () -> Unit,
     modifier: Modifier = Modifier,
     entranceDelayMs: Long = 0L,
-    // True when grid-paired half-width in the Menunggu band (see MenungguGridSlot) — the smaller
-    // column width shrinks every label on the card, so the type/corak text bumps up the Inter
-    // variable font's weight axis (Bold→ExtraBold) to hold contrast at the smaller size instead of
-    // just reading fainter (Master Blueprint §2A). The mcNo hero number is already at the top of
-    // the axis (Black) regardless of layout, so it needs no further compensation here.
-    isCompact: Boolean = false,
 ) {
     val remaining = est.estAbsMin - nowAbs
     val clr = urgency(remaining)
@@ -406,7 +404,7 @@ fun RadarCard(
                             text = tipe,
                             style = TextStyle(
                                 fontSize = 12.sp,
-                                fontWeight = if (isCompact) FontWeight.ExtraBold else FontWeight.Bold,
+                                fontWeight = FontWeight.Bold,
                                 letterSpacing = 2.sp,
                                 color = clr.labelColor,
                             ),
@@ -434,10 +432,7 @@ fun RadarCard(
                         )
                         Text(
                             text = corakLine,
-                            style = AppType.LabelBold.copy(
-                                color = colors.textMuted,
-                                fontWeight = if (isCompact) FontWeight.ExtraBold else FontWeight.Bold,
-                            ),
+                            style = AppType.LabelBold.copy(color = colors.textMuted),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -461,7 +456,10 @@ fun RadarCard(
                     if (showDot) {
                         PingDot(color = if (remaining < 0) Red500 else Emerald500)
                     }
-                    Column(horizontalAlignment = Alignment.End) {
+                    Column(
+                        horizontalAlignment = Alignment.End,
+                        modifier = Modifier.clickable(onClickLabel = "Ubah waktu estimasi Mc ${est.mcNo}", onClick = onEditWaktu),
+                    ) {
                         Text(
                             text = absMinToTimeStr(est.estAbsMin),
                             style = TextStyle(

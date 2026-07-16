@@ -1,9 +1,15 @@
 package com.jekael.adoel.ui
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ContentCut
+import androidx.compose.material.icons.outlined.Redo
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Undo
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -12,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
@@ -24,27 +31,32 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jekael.adoel.ui.theme.*
 
-/** Floating command bar — Pintu Masuk Terpadu Berbasis Nomor Mesin (Master Blueprint §4A): one
- * field for a machine number (or several, comma/space separated for the bulk quick-edit path —
- * see MainScreen's onGuidedStart) and one "Mulai" button. No mode toggle and no free-text command
- * syntax anymore — MainScreen's onGuidedStart inspects machine state to decide what happens next
- * (jump straight to GuidedEstimasi, offer GuidedActionHub, or open the bulk sheet). Reports its
- * own measured height via [onHeightMeasured] so the scrollable list behind it can pad itself to
- * avoid sitting under the card. */
+/** Floating command bar — a single machine-number field flanked by Undo/Redo on the left and the
+ * two guided actions (Estimasi, Doffing) on the right (Master Blueprint v9.2 §1/§7):
+ * `[Undo][Redo]  [nomor mesin]  [Estimasi][Doffing]`. No more single "Mulai" button that then asks
+ * which action was meant — the operator picks the action by which icon they tap, one motion
+ * instead of two. No bulk multi-machine entry either (that moved to Pengaturan > Mesin's own
+ * console, one machine at a time — see MesinTab). Reports its own measured height via
+ * [onHeightMeasured] so the scrollable list behind it can pad itself to avoid sitting under it. */
 @Composable
 internal fun ConsoleBar(
-    onGuidedStart: (mcNo: String) -> Unit,
+    onEstimasiClick: (mcNo: String) -> Unit,
+    onDoffingClick: (mcNo: String) -> Unit,
+    onUndo: () -> Unit,
+    onRedo: () -> Unit,
+    canUndo: Boolean,
+    canRedo: Boolean,
     onHeightMeasured: (Dp) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = LocalAppColors.current
     val density = LocalDensity.current
-    var guidedMcNoInput by remember { mutableStateOf("") }
+    var mcNoInput by remember { mutableStateOf("") }
 
-    fun submit() {
-        if (guidedMcNoInput.isNotBlank()) {
-            onGuidedStart(guidedMcNoInput)
-            guidedMcNoInput = ""
+    fun submit(action: (String) -> Unit) {
+        if (mcNoInput.isNotBlank()) {
+            action(mcNoInput)
+            mcNoInput = ""
         }
     }
 
@@ -67,21 +79,33 @@ internal fun ConsoleBar(
                 .padding(bottom = 10.dp),
         ) {
             Text(
-                text = "Ketik nomor mesin untuk mulai — pisahkan koma/spasi untuk banyak mesin",
+                text = "Ketik nomor mesin, lalu ketuk jam (estimasi) atau gunting (doffing)",
                 style = AppType.Caption.copy(color = colors.textFaint),
                 modifier = Modifier.padding(start = 4.dp, bottom = 6.dp),
             )
             Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                ConsoleIconButton(
+                    icon = Icons.Outlined.Undo,
+                    contentDescription = "Undo",
+                    enabled = canUndo,
+                    accent = colors.textSecondary,
+                    onClick = onUndo,
+                )
+                ConsoleIconButton(
+                    icon = Icons.Outlined.Redo,
+                    contentDescription = "Redo",
+                    enabled = canRedo,
+                    accent = colors.textSecondary,
+                    onClick = onRedo,
+                )
                 OutlinedTextField(
-                    value = guidedMcNoInput,
-                    // Digits plus comma/space separators — a single machine number still matches
-                    // this, multiple (e.g. "31,32,33" or "31 32 33") route to the bulk sheet instead.
-                    onValueChange = { guidedMcNoInput = it.filter { c -> c.isDigit() || c == ',' || c == ' ' } },
+                    value = mcNoInput,
+                    onValueChange = { mcNoInput = it.filter(Char::isDigit).take(3) },
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text("Nomor mesin, cth: 31 atau 31,32,33", color = colors.textFaint) },
+                    placeholder = { Text("Nomor mesin", color = colors.textFaint) },
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Violet500,
                         unfocusedBorderColor = colors.border,
@@ -96,20 +120,54 @@ internal fun ConsoleBar(
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Monospace,
                     ),
-                    // Text, not Number — the numeric keypad has no comma/space key on most
-                    // keyboards, which would make the multi-machine bulk path unreachable.
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = { submit() }),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { submit(onEstimasiClick) }),
                     singleLine = true,
                 )
-                Button(
-                    onClick = ::submit,
-                    enabled = guidedMcNoInput.isNotBlank(),
-                    modifier = Modifier.height(56.dp),
-                    shape = RoundedCornerShape(50.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Violet500),
-                ) { Text("Mulai", fontWeight = FontWeight.SemiBold) }
+                ConsoleIconButton(
+                    icon = Icons.Outlined.Schedule,
+                    contentDescription = "Estimasi",
+                    enabled = mcNoInput.isNotBlank(),
+                    accent = Cyan600,
+                    onClick = { submit(onEstimasiClick) },
+                )
+                ConsoleIconButton(
+                    icon = Icons.Outlined.ContentCut,
+                    contentDescription = "Doffing",
+                    enabled = mcNoInput.isNotBlank(),
+                    accent = Emerald500,
+                    onClick = { submit(onDoffingClick) },
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun ConsoleIconButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    enabled: Boolean,
+    accent: Color,
+    onClick: () -> Unit,
+) {
+    val colors = LocalAppColors.current
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier.size(48.dp),
+        shape = CircleShape,
+        contentPadding = PaddingValues(0.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = accent,
+            disabledContainerColor = colors.bgElevated2,
+        ),
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = if (enabled) Color.White else colors.textFaint,
+            modifier = Modifier.size(20.dp),
+        )
     }
 }

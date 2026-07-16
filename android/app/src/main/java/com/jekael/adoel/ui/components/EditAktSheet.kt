@@ -106,7 +106,7 @@ fun EditAktSheet(
                 colors = outlinedFieldColors(),
                 shape = RoundedCornerShape(Dimens.RadiusControl),
                 textStyle = AppType.FieldText.copy(color = colors.textPrimary),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
                 singleLine = true,
             )
 

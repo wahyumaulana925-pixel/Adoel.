@@ -25,7 +25,7 @@ import com.jekael.adoel.ui.theme.Dimens
 import com.jekael.adoel.ui.theme.LocalAppColors
 import com.jekael.adoel.ui.theme.Sky500
 
-private enum class GuidedDoffingStep { CHOOSE, NORMAL, KETERANGAN, COUNTER }
+private enum class GuidedDoffingStep { SETUP, CHOOSE, NORMAL, KETERANGAN, COUNTER }
 
 /** Terpandu (guided) DOFFING entry — Batch 5. Step 1 offers big buttons instead of free-text
  * ("Doffing normal" / "Ada keterangan" / D408-only "Update bacaan counter" — the guided,
@@ -33,7 +33,11 @@ private enum class GuidedDoffingStep { CHOOSE, NORMAL, KETERANGAN, COUNTER }
  * ends by building the identical command string the Teks console would send for that action and
  * handing it to the matching callback, which the caller routes through the same
  * handlers.handleCommand path Teks uses — so undo, notification cancel/reschedule, and toast/
- * haptic feedback all still apply exactly as they do today. */
+ * haptic feedback all still apply exactly as they do today.
+ *
+ * A machine with no corak set yet gets an inline quick-setup step first (same corak/target-yard
+ * fast path as [GuidedEstimasiSheet]) instead of being turned away — tapping the Doffing icon on
+ * an unconfigured machine is exactly the case Master Blueprint v9.2 §3 calls out. */
 @Composable
 fun GuidedDoffingSheet(
     mcNo: String,
@@ -42,9 +46,11 @@ fun GuidedDoffingSheet(
     onDismiss: () -> Unit,
     onSubmitDoffing: (value: String) -> Unit,
     onSubmitCounterUpdate: (value: String) -> Unit,
+    onQuickUpdate: (corak: String, targetYard: Double?) -> Unit,
 ) {
     val colors = LocalAppColors.current
-    var step by remember(mcNo) { mutableStateOf(GuidedDoffingStep.CHOOSE) }
+    val needsSetup = mesin == null || mesin.corak.isBlank() || mesin.corak.trim() == "-"
+    var step by remember(mcNo) { mutableStateOf(if (needsSetup) GuidedDoffingStep.SETUP else GuidedDoffingStep.CHOOSE) }
     val standardYard = estimasi?.yardOverride ?: mesin?.targetYard
 
     FloatingEditDialog(onDismissRequest = onDismiss) {
@@ -55,6 +61,13 @@ fun GuidedDoffingSheet(
         Spacer(Modifier.height(16.dp))
 
         when (step) {
+            GuidedDoffingStep.SETUP -> SetupStep(
+                onSave = { corak, targetYard ->
+                    onQuickUpdate(corak, targetYard)
+                    step = GuidedDoffingStep.CHOOSE
+                },
+                onCancel = onDismiss,
+            )
             GuidedDoffingStep.CHOOSE -> ChooseStep(
                 isD408 = mesin?.tipe == MesinTipe.D408,
                 onPickNormal = { step = GuidedDoffingStep.NORMAL },
@@ -77,6 +90,63 @@ fun GuidedDoffingSheet(
                 onConfirm = { bacaan -> onSubmitCounterUpdate("$mcNo $bacaan") },
             )
         }
+    }
+}
+
+@Composable
+private fun SetupStep(onSave: (corak: String, targetYard: Double?) -> Unit, onCancel: () -> Unit) {
+    val colors = LocalAppColors.current
+    var corakInput by remember { mutableStateOf("") }
+    var targetYardInput by remember { mutableStateOf("") }
+
+    FieldLabel("Masukkan Corak Baru")
+    OutlinedTextField(
+        value = corakInput,
+        onValueChange = { corakInput = it.uppercase() },
+        modifier = Modifier.fillMaxWidth(),
+        placeholder = { Text("cth: 34758", color = colors.textFaint) },
+        colors = outlinedFieldColors(),
+        shape = RoundedCornerShape(Dimens.RadiusControl),
+        textStyle = AppType.FieldText.copy(color = colors.textPrimary),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        singleLine = true,
+    )
+
+    Spacer(Modifier.height(12.dp))
+    FieldLabel("Target Yard (Opsional)")
+    OutlinedTextField(
+        value = targetYardInput,
+        onValueChange = { targetYardInput = it },
+        modifier = Modifier.fillMaxWidth(),
+        placeholder = { Text("cth: 303", color = colors.textFaint) },
+        colors = outlinedFieldColors(),
+        shape = RoundedCornerShape(Dimens.RadiusControl),
+        textStyle = AppType.FieldText.copy(color = colors.textPrimary),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+        singleLine = true,
+    )
+
+    Spacer(Modifier.height(20.dp))
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        OutlinedButton(
+            onClick = onCancel,
+            modifier = Modifier.weight(1f).height(48.dp),
+            shape = RoundedCornerShape(Dimens.RadiusControl),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
+            border = BorderStroke(1.dp, colors.border),
+        ) { Text("Batal") }
+        Button(
+            onClick = {
+                if (corakInput.isNotBlank()) {
+                    val yard = targetYardInput.trim().replace(',', '.').toDoubleOrNull()
+                    onSave(corakInput.trim(), yard)
+                }
+            },
+            enabled = corakInput.isNotBlank(),
+            modifier = Modifier.weight(1f).height(48.dp),
+            shape = RoundedCornerShape(Dimens.RadiusControl),
+            colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
+        ) { Text("Simpan & Lanjut", fontWeight = FontWeight.SemiBold) }
     }
 }
 

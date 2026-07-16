@@ -33,12 +33,6 @@ internal sealed interface ActiveOverlay {
     data class QuickEditMesin(val mcNo: String) : ActiveOverlay
     data class GuidedEstimasi(val mcNo: String) : ActiveOverlay
     data class GuidedDoffing(val mcNo: String) : ActiveOverlay
-    /** Machine typed into the console has no active estimasi yet — offers "Tambah Estimasi Baru"
-     * vs "Catat Potong (Doff)" instead of guessing which one the operator meant. */
-    data class GuidedActionHub(val mcNo: String) : ActiveOverlay
-    /** Several machine numbers typed into the console at once (comma/space separated) — applies
-     * one Corak+Target Yard to all of them in a single guided sheet. */
-    data class BulkGuidedSetup(val mcNos: List<String>) : ActiveOverlay
 }
 
 /** Custom Saver for rememberSaveable — ActiveOverlay's variants aren't natively Bundle-storable
@@ -56,11 +50,6 @@ internal val ActiveOverlaySaver = Saver<ActiveOverlay, List<Any?>>(
             is ActiveOverlay.QuickEditMesin -> listOf("QuickEditMesin", overlay.mcNo)
             is ActiveOverlay.GuidedEstimasi -> listOf("GuidedEstimasi", overlay.mcNo)
             is ActiveOverlay.GuidedDoffing -> listOf("GuidedDoffing", overlay.mcNo)
-            is ActiveOverlay.GuidedActionHub -> listOf("GuidedActionHub", overlay.mcNo)
-            // mcNos encoded as a single comma-joined string (not a nested List<String>) — keeps
-            // this payload a plain String like every other variant here instead of needing its
-            // own list-of-primitives support from the Bundle-backed SaverScope.
-            is ActiveOverlay.BulkGuidedSetup -> listOf("BulkGuidedSetup", overlay.mcNos.joinToString(","))
         }
     },
     restore = { saved ->
@@ -71,10 +60,6 @@ internal val ActiveOverlaySaver = Saver<ActiveOverlay, List<Any?>>(
             "QuickEditMesin" -> (saved.getOrNull(1) as? String)?.let { ActiveOverlay.QuickEditMesin(it) } ?: ActiveOverlay.None
             "GuidedEstimasi" -> (saved.getOrNull(1) as? String)?.let { ActiveOverlay.GuidedEstimasi(it) } ?: ActiveOverlay.None
             "GuidedDoffing" -> (saved.getOrNull(1) as? String)?.let { ActiveOverlay.GuidedDoffing(it) } ?: ActiveOverlay.None
-            "GuidedActionHub" -> (saved.getOrNull(1) as? String)?.let { ActiveOverlay.GuidedActionHub(it) } ?: ActiveOverlay.None
-            "BulkGuidedSetup" -> (saved.getOrNull(1) as? String)?.let {
-                ActiveOverlay.BulkGuidedSetup(it.split(",").filter(String::isNotBlank))
-            } ?: ActiveOverlay.None
             else -> ActiveOverlay.None
         }
     },

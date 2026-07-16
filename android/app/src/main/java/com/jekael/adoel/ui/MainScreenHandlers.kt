@@ -25,6 +25,7 @@ internal class MainScreenHandlers(
     private val sendPulse: SendPulseState,
     private val errorFlash: ErrorFlashState,
     private val shiftFinished: ShiftFinishedState,
+    private val undoRedo: UndoRedoState,
 ) {
     private fun flashError(msg: String) {
         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -72,10 +73,13 @@ internal class MainScreenHandlers(
                         sendPulse.key++
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         NotificationHelper.cancelNotif(context, result.mcNo)
-                        uiVm.showToast(result.msg, undo = {
-                            result.undoFn?.invoke()
-                            rescheduleEstimasi(result.prevEst)
-                        })
+                        undoRedo.push(
+                            UndoableAction(
+                                undo = { result.undoFn?.invoke(); rescheduleEstimasi(result.prevEst) },
+                                redo = { doffVm.prosesBarisUmum(cmd); NotificationHelper.cancelNotif(context, result.mcNo) },
+                            ),
+                        )
+                        uiVm.showToast(result.msg)
                         onCleared()
                     }
                     is ProsesResult.Err -> flashError(result.msg)
@@ -91,10 +95,13 @@ internal class MainScreenHandlers(
             is ProsesResult.Ok -> {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 NotificationHelper.cancelNotif(context, result.mcNo)
-                uiVm.showToast(result.msg, undo = {
-                    result.undoFn?.invoke()
-                    rescheduleEstimasi(result.prevEst)
-                })
+                undoRedo.push(
+                    UndoableAction(
+                        undo = { result.undoFn?.invoke(); rescheduleEstimasi(result.prevEst) },
+                        redo = { doffVm.prosesBarisUmum(cmd); NotificationHelper.cancelNotif(context, result.mcNo) },
+                    ),
+                )
+                uiVm.showToast(result.msg)
             }
             is ProsesResult.Err -> uiVm.showToast("⚠ ${result.msg}")
         }
@@ -105,12 +112,18 @@ internal class MainScreenHandlers(
             val prevEst = doffVm.state.value.estimasi[mcNo]
             doffVm.hapusEstimasi(mcNo)
             NotificationHelper.cancelNotif(context, mcNo)
-            uiVm.showToast("Mc $mcNo dihapus", undo = {
-                if (prevEst != null) {
-                    doffVm.restoreEstimasi(prevEst)
-                    rescheduleEstimasi(prevEst)
-                }
-            })
+            undoRedo.push(
+                UndoableAction(
+                    undo = {
+                        if (prevEst != null) {
+                            doffVm.restoreEstimasi(prevEst)
+                            rescheduleEstimasi(prevEst)
+                        }
+                    },
+                    redo = { doffVm.hapusEstimasi(mcNo); NotificationHelper.cancelNotif(context, mcNo) },
+                ),
+            )
+            uiVm.showToast("Mc $mcNo dihapus")
         }
     }
 
@@ -119,9 +132,13 @@ internal class MainScreenHandlers(
         uiVm.showConfirm("Hapus riwayat Mc ${entry.mcNo}?") {
             doffVm.hapusAktualById(id)
             onCleared()
-            uiVm.showToast("Mc ${entry.mcNo} dihapus", undo = {
-                doffVm.restoreAktual(entry)
-            })
+            undoRedo.push(
+                UndoableAction(
+                    undo = { doffVm.restoreAktual(entry) },
+                    redo = { doffVm.hapusAktualById(id) },
+                ),
+            )
+            uiVm.showToast("Mc ${entry.mcNo} dihapus")
         }
     }
 

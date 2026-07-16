@@ -68,6 +68,7 @@ internal fun MesinEditPanel(
             colors = outlinedFieldColors(),
             shape = RoundedCornerShape(Dimens.RadiusControl),
             textStyle = AppType.FieldText.copy(color = colors.textPrimary),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             singleLine = true,
         )
 
@@ -138,6 +139,7 @@ internal fun MesinEditPanel(
                     colors = outlinedFieldColors(),
                     shape = RoundedCornerShape(Dimens.RadiusControl),
                     textStyle = AppType.FieldText.copy(color = colors.textPrimary),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                 )
                 OutlinedTextField(
@@ -149,6 +151,7 @@ internal fun MesinEditPanel(
                     colors = outlinedFieldColors(),
                     shape = RoundedCornerShape(Dimens.RadiusControl),
                     textStyle = AppType.FieldText.copy(color = colors.textPrimary),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                 )
             }

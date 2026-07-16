@@ -124,8 +124,9 @@ fun MainScreen(
     var consoleBarHeight by remember { mutableStateOf(0.dp) }
     var headerHeight by remember { mutableStateOf(0.dp) }
 
+    val undoRedo = remember { UndoRedoState() }
     val handlers = remember(context, doffVm, uiVm, haptic) {
-        MainScreenHandlers(context, doffVm, uiVm, haptic, sendPulse, errorFlash, shiftFinished)
+        MainScreenHandlers(context, doffVm, uiVm, haptic, sendPulse, errorFlash, shiftFinished, undoRedo)
     }
 
     // Request notification permission launcher
@@ -166,16 +167,13 @@ fun MainScreen(
     val radarList = remember(state.estimasi) {
         sortedByNearest(state.estimasi)
     }
-    // Filters by mc number or corak so an operator can jump straight to a machine instead of
+    // Filters by mc number only so an operator can jump straight to a machine instead of
     // scanning past everything else when a lot of machines are running at once.
-    val filteredRadarList = remember(radarList, radarFilter, state.db) {
+    val filteredRadarList = remember(radarList, radarFilter) {
         if (radarFilter.isBlank()) {
             radarList
         } else {
-            radarList.filter { est ->
-                val corak = est.corakOverride ?: state.db[est.mcNo]?.corak ?: ""
-                est.mcNo.contains(radarFilter, ignoreCase = true) || corak.contains(radarFilter, ignoreCase = true)
-            }
+            radarList.filter { est -> est.mcNo.contains(radarFilter, ignoreCase = true) }
         }
     }
     // Derived (not a plain remember(nowAbs, ...)) — partitioning only needs to actually re-propagate
@@ -349,10 +347,11 @@ fun MainScreen(
                                 onDoff = { mcNo -> handlers.handleDoff(mcNo) },
                                 onDoffMatching = { mcNo -> handlers.handleDoff(mcNo, "MATCHING") },
                                 onHapus = { mcNo -> handlers.handleHapusEst(mcNo) },
-                                // Fast path to the two fields that change constantly on the floor
-                                // (corak/target yard) — the full estimasi timer entry lives behind
-                                // the console's own guided flow instead (Master Blueprint §4C).
+                                // Two distinct tap zones (Master Blueprint v9.2 §2): mcNo/corak
+                                // column edits corak+target yard, the time column edits the
+                                // estimasi's own time — no more one tap target for two fields.
                                 onQuickEdit = { mcNo -> activeOverlay = ActiveOverlay.QuickEditMesin(mcNo) },
+                                onEditWaktu = { mcNo -> activeOverlay = ActiveOverlay.GuidedEstimasi(mcNo) },
                             )
                         }
                         Page.RIWAYAT -> {
@@ -372,6 +371,11 @@ fun MainScreen(
             }
         }
 
+        // Top/bottom fade — softens the hard edge where list items scroll behind the floating
+        // header/console instead of cutting off sharply (Master Blueprint v9.2 §10).
+        EdgeFadeScrim(atTop = true, height = 10.dp + headerHeight + 16.dp)
+        EdgeFadeScrim(atTop = false, height = 10.dp + consoleBarHeight + 16.dp)
+
         // Header — floating card, overlays the list (list scrolls behind it)
         MainScreenHeader(
             nowAbs = nowAbs,
@@ -389,33 +393,33 @@ fun MainScreen(
         )
 
         // Console command bar — floating card, overlays the list (list scrolls behind it). Pure
-        // machine-number entry point (Master Blueprint §4A/§4B): MainScreen decides what happens
-        // next from the machine's own state instead of a mode toggle telling it what to expect.
+        // machine-number entry point: the operator picks the action by which icon they tap
+        // (Estimasi or Doffing, Master Blueprint v9.2 §1) instead of a single button that then
+        // asks which one was meant.
         ConsoleBar(
-            onGuidedStart = { raw ->
-                val mcList = raw.split(Regex("[,\\s]+")).filter(String::isNotBlank).distinct()
-                if (mcList.size > 1) {
-                    val invalid = mcList.filter { state.db[it] == null }
-                    if (invalid.isNotEmpty()) {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        uiVm.showToast("⚠ Mc ${invalid.joinToString(", ")} tidak ditemukan")
-                    } else {
-                        activeOverlay = ActiveOverlay.BulkGuidedSetup(mcList)
-                    }
+            onEstimasiClick = { mcNo ->
+                if (state.db[mcNo] == null) {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    uiVm.showToast("⚠ Mc $mcNo tidak ditemukan")
                 } else {
-                    val mcNo = mcList.firstOrNull()
-                    when {
-                        mcNo == null -> Unit
-                        state.db[mcNo] == null -> uiVm.showToast("⚠ Mc $mcNo tidak ditemukan")
-                        // Machine already has an estimasi running — swipe already covers routine
-                        // doff/matching, so typing its number again means "correct the timer".
-                        state.estimasi[mcNo] != null -> activeOverlay = ActiveOverlay.GuidedEstimasi(mcNo)
-                        // No estimasi yet — offer the choice instead of guessing which one the
-                        // operator meant (Master Blueprint §4B, Skenario B & C).
-                        else -> activeOverlay = ActiveOverlay.GuidedActionHub(mcNo)
-                    }
+                    // GuidedEstimasiSheet itself detects an unconfigured machine (blank corak) and
+                    // offers the quick corak/yard setup inline before the value step (§3) — no
+                    // separate routing needed here for that case.
+                    activeOverlay = ActiveOverlay.GuidedEstimasi(mcNo)
                 }
             },
+            onDoffingClick = { mcNo ->
+                if (state.db[mcNo] == null) {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    uiVm.showToast("⚠ Mc $mcNo tidak ditemukan")
+                } else {
+                    activeOverlay = ActiveOverlay.GuidedDoffing(mcNo)
+                }
+            },
+            onUndo = { undoRedo.undo() },
+            onRedo = { undoRedo.redo() },
+            canUndo = undoRedo.canUndo,
+            canRedo = undoRedo.canRedo,
             onHeightMeasured = { consoleBarHeight = it },
             modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
         )
@@ -543,29 +547,6 @@ fun MainScreen(
         )
     }
 
-    val guidedActionHubMcNo = (activeOverlay as? ActiveOverlay.GuidedActionHub)?.mcNo
-    if (guidedActionHubMcNo != null) {
-        GuidedActionHub(
-            mcNo = guidedActionHubMcNo,
-            onDismiss = { activeOverlay = ActiveOverlay.None },
-            onAddEstimasiClick = { activeOverlay = ActiveOverlay.GuidedEstimasi(guidedActionHubMcNo) },
-            onDirectDoffClick = { activeOverlay = ActiveOverlay.GuidedDoffing(guidedActionHubMcNo) },
-        )
-    }
-
-    val bulkGuidedMcNos = (activeOverlay as? ActiveOverlay.BulkGuidedSetup)?.mcNos
-    if (bulkGuidedMcNos != null) {
-        BulkGuidedSetupSheet(
-            mcNos = bulkGuidedMcNos,
-            onDismiss = { activeOverlay = ActiveOverlay.None },
-            onSave = { corak, targetYard ->
-                doffVm.setMesinBulk(bulkGuidedMcNos, corak, targetYard)
-                uiVm.showToast("${bulkGuidedMcNos.size} mesin diperbarui ✓")
-                activeOverlay = ActiveOverlay.None
-            },
-        )
-    }
-
     val guidedDoffingMcNo = (activeOverlay as? ActiveOverlay.GuidedDoffing)?.mcNo
     if (guidedDoffingMcNo != null) {
         GuidedDoffingSheet(
@@ -582,6 +563,10 @@ fun MainScreen(
                 handlers.handleCommand(Mode.ESTIMASI, value) {
                     activeOverlay = ActiveOverlay.None
                 }
+            },
+            onQuickUpdate = { corak, targetYard ->
+                val mesin = state.db[guidedDoffingMcNo] ?: MesinData()
+                doffVm.setMesin(guidedDoffingMcNo, mesin.copy(corak = corak, targetYard = targetYard))
             },
         )
     }

@@ -8,7 +8,6 @@ import kotlinx.coroutines.flow.asStateFlow
 data class ToastState(
     val key: Int,
     val msg: String,
-    val undoAction: (() -> Unit)? = null,
 )
 
 data class ConfirmState(
@@ -26,9 +25,9 @@ class UIViewModel : ViewModel() {
 
     private var toastKey = 0
 
-    fun showToast(msg: String, undo: (() -> Unit)? = null) {
+    fun showToast(msg: String) {
         toastKey++
-        _toast.value = ToastState(toastKey, msg, undo)
+        _toast.value = ToastState(toastKey, msg)
     }
 
     fun dismissToast() {

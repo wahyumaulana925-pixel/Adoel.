@@ -64,6 +64,7 @@ fun QuickEditCorakDialog(
             colors = outlinedFieldColors(),
             shape = RoundedCornerShape(Dimens.RadiusControl),
             textStyle = AppType.FieldText.copy(color = colors.textPrimary),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             singleLine = true,
         )
 

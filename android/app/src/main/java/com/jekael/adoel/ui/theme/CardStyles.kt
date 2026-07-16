@@ -2,8 +2,13 @@ package com.jekael.adoel.ui.theme
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
@@ -12,6 +17,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 // Soft shadow in both modes — now that dark mode's background (see DarkBg in Theme.kt) is an
@@ -96,4 +102,33 @@ fun Modifier.elevatedListCard(backgroundColor: Color): Modifier {
         .border(1.dp, colors.border, shape)
         .premiumSurface(backgroundColor)
         .fabricTextureSubtle()
+}
+
+/**
+ * Soft top/bottom fade so list content doesn't cut off with a hard edge as it scrolls behind the
+ * floating header/console — items ease into the screen background instead of disappearing at a
+ * sharp line (Master Blueprint v9.2 §10). Not a true backdrop blur of the card itself (that would
+ * need capturing the scrolled content into a render layer, only feasible on API 31+) — a plain
+ * gradient scrim reads as the same soft transition and works identically on every device. Drawn as
+ * a sibling positioned over the list but under the header/console card, so declare it after the
+ * scrollable content and before the floating card in a Box's children.
+ */
+@Composable
+fun BoxScope.EdgeFadeScrim(atTop: Boolean, height: Dp) {
+    val colors = LocalAppColors.current
+    Box(
+        modifier = Modifier
+            .align(if (atTop) Alignment.TopCenter else Alignment.BottomCenter)
+            .fillMaxWidth()
+            .height(height)
+            .background(
+                Brush.verticalGradient(
+                    colors = if (atTop) {
+                        listOf(colors.bg, colors.bg.copy(alpha = 0f))
+                    } else {
+                        listOf(colors.bg.copy(alpha = 0f), colors.bg)
+                    },
+                ),
+            ),
+    )
 }

@@ -57,17 +57,6 @@ class DoffViewModel @JvmOverloads constructor(
         s.copy(db = s.db + (mcNo to data))
     }
 
-    /** Applies the same corak/target yard to several machines at once (see BulkGuidedSetupSheet) —
-     * a single updateState transform so all of them land in one persisted transaction instead of
-     * racing each other as N separate writes. */
-    fun setMesinBulk(mcNos: List<String>, corak: String, targetYard: Double?) = updateState { s ->
-        val updated = s.db.toMutableMap()
-        mcNos.forEach { mcNo ->
-            updated[mcNo] = (updated[mcNo] ?: MesinData()).copy(corak = corak, targetYard = targetYard)
-        }
-        s.copy(db = updated)
-    }
-
     fun resetMesin(mcNo: String) = updateState { s ->
         val default = buildDefaultDb()[mcNo] ?: MesinData()
         s.copy(db = s.db + (mcNo to default))
