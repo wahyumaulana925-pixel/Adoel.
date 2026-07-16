@@ -148,6 +148,7 @@ class DoffViewModel @JvmOverloads constructor(
         val effectiveCorak = prevEst?.corakOverride ?: mesin.corak
 
         var entryId = 0
+        var createdEntry: AktualEntry? = null
         updateState { s ->
             entryId = s.nextId
             val entry = AktualEntry(
@@ -159,6 +160,7 @@ class DoffViewModel @JvmOverloads constructor(
                 customYard = customYard,
                 tsEpochMin = nowAbsMin(),
             )
+            createdEntry = entry
             s.copy(
                 nextId = entryId + 1,
                 estimasi = s.estimasi - mcNo,
@@ -174,6 +176,7 @@ class DoffViewModel @JvmOverloads constructor(
                 hapusAktualById(entryId)
                 if (prevEst != null) restoreEstimasi(prevEst)
             },
+            entry = createdEntry,
         )
     }
 

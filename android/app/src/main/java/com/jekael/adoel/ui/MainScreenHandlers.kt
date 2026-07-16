@@ -76,7 +76,16 @@ internal class MainScreenHandlers(
                         undoRedo.push(
                             UndoableAction(
                                 undo = { result.undoFn?.invoke(); rescheduleEstimasi(result.prevEst) },
-                                redo = { doffVm.prosesBarisUmum(cmd); NotificationHelper.cancelNotif(context, result.mcNo) },
+                                // Restores the exact entry the doff created (same id) instead of
+                                // re-running prosesBarisUmum, which would mint a brand new entry —
+                                // every extra undo/redo cycle would otherwise leave one more
+                                // duplicate row in Riwayat, since the stale undoFn above only ever
+                                // knows how to remove the original id.
+                                redo = {
+                                    result.entry?.let { doffVm.restoreAktual(it) }
+                                    doffVm.hapusEstimasi(result.mcNo)
+                                    NotificationHelper.cancelNotif(context, result.mcNo)
+                                },
                             ),
                         )
                         uiVm.showToast(result.msg)
@@ -98,7 +107,15 @@ internal class MainScreenHandlers(
                 undoRedo.push(
                     UndoableAction(
                         undo = { result.undoFn?.invoke(); rescheduleEstimasi(result.prevEst) },
-                        redo = { doffVm.prosesBarisUmum(cmd); NotificationHelper.cancelNotif(context, result.mcNo) },
+                        // Restores the exact entry the doff created (same id) instead of re-running
+                        // prosesBarisUmum, which would mint a brand new entry — every extra
+                        // undo/redo cycle would otherwise leave one more duplicate row in Riwayat,
+                        // since the stale undoFn above only ever knows how to remove the original id.
+                        redo = {
+                            result.entry?.let { doffVm.restoreAktual(it) }
+                            doffVm.hapusEstimasi(result.mcNo)
+                            NotificationHelper.cancelNotif(context, result.mcNo)
+                        },
                     ),
                 )
                 uiVm.showToast(result.msg)

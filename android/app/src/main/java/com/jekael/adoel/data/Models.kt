@@ -66,6 +66,10 @@ sealed class ProsesResult {
         val estAbs: Long? = null,
         val prevEst: Estimasi? = null,
         val undoFn: (() -> Unit)? = null,
+        // The exact AktualEntry a doff (prosesBarisUmum) just created — lets a redo restore that
+        // same row (same id) instead of re-running the whole command and minting a new one, which
+        // would leave a duplicate behind every time undo/redo is repeated (nextId always advances).
+        val entry: AktualEntry? = null,
     ) : ProsesResult()
     data class Err(val msg: String) : ProsesResult()
 }
