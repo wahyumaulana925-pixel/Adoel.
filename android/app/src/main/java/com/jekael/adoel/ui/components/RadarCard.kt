@@ -1,6 +1,9 @@
+@file:OptIn(ExperimentalFoundationApi::class)
+
 package com.jekael.adoel.ui.components
 
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -284,7 +287,10 @@ fun RadarCard(
                     scaleY = 1f - 0.03f * pressCharge.value
                     alpha = (1f - exitProgress) * entranceAlpha.value
                     rotationY = flipRotation.value
-                    cameraDistance = 8 * density
+                    // this.density (GraphicsLayerScope's own Float property), not the outer
+                    // Density-typed `density` val above — plain `density` here actually resolves
+                    // to that outer local, not the receiver, so 8 * density fails to typecheck.
+                    cameraDistance = 8 * this.density
                 }
                 .elevatedListCard(backgroundColor = lerp(faceBg, Red500, 0.16f * pressCharge.value))
                 // Swipe is the fast path, but TalkBack intercepts swipe gestures for its own
