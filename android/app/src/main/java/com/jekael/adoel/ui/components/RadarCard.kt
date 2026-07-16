@@ -367,15 +367,21 @@ fun RadarCard(
                         },
                     )
                 },
-            // Centers the Row below when this card is stretched taller than its own content to
-            // match a grid-paired sibling (see MenungguGridSlot) — a no-op when the card's own
-            // height already equals its content's, i.e. everywhere outside the grid pairing.
             contentAlignment = Alignment.Center,
         ) {
-          // Content swaps at the halfway point of the flip (not tied to [face] directly) so the
-          // card visually reads as turning over, not just cross-fading — see the un-mirror Box in
-          // the else branch below for why the back content needs its own counter-rotation.
-          if (flipRotation.value <= 90f) {
+          // Front face stays composed at all times (never conditionally removed) so its own
+          // intrinsic content — mcNo/corak/progress row — is what fixes this card's height,
+          // regardless of which face is actually showing. The back face below then matches that
+          // exact footprint via matchParentSize() instead of the card resizing itself to
+          // whichever face happens to be composed (that was leaving Jeda/Hapus/Lanjutkan
+          // floating in a card several times taller than a normal one). Content swaps at the
+          // halfway point of the flip (not tied to [face] directly) so the card visually reads as
+          // turning over, not just cross-fading — see the un-mirror Box further down for why the
+          // back content needs its own counter-rotation. Hidden via alpha (not removed) and its
+          // own tap zones disabled then too, so an invisible front can't still swallow taps meant
+          // for the back's buttons.
+          val frontVisible = flipRotation.value <= 90f
+          Box(modifier = Modifier.graphicsLayer { alpha = if (frontVisible) 1f else 0f }) {
             // Left accent — a rounded pill (all four corners at the card's own radius, so a
             // 16dp-wide bar reads as a capsule) inset from the edge rather than a flush flat
             // strip, plus the twisted-thread look (alternating shadow bands down the solid accent
@@ -433,6 +439,7 @@ fun RadarCard(
                     modifier = Modifier
                         .weight(1f)
                         .combinedClickable(
+                            enabled = frontVisible,
                             onClickLabel = "Ubah corak dan target yard Mc ${est.mcNo}",
                             onClick = onQuickEdit,
                             onLongClickLabel = "Jeda atau hapus Mc ${est.mcNo}",
@@ -527,6 +534,7 @@ fun RadarCard(
                         // comment for why this zone needs its own copy instead of relying on the
                         // outer Box's detector.
                         modifier = Modifier.combinedClickable(
+                            enabled = frontVisible,
                             onClickLabel = "Ubah waktu estimasi Mc ${est.mcNo}",
                             onClick = onEditWaktu,
                             onLongClickLabel = "Jeda atau hapus Mc ${est.mcNo}",
@@ -555,12 +563,16 @@ fun RadarCard(
                     }
                 }
             }
-          } else {
-            // Back of the card — pre-rotated another 180° so it reads right-side-up once the
-            // outer graphicsLayer above has turned all the way over, instead of mirrored.
+          }
+
+          // Back of the card — only composed once the flip has passed the halfway point, sized via
+          // matchParentSize() to exactly match the front's footprint above (see that Box's own
+          // comment for why), and pre-rotated another 180° so it reads right-side-up once the outer
+          // graphicsLayer has turned all the way over, instead of mirrored.
+          if (!frontVisible) {
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .matchParentSize()
                     .graphicsLayer { rotationY = 180f },
                 contentAlignment = Alignment.Center,
             ) {
