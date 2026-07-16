@@ -183,6 +183,7 @@ internal fun MainScreenHeader(
                             fraction = animatedFraction,
                             trackColor = colors.bgElevated2,
                             fillColor = Cyan500,
+                            animated = false,
                         )
                     }
                 }

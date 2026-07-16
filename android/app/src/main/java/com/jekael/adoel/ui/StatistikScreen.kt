@@ -481,6 +481,7 @@ private fun ShiftRow(
                         trackColor = colors.bgElevated2,
                         fillColor = Cyan500,
                         width = 60.dp,
+                        animated = false,
                     )
                 }
                 Column(horizontalAlignment = Alignment.End) {

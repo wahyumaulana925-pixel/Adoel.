@@ -61,6 +61,12 @@ fun LinearProgressBar(
     fillMaxWidth: Boolean = false,
     height: Dp = 4.dp,
     cornerRadius: Dp = 2.dp,
+    // RadarCard's own per-machine bar animates continuously (it's the one thing on that card that
+    // keeps moving); the header's shift-progress bar and Statistik's archived-shift rows share the
+    // exact same wave shape/thickness for visual consistency but stay still — a whole screen of
+    // rows all flowing at once would be much busier than one card's bar, and an archived shift
+    // isn't "in progress" anymore anyway.
+    animated: Boolean = true,
 ) {
     var grown by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { grown = true }
@@ -70,13 +76,18 @@ fun LinearProgressBar(
         label = "progressFraction",
     )
 
-    val infiniteTransition = rememberInfiniteTransition(label = "waveFlow")
-    val phase by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = (2f * Math.PI).toFloat(),
-        animationSpec = infiniteRepeatable(animation = tween(1200, easing = LinearEasing)),
-        label = "wavePhase",
-    )
+    val phase = if (animated) {
+        val infiniteTransition = rememberInfiniteTransition(label = "waveFlow")
+        val animatedPhase by infiniteTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = (2f * Math.PI).toFloat(),
+            animationSpec = infiniteRepeatable(animation = tween(1200, easing = LinearEasing)),
+            label = "wavePhase",
+        )
+        animatedPhase
+    } else {
+        0f
+    }
     val density = LocalDensity.current
 
     BoxWithConstraints(
@@ -97,27 +108,35 @@ fun LinearProgressBar(
 
         val widthPx = with(density) { maxWidth.toPx() }
         val heightPx = with(density) { height.toPx() }
-        val amplitudePx = heightPx
-        val wavelengthPx = with(density) { 12.dp.toPx() }
+        // Gentler than the bar's full height/a tight 12dp pitch — that combination read as a sharp
+        // zigzag rather than a smooth flowing curve, especially right at the leading edge where the
+        // path used to jump straight from a fixed anchor to the first phase-shifted point.
+        val amplitudePx = heightPx * 0.5f
+        val wavelengthPx = with(density) { 18.dp.toPx() }
         val stepPx = with(density) { 1.dp.toPx() }
+        val strokeWidthPx = heightPx * 0.6f
         val progressWidthPx = widthPx * animatedFraction.coerceIn(0f, 1f)
+
+        fun waveY(midY: Float, x: Float) = midY + amplitudePx * sin((2.0 * Math.PI * x / wavelengthPx) - phase).toFloat()
 
         Canvas(modifier = Modifier.fillMaxSize()) {
             if (progressWidthPx > 0f) {
                 val midY = size.height / 2f
                 val wavePath = Path().apply {
-                    moveTo(0f, midY)
-                    var x = 0f
+                    // Starts at the actual first phase-shifted point (not a fixed midY anchor) —
+                    // moveTo-ing to midY then immediately lineTo-ing to the real value drew a
+                    // visible vertical spike at x=0 whenever phase wasn't a multiple of π.
+                    moveTo(0f, waveY(midY, 0f))
+                    var x = stepPx
                     while (x <= progressWidthPx) {
-                        val y = midY + amplitudePx * sin((2.0 * Math.PI * x / wavelengthPx) - phase).toFloat()
-                        lineTo(x, y)
+                        lineTo(x, waveY(midY, x))
                         x += stepPx
                     }
                 }
                 drawPath(
                     path = wavePath,
                     color = fillColor,
-                    style = Stroke(width = heightPx, cap = StrokeCap.Round),
+                    style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round),
                 )
             }
         }
@@ -130,8 +149,7 @@ fun LinearProgressBar(
         // grows with [animatedFraction] too (1.6x up to 3.0x the bar's height) so the roll itself
         // visibly thickens as more cloth accumulates, not just travels further right.
         if (animatedFraction > 0.02f) {
-            val midY = heightPx / 2f
-            val rollYPx = midY + amplitudePx * sin((2.0 * Math.PI * progressWidthPx / wavelengthPx) - phase).toFloat()
+            val rollYPx = waveY(heightPx / 2f, progressWidthPx)
             val rollDiameter = height * (1.6f + 1.4f * animatedFraction.coerceIn(0f, 1f))
             Box(
                 modifier = Modifier
