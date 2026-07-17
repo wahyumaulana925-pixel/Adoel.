@@ -570,11 +570,6 @@ fun MainScreen(
                     activeOverlay = ActiveOverlay.None
                 }
             },
-            onSubmitCounterUpdate = { value ->
-                handlers.handleCommand(Mode.ESTIMASI, value) {
-                    activeOverlay = ActiveOverlay.None
-                }
-            },
             onQuickUpdate = { corak, targetYard ->
                 val mesin = state.db[guidedDoffingMcNo] ?: MesinData()
                 doffVm.setMesin(guidedDoffingMcNo, mesin.copy(corak = corak, targetYard = targetYard))

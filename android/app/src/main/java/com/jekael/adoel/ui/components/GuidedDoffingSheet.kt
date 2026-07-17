@@ -17,23 +17,26 @@ import androidx.compose.ui.unit.sp
 import com.jekael.adoel.data.Estimasi
 import com.jekael.adoel.data.KETERANGAN_CODES
 import com.jekael.adoel.data.MesinData
-import com.jekael.adoel.data.MesinTipe
 import com.jekael.adoel.data.formatYard
 import com.jekael.adoel.ui.theme.AppType
 import com.jekael.adoel.ui.theme.Cyan600
 import com.jekael.adoel.ui.theme.Dimens
 import com.jekael.adoel.ui.theme.LocalAppColors
-import com.jekael.adoel.ui.theme.Sky500
 
-private enum class GuidedDoffingStep { SETUP, CHOOSE, NORMAL, KETERANGAN, COUNTER }
+private enum class GuidedDoffingStep { SETUP, CHOOSE, NORMAL, KETERANGAN }
 
 /** Terpandu (guided) DOFFING entry — Batch 5. Step 1 offers big buttons instead of free-text
- * ("Doffing normal" / "Ada keterangan" / D408-only "Update bacaan counter" — the guided,
- * unambiguous replacement for the old console-only "C" token shortcut removed in Batch 6). Every path
- * ends by building the identical command string the Teks console would send for that action and
- * handing it to the matching callback, which the caller routes through the same
- * handlers.handleCommand path Teks uses — so undo, notification cancel/reschedule, and toast/
- * haptic feedback all still apply exactly as they do today.
+ * ("Doffing normal" / "Ada keterangan"). Every path ends by building the identical command
+ * string the Teks console would send for that action and handing it to the matching callback,
+ * which the caller routes through the same handlers.handleCommand path Teks uses — so undo,
+ * notification cancel/reschedule, and toast/haptic feedback all still apply exactly as they do
+ * today.
+ *
+ * D408's counter reading is updated through the Estimasi button instead (its own field already
+ * asks for "Bacaan jam counter" for that tipe) — this sheet used to also offer an "Update bacaan
+ * counter" choice as a replacement for an old console-only "C" token shortcut, but with the
+ * guided console's two direct action icons there's no mode-switch cost left to save, so that was
+ * just a second path to the exact same result. Removed rather than kept as a redundant shortcut.
  *
  * A machine with no corak set yet gets an inline quick-setup step first (same corak/target-yard
  * fast path as [GuidedEstimasiSheet]) instead of being turned away — tapping the Doffing icon on
@@ -45,7 +48,6 @@ fun GuidedDoffingSheet(
     estimasi: Estimasi?,
     onDismiss: () -> Unit,
     onSubmitDoffing: (value: String) -> Unit,
-    onSubmitCounterUpdate: (value: String) -> Unit,
     onQuickUpdate: (corak: String, targetYard: Double?) -> Unit,
 ) {
     val colors = LocalAppColors.current
@@ -69,10 +71,8 @@ fun GuidedDoffingSheet(
                 onCancel = onDismiss,
             )
             GuidedDoffingStep.CHOOSE -> ChooseStep(
-                isD408 = mesin?.tipe == MesinTipe.D408,
                 onPickNormal = { step = GuidedDoffingStep.NORMAL },
                 onPickKeterangan = { step = GuidedDoffingStep.KETERANGAN },
-                onPickCounter = { step = GuidedDoffingStep.COUNTER },
                 onCancel = onDismiss,
             )
             GuidedDoffingStep.NORMAL -> NormalYardStep(
@@ -84,10 +84,6 @@ fun GuidedDoffingSheet(
                 standardYard = standardYard,
                 onBack = { step = GuidedDoffingStep.CHOOSE },
                 onConfirm = { cmd -> onSubmitDoffing("$mcNo $cmd") },
-            )
-            GuidedDoffingStep.COUNTER -> CounterUpdateStep(
-                onBack = { step = GuidedDoffingStep.CHOOSE },
-                onConfirm = { bacaan -> onSubmitCounterUpdate("$mcNo $bacaan") },
             )
         }
     }
@@ -152,24 +148,14 @@ private fun SetupStep(onSave: (corak: String, targetYard: Double?) -> Unit, onCa
 
 @Composable
 private fun ChooseStep(
-    isD408: Boolean,
     onPickNormal: () -> Unit,
     onPickKeterangan: () -> Unit,
-    onPickCounter: () -> Unit,
     onCancel: () -> Unit,
 ) {
     val colors = LocalAppColors.current
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         BigChoiceButton(label = "Doffing normal", subtitle = "Selesai sesuai target yard", onClick = onPickNormal)
         BigChoiceButton(label = "Ada keterangan", subtitle = "HB, P.LP, P.SN, P.OH, P.EL, P.Sel, atau lainnya", onClick = onPickKeterangan)
-        if (isD408) {
-            BigChoiceButton(
-                label = "Update bacaan counter",
-                subtitle = "Bukan doffing — perbarui estimasi dari bacaan jam mesin",
-                onClick = onPickCounter,
-                accent = Sky500,
-            )
-        }
         Spacer(Modifier.height(6.dp))
         OutlinedButton(
             onClick = onCancel,
@@ -348,43 +334,6 @@ private fun KeteranganStep(standardYard: Double?, onBack: () -> Unit, onConfirm:
             modifier = Modifier.weight(1f).height(48.dp),
             shape = RoundedCornerShape(Dimens.RadiusControl),
             colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
-        ) { Text("Simpan", fontWeight = FontWeight.SemiBold) }
-    }
-}
-
-@Composable
-private fun CounterUpdateStep(onBack: () -> Unit, onConfirm: (String) -> Unit) {
-    val colors = LocalAppColors.current
-    var bacaan by remember { mutableStateOf("") }
-
-    FieldLabel("Bacaan jam counter")
-    OutlinedTextField(
-        value = bacaan,
-        onValueChange = { bacaan = it },
-        modifier = Modifier.fillMaxWidth(),
-        placeholder = { Text("cth: 12.30", color = colors.textFaint) },
-        colors = outlinedFieldColors(),
-        shape = RoundedCornerShape(Dimens.RadiusControl),
-        textStyle = AppType.FieldText.copy(color = colors.textPrimary),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-        singleLine = true,
-    )
-
-    Spacer(Modifier.height(20.dp))
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        OutlinedButton(
-            onClick = onBack,
-            modifier = Modifier.weight(1f).height(48.dp),
-            shape = RoundedCornerShape(Dimens.RadiusControl),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
-            border = BorderStroke(1.dp, colors.border),
-        ) { Text("Kembali") }
-        Button(
-            onClick = { if (bacaan.isNotBlank()) onConfirm(bacaan.trim()) },
-            enabled = bacaan.isNotBlank(),
-            modifier = Modifier.weight(1f).height(48.dp),
-            shape = RoundedCornerShape(Dimens.RadiusControl),
-            colors = ButtonDefaults.buttonColors(containerColor = Sky500),
         ) { Text("Simpan", fontWeight = FontWeight.SemiBold) }
     }
 }

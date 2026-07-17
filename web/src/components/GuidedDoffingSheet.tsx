@@ -4,19 +4,20 @@ import type { Estimasi, MesinData } from "../domain/types";
 
 const KETERANGAN_CODES = ["HB", "P.LP", "P.SN", "P.OH", "P.EL", "P.Sel"];
 
-type Step = "SETUP" | "CHOOSE" | "NORMAL" | "KETERANGAN" | "COUNTER";
+type Step = "SETUP" | "CHOOSE" | "NORMAL" | "KETERANGAN";
 
 /** Terpandu (guided) DOFFING — langkah pertama menawarkan pilihan besar ("Doffing normal" /
- * "Ada keterangan" / khusus D408 "Update bacaan counter") sebagai pengganti teks bebas. Setiap
- * jalur berakhir membangun string command yang identik dengan yang dulu dikirim konsol Teks.
- * Port 1:1 dari GuidedDoffingSheet.kt (aplikasi Android). */
+ * "Ada keterangan") sebagai pengganti teks bebas. Setiap jalur berakhir membangun string
+ * command yang identik dengan yang dulu dikirim konsol Teks. Port 1:1 dari
+ * GuidedDoffingSheet.kt (aplikasi Android). Update bacaan counter D408 sepenuhnya lewat
+ * tombol Estimasi (yang sudah otomatis minta field "Bacaan jam counter" untuk tipe D408) —
+ * bukan lewat menu Doffing ini, supaya tidak ada dua jalur berbeda menuju hasil yang sama. */
 export function GuidedDoffingSheet({
   mcNo,
   mesin,
   estimasi,
   onDismiss,
   onSubmitDoffing,
-  onSubmitCounterUpdate,
   onQuickUpdate,
 }: {
   mcNo: string;
@@ -24,7 +25,6 @@ export function GuidedDoffingSheet({
   estimasi: Estimasi | null;
   onDismiss: () => void;
   onSubmitDoffing: (value: string) => void;
-  onSubmitCounterUpdate: (value: string) => void;
   onQuickUpdate: (corak: string, targetYard: number | null) => void;
 }) {
   const needsSetup = !mesin || mesin.corak.trim() === "" || mesin.corak.trim() === "-";
@@ -47,10 +47,8 @@ export function GuidedDoffingSheet({
         )}
         {step === "CHOOSE" && (
           <ChooseStep
-            isD408={mesin?.tipe === "D408"}
             onPickNormal={() => setStep("NORMAL")}
             onPickKeterangan={() => setStep("KETERANGAN")}
-            onPickCounter={() => setStep("COUNTER")}
             onCancel={onDismiss}
           />
         )}
@@ -67,9 +65,6 @@ export function GuidedDoffingSheet({
             onBack={() => setStep("CHOOSE")}
             onConfirm={(cmd) => onSubmitDoffing(`${mcNo} ${cmd}`)}
           />
-        )}
-        {step === "COUNTER" && (
-          <CounterUpdateStep onBack={() => setStep("CHOOSE")} onConfirm={(bacaan) => onSubmitCounterUpdate(`${mcNo} ${bacaan}`)} />
         )}
       </div>
     </div>
@@ -121,16 +116,12 @@ function SetupStep({ onSave, onCancel }: { onSave: (corak: string, targetYard: n
 }
 
 function ChooseStep({
-  isD408,
   onPickNormal,
   onPickKeterangan,
-  onPickCounter,
   onCancel,
 }: {
-  isD408: boolean;
   onPickNormal: () => void;
   onPickKeterangan: () => void;
-  onPickCounter: () => void;
   onCancel: () => void;
 }) {
   return (
@@ -141,14 +132,6 @@ function ChooseStep({
         subtitle="HB, P.LP, P.SN, P.OH, P.EL, P.Sel, atau lainnya"
         onClick={onPickKeterangan}
       />
-      {isD408 && (
-        <BigChoiceButton
-          label="Update bacaan counter"
-          subtitle="Bukan doffing — perbarui estimasi dari bacaan jam mesin"
-          onClick={onPickCounter}
-          accent="var(--sky-500)"
-        />
-      )}
       <button className="btn" style={{ marginTop: 6 }} onClick={onCancel}>
         Batal
       </button>
@@ -305,36 +288,6 @@ function KeteranganStep({
             const cmd = [ket.trim(), yardInput.trim()].filter((s) => s.length > 0).join(" ");
             if (cmd.trim() !== "") onConfirm(cmd);
           }}
-        >
-          Simpan
-        </button>
-      </div>
-    </>
-  );
-}
-
-function CounterUpdateStep({ onBack, onConfirm }: { onBack: () => void; onConfirm: (bacaan: string) => void }) {
-  const [bacaan, setBacaan] = useState("");
-
-  return (
-    <>
-      <div className="field-label">Bacaan jam counter</div>
-      <input
-        className="field-input"
-        placeholder="cth: 12.30"
-        inputMode="decimal"
-        value={bacaan}
-        onChange={(e) => setBacaan(e.target.value)}
-      />
-      <div className="actions" style={{ marginTop: 20 }}>
-        <button className="cancel" onClick={onBack}>
-          Kembali
-        </button>
-        <button
-          className="confirm"
-          style={{ background: "var(--sky-500)" }}
-          disabled={bacaan.trim() === ""}
-          onClick={() => bacaan.trim() !== "" && onConfirm(bacaan.trim())}
         >
           Simpan
         </button>

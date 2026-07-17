@@ -170,7 +170,6 @@ function AppInner() {
           estimasi={state.estimasi[guidedDoffingMcNo] ?? null}
           onDismiss={() => setGuidedDoffingMcNo(null)}
           onSubmitDoffing={(value) => handleAktualSubmit(value, () => setGuidedDoffingMcNo(null))}
-          onSubmitCounterUpdate={(value) => handleEstimasiSubmit(value, () => setGuidedDoffingMcNo(null))}
           onQuickUpdate={(corak, targetYard) => quickUpdateMesin(guidedDoffingMcNo, corak, targetYard)}
         />
       )}
