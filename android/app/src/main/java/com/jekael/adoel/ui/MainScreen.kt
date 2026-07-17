@@ -20,6 +20,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.*
@@ -28,8 +29,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -61,6 +65,8 @@ fun MainScreen(
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
     val colors = LocalAppColors.current
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     val state by doffVm.state.collectAsStateWithLifecycle()
     val toast by uiVm.toast.collectAsStateWithLifecycle()
     val confirm by uiVm.confirm.collectAsStateWithLifecycle()
@@ -261,7 +267,19 @@ fun MainScreen(
             .fillMaxSize()
             .background(colors.bg)
             .fabricTextureBold()
-            .systemBarsPadding(),
+            .systemBarsPadding()
+            // Tapping any empty area (list gaps, header, background — anywhere a descendant
+            // doesn't already consume the tap for its own click) dismisses the keyboard and
+            // drops focus from whatever field was open. Without this, ConsoleBar's mcNo field
+            // stayed "ready to type" indefinitely once tapped — the keyboard wouldn't go away
+            // until something explicitly submitted or navigated elsewhere, and could resurface
+            // on the next app open since the field never actually lost focus.
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = {
+                    focusManager.clearFocus()
+                    keyboardController?.hide()
+                })
+            },
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
 

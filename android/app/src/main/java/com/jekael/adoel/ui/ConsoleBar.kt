@@ -26,6 +26,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -84,7 +85,13 @@ internal fun ConsoleBar(
                 modifier = Modifier.padding(start = 4.dp, bottom = 6.dp),
             )
             Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.fillMaxWidth(),
+                // Centered as a group (not spread with weight()) — a bare Undo/Redo/field/
+                // Estimasi/Doffing row left-aligned with the field stretched to fill the rest
+                // left a lot of dead padding around whatever 1-3 digits were actually typed,
+                // reading as oversized for what the field is for. Fixed-width field, whole
+                // group centered, matches how full the bar visually looks now.
+                horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 ConsoleIconButton(
@@ -107,8 +114,11 @@ internal fun ConsoleBar(
                 OutlinedTextField(
                     value = mcNoInput,
                     onValueChange = { mcNoInput = it.filter(Char::isDigit).take(3) },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text("Nomor mesin", color = colors.textFaint) },
+                    modifier = Modifier.width(96.dp),
+                    // Shortened from "Nomor mesin" — doesn't fit this field's new, deliberately
+                    // compact width (the caption above the row already spells out the full
+                    // instruction), and singleLine would otherwise just clip it mid-word.
+                    placeholder = { Text("No. Mc", color = colors.textFaint, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Violet500,
                         unfocusedBorderColor = colors.border,
@@ -122,6 +132,7 @@ internal fun ConsoleBar(
                         fontSize = 17.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Monospace,
+                        textAlign = TextAlign.Center,
                     ),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = { submit(onEstimasiClick) }),
