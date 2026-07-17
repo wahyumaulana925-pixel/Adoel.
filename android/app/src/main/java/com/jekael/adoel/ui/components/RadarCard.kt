@@ -4,11 +4,15 @@ package com.jekael.adoel.ui.components
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.PressGestureScope
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -38,6 +42,7 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -213,6 +218,42 @@ fun RadarCard(
         flipRotation.animateTo(if (face == CardFace.FRONT) 0f else 180f, tween(420, easing = FastOutSlowInEasing))
     }
 
+    // Press-charge + long-press-flip for the outer Box's own pointerInput below (the card's
+    // "edge" area — everything the mcNo/corak and waktu zones' own combinedClickable further
+    // down don't cover). Those two zones drive the exact same [pressCharge] Animatable off their
+    // own interactionSource instead (see [ChargeWhilePressed] and its call sites below) rather
+    // than reusing these two lambdas directly — they need to keep combinedClickable for its
+    // accessibility semantics (TalkBack's only way to discover onQuickEdit/onEditWaktu), and a
+    // raw pointerInput here would have dropped that entirely. Before this, those zones only
+    // duplicated the long-press *flip*, not this charge visual/haptic — so pressing-and-holding
+    // anywhere on the card's actual content silently skipped the "kartu tenggelam" feedback and
+    // only played it in the edge strip outside both zones.
+    val handlePressCharge: suspend PressGestureScope.(Offset) -> Unit = {
+        val chargeJob = scope.launch { pressCharge.animateTo(1f, tween(450, easing = LinearEasing)) }
+        val vibrationJob = if (clr.pulse) {
+            scope.launch {
+                while (true) {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    delay(200)
+                }
+            }
+        } else null
+        tryAwaitRelease()
+        chargeJob.cancel()
+        vibrationJob?.cancel()
+        scope.launch { pressCharge.animateTo(0f, tween(150)) }
+    }
+    val handleLongPressFlip: (Offset) -> Unit = {
+        scope.launch { pressCharge.snapTo(0f) }
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        showActionsFace = true
+    }
+
+    val mcNoZoneInteraction = remember(est.mcNo) { MutableInteractionSource() }
+    val waktuZoneInteraction = remember(est.mcNo) { MutableInteractionSource() }
+    ChargeWhilePressed(mcNoZoneInteraction, pressCharge, clr.pulse, haptic)
+    ChargeWhilePressed(waktuZoneInteraction, pressCharge, clr.pulse, haptic)
+
     // Staggered fade+rise entrance when a batch of cards first appears (e.g. switching into
     // ESTIMASI mode from empty), instead of every card popping in at once — keyed to mcNo so it
     // only plays once per card, not on every recomposition (nowAbs ticks every 5s).
@@ -338,33 +379,8 @@ fun RadarCard(
                 .pointerInput(completing, face) {
                     if (completing || face != CardFace.FRONT) return@pointerInput
                     detectTapGestures(
-                        onLongPress = {
-                            scope.launch { pressCharge.snapTo(0f) }
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            showActionsFace = true
-                        },
-                        onPress = {
-                            // Tied to the system long-press threshold, not a fixed micro-interaction
-                            // duration — this must visually track how long the finger is actually
-                            // down, so it's exempt from the 150-250ms range other animations use.
-                            val chargeJob = scope.launch { pressCharge.animateTo(1f, tween(450, easing = LinearEasing)) }
-                            // OVERDUE-only: a rhythmic pulsing haptic while held, mimicking the
-                            // loom's own mechanical vibration at low RPM (Master Blueprint §3E) —
-                            // a physical cue the operator can feel without having to keep reading
-                            // the screen. ~300 RPM = 5 rev/s, so a pulse roughly every 200ms.
-                            val vibrationJob = if (clr.pulse) {
-                                scope.launch {
-                                    while (true) {
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        delay(200)
-                                    }
-                                }
-                            } else null
-                            tryAwaitRelease()
-                            chargeJob.cancel()
-                            vibrationJob?.cancel()
-                            scope.launch { pressCharge.animateTo(0f, tween(150)) }
-                        },
+                        onLongPress = handleLongPressFlip,
+                        onPress = handlePressCharge,
                     )
                 },
             contentAlignment = Alignment.Center,
@@ -434,16 +450,19 @@ fun RadarCard(
                 // (mirroring the outer Box's) since this zone's own tap handling would otherwise
                 // swallow the touch before the outer Box's long-press detector ever saw it,
                 // shrinking the effective press-and-hold area down to a thin strip around the
-                // split zones instead of covering the whole card.
+                // split zones instead of covering the whole card. Its own interactionSource feeds
+                // [ChargeWhilePressed] above so holding here charges the same as the edge does.
                 Column(
                     modifier = Modifier
                         .weight(1f)
                         .combinedClickable(
+                            interactionSource = mcNoZoneInteraction,
+                            indication = LocalIndication.current,
                             enabled = frontVisible,
                             onClickLabel = "Ubah corak dan target yard Mc ${est.mcNo}",
                             onClick = onQuickEdit,
                             onLongClickLabel = "Jeda atau hapus Mc ${est.mcNo}",
-                            onLongClick = { showActionsFace = true },
+                            onLongClick = { handleLongPressFlip(Offset.Zero) },
                         ),
                 ) {
                     Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -532,13 +551,16 @@ fun RadarCard(
                         horizontalAlignment = Alignment.End,
                         // Same long-press-to-flip as the mcNo/corak zone above — see that
                         // comment for why this zone needs its own copy instead of relying on the
-                        // outer Box's detector.
+                        // outer Box's detector, and its own interactionSource for the same
+                        // press-charge reason too.
                         modifier = Modifier.combinedClickable(
+                            interactionSource = waktuZoneInteraction,
+                            indication = LocalIndication.current,
                             enabled = frontVisible,
                             onClickLabel = "Ubah waktu estimasi Mc ${est.mcNo}",
                             onClick = onEditWaktu,
                             onLongClickLabel = "Jeda atau hapus Mc ${est.mcNo}",
-                            onLongClick = { showActionsFace = true },
+                            onLongClick = { handleLongPressFlip(Offset.Zero) },
                         ),
                     ) {
                         Text(
@@ -746,6 +768,37 @@ private fun jaggedSplitPath(size: Size, progress: Float): Path {
         }
         lineTo(0f, size.height)
         close()
+    }
+}
+
+/** Drives the card's shared [pressCharge] Animatable off [interactionSource]'s own pressed state
+ * instead of a dedicated pointerInput — used by the mcNo/corak and waktu zones, which each need
+ * to keep combinedClickable for its accessibility semantics (see their call sites), so they can't
+ * reuse the outer Box's raw detectTapGestures the way the card's edge area does. Charges up over
+ * the same 450ms the edge area uses while held, including the same OVERDUE rhythmic haptic. */
+@Composable
+private fun ChargeWhilePressed(
+    interactionSource: MutableInteractionSource,
+    pressCharge: Animatable<Float, AnimationVector1D>,
+    pulseHaptic: Boolean,
+    haptic: HapticFeedback,
+) {
+    val isPressed by interactionSource.collectIsPressedAsState()
+    LaunchedEffect(isPressed) {
+        if (isPressed) {
+            val vibrationJob = if (pulseHaptic) {
+                launch {
+                    while (true) {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        delay(200)
+                    }
+                }
+            } else null
+            pressCharge.animateTo(1f, tween(450, easing = LinearEasing))
+            vibrationJob?.cancel()
+        } else {
+            pressCharge.animateTo(0f, tween(150))
+        }
     }
 }
 
