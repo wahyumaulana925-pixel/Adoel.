@@ -408,48 +408,26 @@ fun RadarCard(
           // for the back's buttons.
           val frontVisible = flipRotation.value <= 90f
           Box(modifier = Modifier.graphicsLayer { alpha = if (frontVisible) 1f else 0f }) {
-            // Left accent — a rounded pill (all four corners at the card's own radius, so a
-            // 16dp-wide bar reads as a capsule) inset from the edge rather than a flush flat
-            // strip, plus the twisted-thread look (alternating shadow bands down the solid accent
-            // fill) rather than a plain color bar, since this is the one element guaranteed to be
-            // on screen at all times on every card. Shadow bands (not gap-cutting into the card's
-            // own background) so this doesn't need to track the card's dynamically tinted fill color.
+            // Left accent — reverted back to a flush flat strip (the pre-redesign look) instead
+            // of the inset "twisted thread" capsule this had grown into: no independent clip/
+            // rounding of its own here, so its top/bottom corners aren't hand-matched to the
+            // card's curve — they're just cropped by it for free, since the outer elevatedListCard
+            // above already clips everything to RoundedCornerShape(Dimens.RadiusCard).
             Box(
                 modifier = Modifier
                     .align(Alignment.CenterStart)
                     .fillMaxHeight()
-                    .width(16.dp)
-                    .clip(RoundedCornerShape(Dimens.RadiusCard))
-                    .background(clr.accent)
-                    .drawWithContent {
-                        drawContent()
-                        // Alternating dark/light bands (not just a periodic shadow) so this
-                        // reads as a twisted cord's highlight/shadow rotation rather than a
-                        // faint smudge — widened bar + stronger contrast after the first pass
-                        // at this (3dp, one shadow tone, 22% alpha) turned out too subtle to
-                        // confirm by eye on-device.
-                        val pitch = 6.dp.toPx()
-                        val band = 2.5.dp.toPx()
-                        var y = 0f
-                        var dark = true
-                        while (y < size.height) {
-                            drawRect(
-                                color = if (dark) Color.Black.copy(alpha = 0.38f) else Color.White.copy(alpha = 0.30f),
-                                topLeft = Offset(0f, y),
-                                size = Size(size.width, band),
-                            )
-                            dark = !dark
-                            y += pitch
-                        }
-                    },
+                    .width(4.dp)
+                    .background(clr.accent),
             )
 
-            // Content — swipe right = doff, swipe left = doff+Matching, long-press = hapus. Start
-            // padding widened to clear the 16dp pill accent bar (was a flush 4dp strip before).
+            // Content — swipe right = doff, swipe left = doff+Matching, long-press = hapus.
+            // Symmetric padding now that the accent is back to a flush 4dp strip (no more wide
+            // pill inset to clear on the start side).
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 24.dp, end = 16.dp, top = 16.dp, bottom = 16.dp),
+                    .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
