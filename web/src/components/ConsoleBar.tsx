@@ -1,92 +1,92 @@
-import { useRef } from "react";
+import { useState, type ReactNode } from "react";
+import { RedoIcon, ScheduleIcon, ScissorsIcon, UndoIcon } from "./Icons";
 
-const KETERANGAN_CHIPS = ["HB", "P.LP", "P.SN", "P.OH", "P.EL", "P.Sel"];
+/** Bar konsol mengambang — satu field nomor mesin diapit Undo/Redo di kiri dan dua aksi
+ * terpandu (Estimasi, Doffing) di kanan: `[Undo][Redo]  [nomor mesin]  [Estimasi][Doffing]`.
+ * Tidak ada lagi input teks bebas atau tombol "Mulai" tunggal — operator memilih aksi lewat
+ * ikon mana yang ditekan. Port 1:1 dari ConsoleBar.kt (aplikasi Android). */
+export function ConsoleBar({
+  onEstimasiClick,
+  onDoffingClick,
+  onUndo,
+  onRedo,
+  canUndo,
+  canRedo,
+}: {
+  onEstimasiClick: (mcNo: string) => void;
+  onDoffingClick: (mcNo: string) => void;
+  onUndo: () => void;
+  onRedo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+}) {
+  const [mcNoInput, setMcNoInput] = useState("");
 
-export type Mode = "ESTIMASI" | "AKTUAL";
-
-interface Props {
-  mode: Mode;
-  onModeChange: (mode: Mode) => void;
-  value: string;
-  onChange: (value: string) => void;
-  onSend: () => void;
-  hint: string | null;
-  errorFlash: boolean;
-  sendOk: boolean;
-}
-
-export function ConsoleBar({ mode, onModeChange, value, onChange, onSend, hint, errorFlash, sendOk }: Props) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  function submit(action: (mcNo: string) => void) {
+    if (mcNoInput.trim() !== "") {
+      action(mcNoInput.trim());
+      setMcNoInput("");
+    }
+  }
 
   return (
-    <div className="console-bar">
-      {mode === "AKTUAL" && (
-        <div className="chip-row">
-          {KETERANGAN_CHIPS.map((code) => (
-            <button
-              key={code}
-              className="chip"
-              onClick={() => {
-                onChange((value.trimEnd() + " " + code).trimStart());
-                inputRef.current?.focus();
-              }}
-            >
-              {code}
-            </button>
-          ))}
-        </div>
-      )}
-
-      <div className="mode-toggle">
-        <button
-          className={mode === "ESTIMASI" ? "active-estimasi" : ""}
-          onClick={() => onModeChange("ESTIMASI")}
-        >
-          ESTIMASI
-        </button>
-        <button className={mode === "AKTUAL" ? "active-doffing" : ""} onClick={() => onModeChange("AKTUAL")}>
-          DOFFING
-        </button>
-      </div>
-
-      <div className="command-row">
+    <div className="console-bar floating-card">
+      <div className="console-hint">Ketik nomor mesin, lalu ketuk jam (estimasi) atau gunting (doffing)</div>
+      <div className="console-row">
+        <ConsoleIconButton icon={<UndoIcon size={18} />} label="Undo" enabled={canUndo} accent="var(--violet-500)" onClick={onUndo} />
+        <ConsoleIconButton icon={<RedoIcon size={18} />} label="Redo" enabled={canRedo} accent="var(--violet-500)" onClick={onRedo} />
         <input
-          ref={inputRef}
-          value={value}
-          onChange={(e) => onChange(e.target.value.toUpperCase())}
+          className="console-mcno-input"
+          value={mcNoInput}
+          onChange={(e) => setMcNoInput(e.target.value.replace(/\D/g, "").slice(0, 3))}
           onKeyDown={(e) => {
-            if (e.key === "Enter") onSend();
+            if (e.key === "Enter") submit(onEstimasiClick);
           }}
-          placeholder={mode === "ESTIMASI" ? "cth: 31 45" : "cth: 31 HB"}
-          className={errorFlash ? "error-flash" : ""}
-          autoCapitalize="characters"
+          placeholder="Nomor mesin"
+          inputMode="numeric"
           autoComplete="off"
-          autoCorrect="off"
-          spellCheck={false}
-          inputMode="text"
         />
-        <button className={`send${sendOk ? " ok" : ""}`} onClick={onSend} aria-label="Kirim">
-          {sendOk ? <CheckIcon /> : <SendIcon />}
-        </button>
+        <ConsoleIconButton
+          icon={<ScheduleIcon size={20} />}
+          label="Estimasi"
+          enabled={mcNoInput.trim() !== ""}
+          accent="var(--cyan-600)"
+          onClick={() => submit(onEstimasiClick)}
+        />
+        <ConsoleIconButton
+          icon={<ScissorsIcon size={20} />}
+          label="Doffing"
+          enabled={mcNoInput.trim() !== ""}
+          accent="var(--emerald-500)"
+          onClick={() => submit(onDoffingClick)}
+        />
       </div>
-      {hint && <div className="input-hint">{hint}</div>}
     </div>
   );
 }
 
-function SendIcon() {
+function ConsoleIconButton({
+  icon,
+  label,
+  enabled,
+  accent,
+  onClick,
+}: {
+  icon: ReactNode;
+  label: string;
+  enabled: boolean;
+  accent: string;
+  onClick: () => void;
+}) {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-      <path d="M22 2 11 13" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M22 2 15 22l-4-9-9-4 20-7Z" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function CheckIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-      <path d="M20 6 9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
+    <button
+      className="console-icon-btn"
+      style={{ background: enabled ? accent : "var(--bg-elevated-2)", color: enabled ? "#fff" : "var(--text-faint)" }}
+      disabled={!enabled}
+      aria-label={label}
+      onClick={onClick}
+    >
+      {icon}
+    </button>
   );
 }

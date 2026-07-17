@@ -76,6 +76,7 @@ export function prosesBarisKondisiMesin(state: DoffState, ln: string, now: numbe
     startAbsMin: existing?.startAbsMin ?? now,
     corakOverride: existing?.corakOverride ?? null,
     yardOverride: existing?.yardOverride ?? null,
+    pausedAtAbsMin: null,
   };
   const newState: DoffState = { ...state, estimasi: { ...state.estimasi, [mcNo]: newEst } };
 
@@ -147,7 +148,7 @@ export function prosesBarisUmum(state: DoffState, ln: string): CommandOutcome {
   };
 
   return {
-    result: { ok: true, msg: `Mc ${mcNo} ✓`, mcNo, prevEst },
+    result: { ok: true, msg: `Mc ${mcNo} ✓`, mcNo, prevEst, entry },
     newState,
     entryId,
   };

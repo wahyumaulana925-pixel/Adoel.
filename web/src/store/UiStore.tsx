@@ -3,7 +3,6 @@ import { createContext, useCallback, useContext, useRef, useState, type ReactNod
 interface ToastState {
   key: number;
   msg: string;
-  undo?: () => void;
 }
 
 interface ConfirmState {
@@ -13,7 +12,9 @@ interface ConfirmState {
 
 interface UiStore {
   toast: ToastState | null;
-  showToast: (msg: string, undo?: () => void) => void;
+  // Tanpa aksi "URUNGKAN" lagi (Master Blueprint v9.2 §9) — undo/redo sekarang tingkat
+  // konsol lewat DoffStore.pushUndo, bukan closure per-toast.
+  showToast: (msg: string) => void;
   dismissToast: () => void;
   confirm: ConfirmState | null;
   showConfirm: (msg: string, onConfirm: () => void) => void;
@@ -27,9 +28,9 @@ export function UiStoreProvider({ children }: { children: ReactNode }) {
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
   const keyRef = useRef(0);
 
-  const showToast = useCallback((msg: string, undo?: () => void) => {
+  const showToast = useCallback((msg: string) => {
     keyRef.current += 1;
-    setToast({ key: keyRef.current, msg, undo });
+    setToast({ key: keyRef.current, msg });
   }, []);
 
   const dismissToast = useCallback(() => setToast(null), []);

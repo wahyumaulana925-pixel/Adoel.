@@ -1,28 +1,22 @@
 import { useMemo, useState } from "react";
 import { useDoffStore } from "../store/DoffStore";
-import { useUiStore } from "../store/UiStore";
+import { useConsoleHandlers } from "../hooks/useConsoleHandlers";
 import {
   BREAK_GAP_THRESHOLD_MIN,
+  effectiveRemaining,
   partitionSegeraMenunggu,
   sortedByNearest,
   urgencyLevel,
   type UrgencyLevel,
 } from "../domain/estimasiUtils";
-import { absMinToTimeStr, formatDeltaMin, formatYard, nowAbsMin } from "../domain/format";
+import { formatDeltaMin, nowAbsMin } from "../domain/format";
 import type { Estimasi } from "../domain/types";
-import { DeleteIcon, CheckIcon } from "./Icons";
+import { RadarCard } from "./RadarCard";
 import { QuickEditDialog } from "./QuickEditDialog";
 
-const URGENCY_COLOR: Record<UrgencyLevel, string> = {
-  CALM: "var(--text-faint)",
-  SOON: "var(--amber-400)",
-  IMMINENT: "var(--orange-400)",
-  OVERDUE: "var(--red-500)",
-};
-
-export function RadarScreen() {
-  const { state, submitAktual, hapusEstimasi, restoreEstimasi } = useDoffStore();
-  const { showToast, showConfirm } = useUiStore();
+export function RadarScreen({ onEditWaktu }: { onEditWaktu: (mcNo: string) => void }) {
+  const { state } = useDoffStore();
+  const { handleDoff, handleHapusEst, handleJeda, handleLanjutkan } = useConsoleHandlers();
   const [filter, setFilter] = useState("");
   const [quickEditMcNo, setQuickEditMcNo] = useState<string | null>(null);
   const [, forceTick] = useState(0);
@@ -33,37 +27,18 @@ export function RadarScreen() {
 
   const nowAbs = nowAbsMin();
   const all = useMemo(() => sortedByNearest(state.estimasi), [state.estimasi]);
+  // Pencarian hanya nomor mesin (Master Blueprint v9.2 §4) — bukan corak lagi.
   const filtered = useMemo(() => {
     if (!filter.trim()) return all;
     const f = filter.trim().toLowerCase();
-    return all.filter((e) => {
-      const corak = e.corakOverride ?? state.db[e.mcNo]?.corak ?? "";
-      return e.mcNo.toLowerCase().includes(f) || corak.toLowerCase().includes(f);
-    });
-  }, [all, filter, state.db]);
+    return all.filter((e) => e.mcNo.toLowerCase().includes(f));
+  }, [all, filter]);
   const [segera, menunggu] = useMemo(() => partitionSegeraMenunggu(filtered, nowAbs), [filtered, nowAbs]);
-
-  function handleHapus(mcNo: string) {
-    showConfirm(`Hapus estimasi Mc ${mcNo}?`, () => {
-      const est = state.estimasi[mcNo];
-      hapusEstimasi(mcNo);
-      showToast(`Mc ${mcNo} dihapus`, est ? () => restoreEstimasi(est) : undefined);
-    });
-  }
-
-  function handleDoff(mcNo: string) {
-    // Tap tombol doff di kartu radar setara dengan mengetik "<mcNo>" saja di mode
-    // DOFFING lalu kirim — sama seperti handleDoff() di MainScreen.kt Android,
-    // supaya dapat undo yang sama (mengembalikan entri + estimasi sebelumnya).
-    const result = submitAktual(mcNo);
-    if (result.ok) showToast(result.msg, result.undo);
-    else showToast(`⚠ ${result.msg}`);
-  }
 
   if (all.length === 0) {
     return (
       <div className="scroll-area">
-        <div className="empty-state">Belum ada estimasi berjalan. Ketik perintah di bawah.</div>
+        <div className="empty-state">Belum ada estimasi berjalan. Ketik nomor mesin di bawah, lalu ketuk jam (estimasi).</div>
       </div>
     );
   }
@@ -73,7 +48,8 @@ export function RadarScreen() {
       {all.length > 4 && (
         <input
           className="filter-field"
-          placeholder="Cari nomor mesin atau corak"
+          placeholder="Cari nomor mesin"
+          inputMode="numeric"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
         />
@@ -91,12 +67,15 @@ export function RadarScreen() {
             <RadarCard
               key={est.mcNo}
               est={est}
+              mesin={state.db[est.mcNo] ?? null}
               nowAbs={nowAbs}
-              corak={est.corakOverride ?? state.db[est.mcNo]?.corak ?? "-"}
-              targetYard={est.yardOverride ?? state.db[est.mcNo]?.targetYard ?? null}
               onDoff={() => handleDoff(est.mcNo)}
-              onHapus={() => handleHapus(est.mcNo)}
-              onTap={() => setQuickEditMcNo(est.mcNo)}
+              onDoffMatching={() => handleDoff(est.mcNo, "MATCHING")}
+              onHapus={() => handleHapusEst(est.mcNo)}
+              onJeda={() => handleJeda(est.mcNo)}
+              onLanjutkan={() => handleLanjutkan(est.mcNo)}
+              onQuickEdit={() => setQuickEditMcNo(est.mcNo)}
+              onEditWaktu={() => onEditWaktu(est.mcNo)}
             />
           ))}
         </>
@@ -115,12 +94,15 @@ export function RadarScreen() {
               <div key={est.mcNo}>
                 <RadarCard
                   est={est}
+                  mesin={state.db[est.mcNo] ?? null}
                   nowAbs={nowAbs}
-                  corak={est.corakOverride ?? state.db[est.mcNo]?.corak ?? "-"}
-                  targetYard={est.yardOverride ?? state.db[est.mcNo]?.targetYard ?? null}
                   onDoff={() => handleDoff(est.mcNo)}
-                  onHapus={() => handleHapus(est.mcNo)}
-                  onTap={() => setQuickEditMcNo(est.mcNo)}
+                  onDoffMatching={() => handleDoff(est.mcNo, "MATCHING")}
+                  onHapus={() => handleHapusEst(est.mcNo)}
+                  onJeda={() => handleJeda(est.mcNo)}
+                  onLanjutkan={() => handleLanjutkan(est.mcNo)}
+                  onQuickEdit={() => setQuickEditMcNo(est.mcNo)}
+                  onEditWaktu={() => onEditWaktu(est.mcNo)}
                 />
                 {next && gap >= BREAK_GAP_THRESHOLD_MIN && (
                   <div className="gap-row">
@@ -133,12 +115,7 @@ export function RadarScreen() {
         </>
       )}
 
-      {quickEditMcNo && (
-        <QuickEditDialog
-          mcNo={quickEditMcNo}
-          onClose={() => setQuickEditMcNo(null)}
-        />
-      )}
+      {quickEditMcNo && <QuickEditDialog mcNo={quickEditMcNo} onClose={() => setQuickEditMcNo(null)} />}
     </div>
   );
 }
@@ -146,7 +123,7 @@ export function RadarScreen() {
 function menungguAccent(menunggu: Estimasi[], nowAbs: number): string {
   let worst: UrgencyLevel = "CALM";
   for (const e of menunggu) {
-    const level = urgencyLevel(e.estAbsMin - nowAbs);
+    const level = urgencyLevel(effectiveRemaining(e, nowAbs));
     if (rank(level) > rank(worst)) worst = level;
   }
   // "Segera" (OVERDUE) sudah punya bucket sendiri, jadi Menunggu paling parah IMMINENT.
@@ -156,52 +133,6 @@ function menungguAccent(menunggu: Estimasi[], nowAbs: number): string {
 }
 function rank(l: UrgencyLevel): number {
   return { CALM: 0, SOON: 1, IMMINENT: 2, OVERDUE: 3 }[l];
-}
-
-function RadarCard({
-  est,
-  nowAbs,
-  corak,
-  targetYard,
-  onDoff,
-  onHapus,
-  onTap,
-}: {
-  est: Estimasi;
-  nowAbs: number;
-  corak: string;
-  targetYard: number | null;
-  onDoff: () => void;
-  onHapus: () => void;
-  onTap: () => void;
-}) {
-  const remaining = est.estAbsMin - nowAbs;
-  const level = urgencyLevel(remaining);
-  const sub = targetYard != null ? `${corak} · ${formatYard(targetYard)}y` : corak;
-
-  return (
-    <div
-      className={`radar-card${level === "OVERDUE" ? " overdue" : ""}`}
-      style={{ ["--urgency-color" as any]: URGENCY_COLOR[level] }}
-    >
-      <div className="main" onClick={onTap} role="button">
-        <div className="mcno">Mc {est.mcNo}</div>
-        <div className="corak">{sub}</div>
-      </div>
-      <div className="time">
-        <div className="abs">{absMinToTimeStr(est.estAbsMin)}</div>
-        <div className="rel">{remaining <= 0 ? `${formatDeltaMin(remaining)} lewat` : `${formatDeltaMin(remaining)} lagi`}</div>
-      </div>
-      <div className="actions">
-        <button className="icon-btn" style={{ color: "var(--emerald-500)" }} onClick={onDoff} aria-label="Doff">
-          <CheckIcon />
-        </button>
-        <button className="icon-btn" style={{ color: "var(--red-500)" }} onClick={onHapus} aria-label="Hapus">
-          <DeleteIcon />
-        </button>
-      </div>
-    </div>
-  );
 }
 
 function useInterval(callback: () => void, delayMs: number) {

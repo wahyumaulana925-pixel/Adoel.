@@ -18,6 +18,7 @@ export interface Estimasi {
   startAbsMin: number;
   corakOverride: string | null;
   yardOverride: number | null;
+  pausedAtAbsMin: number | null;
 }
 
 export interface AktualEntry {
@@ -52,5 +53,17 @@ export interface DoffState {
 }
 
 export type ProsesResult =
-  | { ok: true; msg: string; mcNo: string; estAbs?: number; prevEst?: Estimasi | null; undo?: () => void }
+  | {
+      ok: true;
+      msg: string;
+      mcNo: string;
+      estAbs?: number;
+      prevEst?: Estimasi | null;
+      undo?: () => void;
+      /** Entri aktual persis yang baru dibuat prosesBarisUmum (kalau ada) — dipakai redo
+       * supaya mengembalikan baris yang sama (id sama), bukan menjalankan ulang command
+       * dan membuat baris baru (yang akan menyisakan duplikat di Riwayat tiap siklus
+       * undo/redo, karena nextId selalu maju). */
+      entry?: AktualEntry;
+    }
   | { ok: false; msg: string };

@@ -10,12 +10,21 @@ import type { AktualEntry, DoffState, Estimasi, MesinData, ProsesResult, ThemeMo
 const HISTORY_RETENTION_DAYS = 30;
 const HISTORY_RETENTION_MIN = HISTORY_RETENTION_DAYS * 24 * 60;
 
+export interface UndoableAction {
+  undo: () => void;
+  redo: () => void;
+}
+
+const UNDO_STACK_CAP = 20;
+
 interface DoffStore {
   state: DoffState;
   submitEstimasi: (line: string) => ProsesResult;
   submitAktual: (line: string) => ProsesResult;
   hapusEstimasi: (mcNo: string) => void;
   restoreEstimasi: (est: Estimasi) => void;
+  pauseEstimasi: (mcNo: string) => void;
+  resumeEstimasi: (mcNo: string) => void;
   hapusAktualById: (id: number) => void;
   restoreAktual: (entry: AktualEntry) => void;
   hapusShift: (id: number) => void;
@@ -28,6 +37,13 @@ interface DoffStore {
   setOnboardingSeen: () => void;
   exportJson: () => string;
   importJson: (json: string) => DoffState | null;
+  /** Riwayat undo/redo tingkat-konsol (Master Blueprint v9.2 §7) — menggantikan
+   * closure undo per-toast lama. Tidak persisten lintas sesi. */
+  pushUndo: (action: UndoableAction) => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  undo: () => void;
+  redo: () => void;
 }
 
 const Ctx = createContext<DoffStore | null>(null);
@@ -35,6 +51,39 @@ const Ctx = createContext<DoffStore | null>(null);
 export function DoffStoreProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<DoffState>(() => loadState());
   const isFirstRender = useRef(true);
+
+  // Riwayat undo/redo tingkat-konsol — bukan bagian dari DoffState (tidak dipersist,
+  // sama seperti UndoRedoState di Android: seumur sesi, bukan seumur proses/app).
+  const [undoStack, setUndoStack] = useState<UndoableAction[]>([]);
+  const [redoStack, setRedoStack] = useState<UndoableAction[]>([]);
+
+  const pushUndo = useCallback((action: UndoableAction) => {
+    setUndoStack((stack) => {
+      const next = [...stack, action];
+      return next.length > UNDO_STACK_CAP ? next.slice(next.length - UNDO_STACK_CAP) : next;
+    });
+    setRedoStack([]);
+  }, []);
+
+  const undo = useCallback(() => {
+    setUndoStack((stack) => {
+      if (stack.length === 0) return stack;
+      const action = stack[stack.length - 1];
+      action.undo();
+      setRedoStack((r) => [...r, action]);
+      return stack.slice(0, -1);
+    });
+  }, []);
+
+  const redo = useCallback(() => {
+    setRedoStack((stack) => {
+      if (stack.length === 0) return stack;
+      const action = stack[stack.length - 1];
+      action.redo();
+      setUndoStack((u) => [...u, action]);
+      return stack.slice(0, -1);
+    });
+  }, []);
 
   useEffect(() => {
     if (isFirstRender.current) {
@@ -63,6 +112,30 @@ export function DoffStoreProvider({ children }: { children: ReactNode }) {
 
   const restoreEstimasi = useCallback((est: Estimasi) => {
     setState((s) => ({ ...s, estimasi: { ...s.estimasi, [est.mcNo]: est } }));
+  }, []);
+
+  // Membekukan hitung mundur Mc mcNo di titik sekarang (lihat Estimasi.pausedAtAbsMin /
+  // effectiveRemaining) — no-op kalau sudah dijeda atau estimasinya sudah tidak ada lagi.
+  const pauseEstimasi = useCallback((mcNo: string) => {
+    setState((s) => {
+      const est = s.estimasi[mcNo];
+      if (!est || est.pausedAtAbsMin !== null) return s;
+      return { ...s, estimasi: { ...s.estimasi, [mcNo]: { ...est, pausedAtAbsMin: nowAbsMin() } } };
+    });
+  }, []);
+
+  // Mencairkan jeda Mc mcNo, menggeser estAbsMin maju persis selama ia dijeda supaya
+  // sisa waktu yang terlihat operator sebelum menekan Lanjutkan tetap sama.
+  const resumeEstimasi = useCallback((mcNo: string) => {
+    setState((s) => {
+      const est = s.estimasi[mcNo];
+      if (!est || est.pausedAtAbsMin === null) return s;
+      const pausedFor = nowAbsMin() - est.pausedAtAbsMin;
+      return {
+        ...s,
+        estimasi: { ...s.estimasi, [mcNo]: { ...est, estAbsMin: est.estAbsMin + pausedFor, pausedAtAbsMin: null } },
+      };
+    });
   }, []);
 
   const hapusAktualById = useCallback((id: number) => {
@@ -186,6 +259,8 @@ export function DoffStoreProvider({ children }: { children: ReactNode }) {
     submitAktual,
     hapusEstimasi,
     restoreEstimasi,
+    pauseEstimasi,
+    resumeEstimasi,
     hapusAktualById,
     restoreAktual,
     hapusShift,
@@ -198,6 +273,11 @@ export function DoffStoreProvider({ children }: { children: ReactNode }) {
     setOnboardingSeen,
     exportJson,
     importJson,
+    pushUndo,
+    canUndo: undoStack.length > 0,
+    canRedo: redoStack.length > 0,
+    undo,
+    redo,
   };
 
   return <Ctx.Provider value={store}>{children}</Ctx.Provider>;

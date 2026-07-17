@@ -59,7 +59,7 @@ export function EditAktualDialog({
         <input className="field-input" value={ket} onChange={(e) => setKet(e.target.value)} />
         <div style={{ height: 12 }} />
         <div className="field-label">Corak (kosongkan untuk pakai default mesin)</div>
-        <input className="field-input" value={corak} onChange={(e) => setCorak(e.target.value)} />
+        <input className="field-input" inputMode="numeric" value={corak} onChange={(e) => setCorak(e.target.value)} />
         <div style={{ height: 12 }} />
         <div className="field-label">Yard Kustom</div>
         <input className="field-input" placeholder="opsional" inputMode="decimal" value={yard} onChange={(e) => setYard(e.target.value)} />

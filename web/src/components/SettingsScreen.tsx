@@ -1,8 +1,10 @@
 import { useMemo, useRef, useState } from "react";
 import { useDoffStore } from "../store/DoffStore";
 import { useUiStore } from "../store/UiStore";
+import { TIPE_COLOR } from "../domain/mesinVisual";
 import type { MesinData, MesinTipe, ThemeMode } from "../domain/types";
-import { CloseIcon } from "./Icons";
+import { CloseIcon, EditIcon, MesinTipeIcon } from "./Icons";
+import { WovenDivider } from "./WovenDivider";
 
 const TIPE_LIST: MesinTipe[] = ["TAPPET", "CAM", "D405", "D408"];
 
@@ -15,14 +17,19 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
   const [form, setForm] = useState<MesinData | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const entries = useMemo(() => {
-    return Object.entries(state.db)
-      .filter(([k, v]) => {
-        if (!showAll && (v.corak === "" || v.corak === "-")) return false;
-        if (search && !k.includes(search) && !v.corak.toLowerCase().includes(search.toLowerCase())) return false;
-        return true;
-      })
-      .sort((a, b) => (parseInt(a[0], 10) || 0) - (parseInt(b[0], 10) || 0));
+  // Grup per tipe mesin (urutan tetap) — bahasa ikon/warna yang sama dengan RadarCard,
+  // supaya "mesin jenis apa ini" terbaca sama di semua layar. Pencarian cocok nomor
+  // mesin saja (Master Blueprint v9.2 §4/§8), bukan corak lagi.
+  const groupedEntries = useMemo(() => {
+    const filtered = Object.entries(state.db).filter(([k, v]) => {
+      if (!showAll && (v.corak === "" || v.corak === "-")) return false;
+      if (search && !k.includes(search)) return false;
+      return true;
+    });
+    return TIPE_LIST.map((tipe) => ({
+      tipe,
+      rows: filtered.filter(([, v]) => v.tipe === tipe).sort((a, b) => (parseInt(a[0], 10) || 0) - (parseInt(b[0], 10) || 0)),
+    })).filter((g) => g.rows.length > 0);
   }, [state.db, search, showAll]);
 
   const unconfigured = useMemo(() => {
@@ -36,6 +43,11 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
   function loadFrom(mcNo: string, mesin: MesinData) {
     setActiveMcNo(mcNo);
     setForm({ ...mesin });
+  }
+
+  function jumpToSearch() {
+    const mesin = state.db[search];
+    if (mesin) loadFrom(search, mesin);
   }
 
   function handleSave() {
@@ -92,7 +104,7 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
           <CloseIcon />
         </button>
       </div>
-      <div className="overlay-body">
+      <div className="overlay-body" style={{ paddingBottom: 92 }}>
         <div className="field-label">Tema Aplikasi</div>
         <div style={{ display: "flex", gap: 8 }}>
           {(["SYSTEM", "DARK", "LIGHT"] as ThemeMode[]).map((m) => (
@@ -107,7 +119,7 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
         </div>
 
         <div style={{ height: 4 }} />
-        <hr style={{ border: "none", borderTop: "1px solid var(--border)" }} />
+        <WovenDivider />
 
         <div className="field-label">Cadangan Data</div>
         <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: -6 }}>
@@ -133,18 +145,9 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
           />
         </div>
 
-        <hr style={{ border: "none", borderTop: "1px solid var(--border)" }} />
+        <WovenDivider />
 
         <div className="field-label">Database Mesin</div>
-        <input
-          className="field-input"
-          placeholder="Cari nomor / corak, atau ketik nomor baru"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && unconfigured) loadFrom(unconfigured[0], unconfigured[1]);
-          }}
-        />
         <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--text-secondary)" }}>
           <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
           Tampilkan semua (termasuk corak "-")
@@ -160,17 +163,53 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
           </button>
         )}
 
-        <div>
-          {entries.map(([k, v]) => (
-            <div className="machine-list-item" key={k} onClick={() => loadFrom(k, v)} role="button">
-              <span style={{ width: 32, fontWeight: 700 }}>{k}</span>
-              <span style={{ width: 56, fontSize: 11, color: "var(--text-faint)" }}>{v.tipe}</span>
-              <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.corak}</span>
-              {v.targetYard != null && <span style={{ fontSize: 11, color: "var(--text-faint)" }}>{v.targetYard}y</span>}
-              <button>Edit</button>
+        {groupedEntries.length === 0 && <div className="empty-state">Tidak ditemukan</div>}
+        {groupedEntries.map(({ tipe, rows }) => (
+          <div key={tipe}>
+            <div className="mesin-group-head" style={{ color: TIPE_COLOR[tipe] }}>
+              <MesinTipeIcon tipe={tipe} size={14} />
+              <span>{tipe}</span>
+              <span className="count">{rows.length}</span>
             </div>
-          ))}
-          {entries.length === 0 && <div className="empty-state">Tidak ditemukan</div>}
+            {rows.map(([k, v]) => (
+              <div className="machine-list-item" key={k} onClick={() => loadFrom(k, v)} role="button">
+                <span style={{ width: 32, fontWeight: 700 }}>{k}</span>
+                <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.corak}</span>
+                {v.targetYard != null && <span style={{ fontSize: 11, color: "var(--text-faint)" }}>{v.targetYard}y</span>}
+                <button>Edit</button>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+
+      {/* Bar konsol mengambang — cari & lompat ke satu mesin sekaligus (Master Blueprint
+          v9.2 §8), menggantikan search bar biasa di atas. */}
+      <div className="mesin-console floating-card">
+        <div className="console-row">
+          <input
+            className="console-mcno-input"
+            value={search}
+            onChange={(e) => setSearch(e.target.value.replace(/\D/g, "").slice(0, 3))}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") jumpToSearch();
+            }}
+            placeholder="Cari / edit nomor mesin"
+            inputMode="numeric"
+            autoComplete="off"
+          />
+          <button
+            className="console-icon-btn"
+            style={{
+              background: search.trim() !== "" && state.db[search] ? "var(--cyan-600)" : "var(--bg-elevated-2)",
+              color: search.trim() !== "" && state.db[search] ? "#fff" : "var(--text-faint)",
+            }}
+            disabled={search.trim() === "" || !state.db[search]}
+            aria-label={`Edit Mc ${search}`}
+            onClick={jumpToSearch}
+          >
+            <EditIcon size={18} />
+          </button>
         </div>
       </div>
 
@@ -225,7 +264,12 @@ function MesinEditDialog({
         </div>
 
         <div className="field-label">Corak</div>
-        <input className="field-input" value={form.corak} onChange={(e) => onChange({ ...form, corak: e.target.value })} />
+        <input
+          className="field-input"
+          inputMode="numeric"
+          value={form.corak}
+          onChange={(e) => onChange({ ...form, corak: e.target.value })}
+        />
 
         <div style={{ height: 12 }} />
         <div className="field-grid">

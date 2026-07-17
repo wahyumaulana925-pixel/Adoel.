@@ -35,7 +35,7 @@ export function QuickEditDialog({ mcNo, onClose }: { mcNo: string; onClose: () =
       <div className="dialog" onClick={(e) => e.stopPropagation()}>
         <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 16 }}>Ganti Cepat — Mc {mcNo}</div>
         <div className="field-label">Corak</div>
-        <input className="field-input" value={corak} onChange={(e) => setCorak(e.target.value)} />
+        <input className="field-input" inputMode="numeric" value={corak} onChange={(e) => setCorak(e.target.value)} />
         <div style={{ height: 12 }} />
         <div className="field-label">Target Yard</div>
         <input

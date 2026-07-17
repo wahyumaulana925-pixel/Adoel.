@@ -1,43 +1,46 @@
 import { useEffect, useMemo, useState } from "react";
 import { DoffStoreProvider, useDoffStore } from "./store/DoffStore";
 import { UiStoreProvider, useUiStore } from "./store/UiStore";
-import { ConsoleBar, type Mode } from "./components/ConsoleBar";
+import { useConsoleHandlers } from "./hooks/useConsoleHandlers";
+import { ConsoleBar } from "./components/ConsoleBar";
 import { RadarScreen } from "./components/RadarScreen";
 import { DoffingScreen } from "./components/DoffingScreen";
 import { StatistikScreen } from "./components/StatistikScreen";
 import { SettingsScreen } from "./components/SettingsScreen";
 import { ToastHost } from "./components/ToastHost";
 import { ConfirmDialog } from "./components/ConfirmDialog";
-import { SettingsIcon } from "./components/Icons";
-import { currentShiftStartAbsMin, formatDeltaMin, nowAbsMin } from "./domain/format";
+import { GuidedEstimasiSheet } from "./components/GuidedEstimasiSheet";
+import { GuidedDoffingSheet } from "./components/GuidedDoffingSheet";
+import { WaveProgressBar } from "./components/WaveProgressBar";
+import { BarChartIcon, SettingsIcon } from "./components/Icons";
+import { defaultMesinData } from "./domain/types";
+import { currentShiftStartAbsMin, nowAbsMin } from "./domain/format";
 
+type Page = "RADAR" | "RIWAYAT";
 type Screen = "main" | "statistik" | "settings";
 
 function AppInner() {
-  const { state, submitEstimasi, submitAktual, finishShift } = useDoffStore();
-  const { showToast, showConfirm } = useUiStore();
-  const [mode, setMode] = useState<Mode>("ESTIMASI");
+  const { state, setMesin, undo, redo, canUndo, canRedo } = useDoffStore();
+  const { showToast } = useUiStore();
+  const { handleEstimasiSubmit, handleAktualSubmit, handleFinishShift } = useConsoleHandlers();
+  const [page, setPage] = useState<Page>("RADAR");
   const [screen, setScreen] = useState<Screen>("main");
-  const [input, setInput] = useState("");
-  const [errorFlash, setErrorFlash] = useState(false);
-  const [sendOk, setSendOk] = useState(false);
+  const [guidedEstimasiMcNo, setGuidedEstimasiMcNo] = useState<string | null>(null);
+  const [guidedDoffingMcNo, setGuidedDoffingMcNo] = useState<string | null>(null);
   const [staleDismissed, setStaleDismissed] = useState(false);
   const [, forceTick] = useState(0);
 
   // Tema: SYSTEM mengikuti preferensi OS, DARK/LIGHT dipaksa lewat atribut di <html>.
   useEffect(() => {
     const root = document.documentElement;
-    function apply() {
-      if (state.themeMode === "SYSTEM") {
-        root.removeAttribute("data-theme");
-      } else {
-        root.setAttribute("data-theme", state.themeMode === "DARK" ? "dark" : "light");
-      }
+    if (state.themeMode === "SYSTEM") {
+      root.removeAttribute("data-theme");
+    } else {
+      root.setAttribute("data-theme", state.themeMode === "DARK" ? "dark" : "light");
     }
-    apply();
   }, [state.themeMode]);
 
-  // Perbarui hitungan "shift tertinggal" & label waktu tiap 20 detik.
+  // Perbarui hitungan "shift tertinggal" & progress header tiap 20 detik.
   useEffect(() => {
     const id = setInterval(() => forceTick((n) => n + 1), 20000);
     return () => clearInterval(id);
@@ -57,93 +60,72 @@ function AppInner() {
     if (staleCount === 0) setStaleDismissed(false);
   }, [staleCount]);
 
-  const inputHint = useMemo(() => {
-    if (mode !== "ESTIMASI") return null;
-    const mcNo = input.trim().split(/\s+/)[0] ?? "";
-    if (!/^\d{1,3}$/.test(mcNo)) return null;
-    const tipe = state.db[mcNo]?.tipe;
-    if (tipe === "TAPPET" || tipe === "CAM") return `Mc ${mcNo} → sisa menit, cth: ${mcNo} 45`;
-    if (tipe === "D405") return `Mc ${mcNo} → yard berjalan, cth: ${mcNo} 280`;
-    if (tipe === "D408") return `Mc ${mcNo} → jam counter, cth: ${mcNo} 12.30`;
-    return null;
-  }, [mode, input, state.db]);
+  const totalMc = Object.keys(state.db).length;
+  const doffCount = state.aktual.length;
 
-  function flashError(msg: string) {
-    setErrorFlash(true);
-    setTimeout(() => setErrorFlash(false), 500);
-    if (navigator.vibrate) navigator.vibrate(30);
-    showToast(`⚠ ${msg}`);
-  }
-
-  function pulseOk() {
-    setSendOk(true);
-    setTimeout(() => setSendOk(false), 500);
-  }
-
-  function doSubmitEstimasi(cmd: string) {
-    const result = submitEstimasi(cmd);
-    if (result.ok) {
-      pulseOk();
-      showToast(result.msg);
-      setInput("");
-    } else {
-      flashError(result.msg);
-    }
-  }
-
-  function handleSend() {
-    const cmd = input.trim().toUpperCase();
-    if (!cmd) return;
-
-    if (mode === "ESTIMASI") {
-      const mcNo = cmd.split(/\s+/)[0];
-      const existing = state.estimasi[mcNo];
-      const remaining = existing ? existing.estAbsMin - nowAbsMin() : null;
-      // Salah masuk mode ESTIMASI lalu ngetik cepat bisa nggak sadar menimpa timer
-      // yang masih jalan — untuk estimasi yang masih aktif & mepet (<10 menit lagi),
-      // minta konfirmasi dulu, bukan menimpa diam-diam.
-      if (existing && remaining != null && remaining >= 0 && remaining < 10) {
-        showConfirm(`Mc ${mcNo} sudah diestimasi ${formatDeltaMin(remaining)} lagi. Timpa dengan estimasi baru?`, () => {
-          doSubmitEstimasi(cmd);
-        });
-      } else {
-        doSubmitEstimasi(cmd);
-      }
-    } else {
-      const result = submitAktual(cmd);
-      if (result.ok) {
-        pulseOk();
-        if (navigator.vibrate) navigator.vibrate(15);
-        showToast(result.msg, result.undo);
-        setInput("");
-      } else {
-        flashError(result.msg);
-      }
-    }
-  }
-
-  function handleFinishShift() {
-    if (state.aktual.length === 0 && Object.keys(state.estimasi).length === 0) {
-      showToast("Tidak ada yang perlu diarsipkan");
+  function openGuidedEstimasi(mcNo: string) {
+    if (!state.db[mcNo]) {
+      showToast(`⚠ Mc ${mcNo} tidak ditemukan`);
       return;
     }
-    showConfirm("Akhiri shift? Semua riwayat & estimasi berjalan akan diarsipkan ke Statistik.", () => {
-      finishShift();
-      showToast("Shift selesai ✓");
-    });
+    setGuidedEstimasiMcNo(mcNo);
+  }
+
+  function openGuidedDoffing(mcNo: string) {
+    if (!state.db[mcNo]) {
+      showToast(`⚠ Mc ${mcNo} tidak ditemukan`);
+      return;
+    }
+    setGuidedDoffingMcNo(mcNo);
+  }
+
+  function quickUpdateMesin(mcNo: string, corak: string, targetYard: number | null) {
+    const mesin = state.db[mcNo] ?? defaultMesinData();
+    setMesin(mcNo, { ...mesin, corak, targetYard });
   }
 
   return (
     <div className="app-shell">
       <ToastHost />
 
-      <div className="app-header">
-        <div className="app-title">
-          Adoel<span className="dot">.</span>
+      <div className="edge-fade edge-fade-top" />
+      <div className="edge-fade edge-fade-bottom" />
+
+      <div className="app-header floating-card">
+        <div className="app-header-top">
+          <div className="app-title">
+            Adoel<span className="dot">.</span>
+          </div>
+          {totalMc > 0 && (
+            <div className="shift-progress">
+              <span>
+                {doffCount}/{totalMc}
+              </span>
+              <WaveProgressBar
+                fraction={totalMc > 0 ? doffCount / totalMc : 0}
+                trackColor="var(--bg-elevated-2)"
+                fillColor="var(--cyan-500)"
+                height={4}
+                width={70}
+                animated={false}
+              />
+            </div>
+          )}
+          <button className="icon-btn" onClick={() => setScreen("statistik")} aria-label="Statistik">
+            <BarChartIcon />
+          </button>
+          <button className="icon-btn" onClick={() => setScreen("settings")} aria-label="Pengaturan">
+            <SettingsIcon />
+          </button>
         </div>
-        <button className="icon-btn" onClick={() => setScreen("settings")} aria-label="Pengaturan">
-          <SettingsIcon />
-        </button>
+        <div className="page-toggle">
+          <button className={page === "RADAR" ? "active" : ""} onClick={() => setPage("RADAR")}>
+            Radar
+          </button>
+          <button className={page === "RIWAYAT" ? "active" : ""} onClick={() => setPage("RIWAYAT")}>
+            Riwayat
+          </button>
+        </div>
       </div>
 
       {staleCount > 0 && !staleDismissed && (
@@ -156,18 +138,42 @@ function AppInner() {
         </div>
       )}
 
-      {mode === "ESTIMASI" ? <RadarScreen /> : <DoffingScreen onOpenStatistik={() => setScreen("statistik")} />}
+      {page === "RADAR" ? (
+        <RadarScreen onEditWaktu={openGuidedEstimasi} />
+      ) : (
+        <DoffingScreen onOpenStatistik={() => setScreen("statistik")} />
+      )}
 
       <ConsoleBar
-        mode={mode}
-        onModeChange={setMode}
-        value={input}
-        onChange={setInput}
-        onSend={handleSend}
-        hint={inputHint}
-        errorFlash={errorFlash}
-        sendOk={sendOk}
+        onEstimasiClick={openGuidedEstimasi}
+        onDoffingClick={openGuidedDoffing}
+        onUndo={undo}
+        onRedo={redo}
+        canUndo={canUndo}
+        canRedo={canRedo}
       />
+
+      {guidedEstimasiMcNo && (
+        <GuidedEstimasiSheet
+          mcNo={guidedEstimasiMcNo}
+          mesin={state.db[guidedEstimasiMcNo] ?? null}
+          onDismiss={() => setGuidedEstimasiMcNo(null)}
+          onSubmit={(value) => handleEstimasiSubmit(value, () => setGuidedEstimasiMcNo(null))}
+          onQuickUpdate={(corak, targetYard) => quickUpdateMesin(guidedEstimasiMcNo, corak, targetYard)}
+        />
+      )}
+
+      {guidedDoffingMcNo && (
+        <GuidedDoffingSheet
+          mcNo={guidedDoffingMcNo}
+          mesin={state.db[guidedDoffingMcNo] ?? null}
+          estimasi={state.estimasi[guidedDoffingMcNo] ?? null}
+          onDismiss={() => setGuidedDoffingMcNo(null)}
+          onSubmitDoffing={(value) => handleAktualSubmit(value, () => setGuidedDoffingMcNo(null))}
+          onSubmitCounterUpdate={(value) => handleEstimasiSubmit(value, () => setGuidedDoffingMcNo(null))}
+          onQuickUpdate={(corak, targetYard) => quickUpdateMesin(guidedDoffingMcNo, corak, targetYard)}
+        />
+      )}
 
       {screen === "statistik" && <StatistikScreen onClose={() => setScreen("main")} />}
       {screen === "settings" && <SettingsScreen onClose={() => setScreen("main")} />}

@@ -5,6 +5,8 @@ import { formatDeltaMin, shiftNumberForEpochMin } from "../domain/format";
 import { shareOrCopy, shareShiftText } from "../domain/share";
 import type { ShiftRecord } from "../domain/types";
 import { CloseIcon, DeleteIcon, ShareIcon } from "./Icons";
+import { WaveProgressBar } from "./WaveProgressBar";
+import { WovenDivider } from "./WovenDivider";
 
 function formatShiftDate(epochMin: number): string {
   const d = new Date(epochMin * 60000);
@@ -65,6 +67,8 @@ export function StatistikScreen({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
+        <WovenDivider />
+
         {state.history.length === 0 ? (
           <div className="empty-state">Belum ada shift yang diarsipkan. Tekan "Selesai Shift" untuk mengarsipkan.</div>
         ) : (
@@ -123,10 +127,13 @@ function ShiftCard({
             Shift {shiftNo} · {dateStr}
           </div>
           <div className="sub">{timeRange}</div>
-          <div className="progress-track">
-            <div
-              className="progress-fill"
-              style={{ width: `${Math.min(100, (shift.aktual.length / maxDoffCount) * 100)}%` }}
+          <div style={{ width: 60, marginTop: 6 }}>
+            <WaveProgressBar
+              fraction={shift.aktual.length / maxDoffCount}
+              trackColor="var(--bg-elevated-2)"
+              fillColor="var(--cyan-500)"
+              height={4}
+              animated={false}
             />
           </div>
         </div>

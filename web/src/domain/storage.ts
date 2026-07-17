@@ -45,6 +45,7 @@ export function parseBackupJson(json: string): DoffState | null {
       startAbsMin: Number(v?.startAbsMin) || 0,
       corakOverride: v?.corakOverride ?? null,
       yardOverride: typeof v?.yardOverride === "number" ? v.yardOverride : null,
+      pausedAtAbsMin: typeof v?.pausedAtAbsMin === "number" ? v.pausedAtAbsMin : null,
     };
   }
 
@@ -66,6 +67,7 @@ export function parseBackupJson(json: string): DoffState | null {
           startAbsMin: Number(v?.startAbsMin) || 0,
           corakOverride: v?.corakOverride ?? null,
           yardOverride: typeof v?.yardOverride === "number" ? v.yardOverride : null,
+          pausedAtAbsMin: typeof v?.pausedAtAbsMin === "number" ? v.pausedAtAbsMin : null,
         },
       ]),
     ),

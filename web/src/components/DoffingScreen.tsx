@@ -2,20 +2,16 @@ import { useMemo, useState } from "react";
 import { useDoffStore } from "../store/DoffStore";
 import { useUiStore } from "../store/UiStore";
 import { shareHistoryText, shareOrCopy } from "../domain/share";
+import { TIPE_COLOR } from "../domain/mesinVisual";
+import { useConsoleHandlers } from "../hooks/useConsoleHandlers";
 import type { AktualEntry } from "../domain/types";
 import { EditAktualDialog } from "./EditAktualDialog";
-import { BarChartIcon, DeleteIcon, EditIcon, FlagIcon, ShareIcon } from "./Icons";
-
-const TIPE_COLOR: Record<string, string> = {
-  TAPPET: "#14b8a6",
-  CAM: "#8b5cf6",
-  D405: "#f59e0b",
-  D408: "#0ea5e9",
-};
+import { BarChartIcon, DeleteIcon, EditIcon, FlagIcon, MesinTipeIcon, ShareIcon } from "./Icons";
 
 export function DoffingScreen({ onOpenStatistik }: { onOpenStatistik: () => void }) {
-  const { state, hapusAktualById, restoreAktual, finishShift } = useDoffStore();
-  const { showToast, showConfirm } = useUiStore();
+  const { state } = useDoffStore();
+  const { showToast } = useUiStore();
+  const { handleHapusAktual, handleFinishShift } = useConsoleHandlers();
   const [filter, setFilter] = useState("");
   const [editing, setEditing] = useState<AktualEntry | null>(null);
 
@@ -24,42 +20,20 @@ export function DoffingScreen({ onOpenStatistik }: { onOpenStatistik: () => void
   // 1..N mencerminkan urutan doff SEBENARNYA di shift ini (bukan input filter).
   const chronological = useMemo(() => [...state.aktual].reverse(), [state.aktual]);
   const indexed = useMemo(() => chronological.map((entry, idx) => ({ entry, num: idx + 1 })), [chronological]);
+  // Pencarian hanya nomor mesin (Master Blueprint v9.2 §4) — bukan corak/keterangan lagi.
   const filtered = useMemo(() => {
     if (!filter.trim()) return indexed;
     const f = filter.trim().toLowerCase();
-    return indexed.filter(({ entry }) => {
-      const corak = entry.corakOverride ?? state.db[entry.mcNo]?.corak ?? "";
-      return (
-        entry.mcNo.toLowerCase().includes(f) ||
-        corak.toLowerCase().includes(f) ||
-        entry.ket.toLowerCase().includes(f)
-      );
-    });
-  }, [indexed, filter, state.db]);
+    return indexed.filter(({ entry }) => entry.mcNo.toLowerCase().includes(f));
+  }, [indexed, filter]);
 
   function handleHapus(id: number) {
-    const entry = state.aktual.find((a) => a.id === id);
-    if (!entry) return;
-    showConfirm(`Hapus riwayat Mc ${entry.mcNo}?`, () => {
-      hapusAktualById(id);
-      showToast(`Mc ${entry.mcNo} dihapus`, () => restoreAktual(entry));
-    });
+    handleHapusAktual(id, () => setEditing(null));
   }
 
   async function handleShare() {
     const outcome = await shareOrCopy(shareHistoryText(state), "Riwayat Doffing");
     if (outcome === "copied") showToast("Teks disalin ke clipboard ✓");
-  }
-
-  function handleFinish() {
-    if (state.aktual.length === 0 && Object.keys(state.estimasi).length === 0) {
-      showToast("Tidak ada yang perlu diarsipkan");
-      return;
-    }
-    showConfirm("Akhiri shift? Semua riwayat & estimasi berjalan akan diarsipkan ke Statistik.", () => {
-      finishShift();
-      showToast("Shift selesai ✓");
-    });
   }
 
   return (
@@ -76,25 +50,26 @@ export function DoffingScreen({ onOpenStatistik }: { onOpenStatistik: () => void
         <button className="btn" onClick={onOpenStatistik}>
           <BarChartIcon size={16} /> Statistik
         </button>
-        <button className="btn danger" onClick={handleFinish}>
+        <button className="btn danger" onClick={handleFinishShift}>
           <FlagIcon size={16} /> Selesai Shift
         </button>
       </div>
 
       {state.aktual.length === 0 ? (
-        <div className="empty-state">Belum ada doff. Doff akan muncul di sini setelah kamu proses baris di ESTIMASI/AKTUAL.</div>
+        <div className="empty-state">Belum ada doff. Doff akan muncul di sini setelah kamu proses lewat konsol.</div>
       ) : (
         <>
           {chronological.length > 4 && (
             <input
               className="filter-field"
-              placeholder="Cari nomor mesin, corak, atau keterangan"
+              placeholder="Cari nomor mesin"
+              inputMode="numeric"
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
             />
           )}
           {filtered.length === 0 ? (
-            <div className="empty-state">Tidak ditemukan — coba kata kunci lain</div>
+            <div className="empty-state">Tidak ditemukan — coba nomor mesin lain</div>
           ) : (
             filtered.map(({ entry, num }) => {
               const mesin = state.db[entry.mcNo];
@@ -108,7 +83,9 @@ export function DoffingScreen({ onOpenStatistik }: { onOpenStatistik: () => void
               return (
                 <div className="doff-row" key={entry.id}>
                   <div className="num">{num}</div>
-                  <div className="dot" style={{ background: TIPE_COLOR[mesin?.tipe ?? "TAPPET"] }} />
+                  <div className="tipe-icon" style={{ color: mesin ? TIPE_COLOR[mesin.tipe] : "var(--text-faint)" }}>
+                    {mesin ? <MesinTipeIcon tipe={mesin.tipe} size={16} /> : null}
+                  </div>
                   <div className="main">
                     <div className="mcno">{entry.mcNo}</div>
                     <div className="sub">{sub}</div>

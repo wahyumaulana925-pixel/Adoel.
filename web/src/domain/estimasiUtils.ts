@@ -1,4 +1,6 @@
-import type { Estimasi } from "./types";
+import { absMinToTimeStr, jamKeShiftAbs, nowAbsMin } from "./format";
+import { parseDurasi, parseJam } from "./parse";
+import type { Estimasi, MesinData, MesinTipe } from "./types";
 
 export type UrgencyLevel = "CALM" | "SOON" | "IMMINENT" | "OVERDUE";
 
@@ -13,11 +15,20 @@ export function sortedByNearest(estimasi: Record<string, Estimasi>): Estimasi[] 
   return Object.values(estimasi).sort((a, b) => a.estAbsMin - b.estAbsMin);
 }
 
+/** Sisa menit efektif — kalau sedang dijeda, waktu dibekukan di titik jeda (tidak
+ * terus berkurang mengikuti jam berjalan) sampai dilanjutkan lagi. */
+export function effectiveRemaining(e: Estimasi, nowAbs: number): number {
+  if (e.pausedAtAbsMin !== null && e.pausedAtAbsMin !== undefined) {
+    return e.estAbsMin - e.pausedAtAbsMin;
+  }
+  return e.estAbsMin - nowAbs;
+}
+
 export function partitionSegeraMenunggu(sorted: Estimasi[], nowAbs: number): [Estimasi[], Estimasi[]] {
   const segera: Estimasi[] = [];
   const menunggu: Estimasi[] = [];
   for (const e of sorted) {
-    if (e.estAbsMin - nowAbs <= 0) segera.push(e);
+    if (effectiveRemaining(e, nowAbs) <= 0) segera.push(e);
     else menunggu.push(e);
   }
   return [segera, menunggu];
@@ -33,3 +44,55 @@ export function nearestUpcoming(estimasi: Record<string, Estimasi>, nowAbs: numb
 /** Jeda minimum (menit) antar-dua estimasi berurutan di daftar "Menunggu" supaya
  * dianggap "boleh istirahat" — sama seperti BREAK_GAP_THRESHOLD_MIN di Android. */
 export const BREAK_GAP_THRESHOLD_MIN = 30;
+
+export interface EstimasiFieldHint {
+  label: string;
+  example: string;
+}
+
+/** Port 1:1 dari estimasiFieldHint di EstimasiUtils.kt — label & contoh field terpandu
+ * beradaptasi dengan tipe mesin yang ditekan. */
+export function estimasiFieldHint(tipe: MesinTipe): EstimasiFieldHint {
+  switch (tipe) {
+    case "TAPPET":
+    case "CAM":
+      return { label: "Sisa waktu (menit)", example: "45" };
+    case "D405":
+      return { label: "Yard sudah berjalan", example: "280" };
+    case "D408":
+      return { label: "Bacaan jam counter", example: "12.30" };
+  }
+}
+
+/** Preview "≈ jam" langsung di dialog terpandu, memakai rumus murni yang identik dengan
+ * yang dipakai commands.ts saat submit — supaya yang dipratinjau di sini dijamin sama
+ * dengan yang benar-benar tersimpan. Port 1:1 dari previewEstimasi di GuidedEstimasiSheet.kt. */
+export function previewEstimasi(tipe: MesinTipe, raw: string, mesin: MesinData | null): string | null {
+  if (raw.trim() === "") return null;
+  const now = nowAbsMin();
+  switch (tipe) {
+    case "TAPPET":
+    case "CAM": {
+      const sisa = parseDurasi(raw);
+      return sisa !== null ? absMinToTimeStr(now + sisa) : null;
+    }
+    case "D405": {
+      const target = mesin?.targetYard;
+      const speed = mesin?.speed;
+      const yardBerjalan = parseFloat(raw.trim().replace(/[yY]+$/, "").replace(",", "."));
+      if (!Number.isNaN(yardBerjalan) && target != null && speed != null && speed > 0) {
+        const sisaMin = Math.round((target - yardBerjalan) / speed);
+        return absMinToTimeStr(now + sisaMin);
+      }
+      return null;
+    }
+    case "D408": {
+      const koreksi = mesin?.koreksi;
+      const jamMin = parseJam(raw);
+      if (jamMin !== null && koreksi != null) {
+        return absMinToTimeStr(jamKeShiftAbs(jamMin) + Math.round(koreksi));
+      }
+      return null;
+    }
+  }
+}
