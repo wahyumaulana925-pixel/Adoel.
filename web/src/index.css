@@ -498,6 +498,20 @@ button:disabled {
 .console-mcno-input:focus {
   border-color: var(--violet-500);
 }
+/* Bar konsol utama punya 4 tombol ikon di kiri-kanan (Undo/Redo/Estimasi/Doffing) —
+   field nomor mesin di situ dibiarkan flex:1 penuh terasa kepenuhan buat isian
+   maksimal 3 digit. Dibuat sekompak isinya di sini saja; field pencarian di
+   Pengaturan > Mesin (cuma 1 tombol Edit di sampingnya) tetap lebar seperti semula. */
+.console-bar .console-mcno-input {
+  flex: 0 1 92px;
+  min-width: 64px;
+  max-width: 92px;
+  padding: 0 10px;
+  text-align: center;
+}
+.console-bar .console-row {
+  justify-content: center;
+}
 .console-icon-btn {
   width: 48px;
   height: 48px;

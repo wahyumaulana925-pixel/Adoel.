@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { DoffStoreProvider, useDoffStore } from "./store/DoffStore";
 import { UiStoreProvider, useUiStore } from "./store/UiStore";
 import { useConsoleHandlers } from "./hooks/useConsoleHandlers";
@@ -84,8 +84,18 @@ function AppInner() {
     setMesin(mcNo, { ...mesin, corak, targetYard });
   }
 
+  // Tap di mana pun di luar field yang sedang aktif (kartu, tombol, area kosong)
+  // keluar dari mode ketik & menutup keyboard — supaya field nomor mesin tidak
+  // terus "siap ketik" tak berkesudahan sampai app dibuka lagi lain kali.
+  function dismissKeyboardUnlessTypingHere(e: ReactMouseEvent) {
+    const active = document.activeElement as HTMLElement | null;
+    if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA") && e.target !== active) {
+      active.blur();
+    }
+  }
+
   return (
-    <div className="app-shell">
+    <div className="app-shell" onClick={dismissKeyboardUnlessTypingHere}>
       <ToastHost />
 
       <div className="edge-fade edge-fade-top" />
