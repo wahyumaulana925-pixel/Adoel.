@@ -382,7 +382,7 @@ fun MainScreen(
                                 onDoffFilterChange = { doffFilter = it },
                                 onEntryClick = { id -> activeOverlay = ActiveOverlay.EditAkt(id) },
                                 onHapusEntry = { id -> handlers.handleHapusAktual(id) { activeOverlay = ActiveOverlay.None } },
-                                onShare = { shareHistory(context, state) },
+                                onShare = { shareHistory(context, state) { uiVm.showToast("⚠ Tidak ada aplikasi untuk membagikan") } },
                                 onFinish = { handlers.handleFinishShift() },
                             )
                         }
@@ -504,6 +504,7 @@ fun MainScreen(
                 onClose = { activeOverlay = ActiveOverlay.None },
                 onDeleteShift = { id -> doffVm.hapusShift(id) },
                 showConfirm = { msg, fn -> uiVm.showConfirm(msg, onConfirm = fn) },
+                showToast = { uiVm.showToast(it) },
             )
         }
 

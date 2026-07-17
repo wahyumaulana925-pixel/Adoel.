@@ -91,17 +91,25 @@ object NotificationHelper {
         }
     }
 
+    /** True if the "bersiap" reminder alarm is still worth scheduling for [estAbsMin] as of
+     * [now] — false once the reminder lead time itself has already passed. Kept as a pure
+     * function (no Context/AlarmManager) so the scheduling decision is unit-testable without
+     * Robolectric — see NotificationHelperTest. */
+    internal fun shouldScheduleReminder(estAbsMin: Long, now: Long): Boolean =
+        (estAbsMin - REMINDER_LEAD_MIN) > now
+
+    /** True if the "siap doff" alarm is still worth scheduling for [estAbsMin] as of [now]. An
+     * already-past estimate is skipped — AlarmManager would fire it instantly, but the operator
+     * is looking at the screen when they enter it and RadarCard already shows it as overdue, so
+     * an immediate notification would just be redundant noise. Pure/testable, see [shouldScheduleReminder]. */
+    internal fun shouldScheduleReady(estAbsMin: Long, now: Long): Boolean = estAbsMin > now
+
     fun scheduleNotif(context: Context, mcNo: String, estAbsMin: Long) {
         val now = System.currentTimeMillis() / 60000L
-        val reminderAt = estAbsMin - REMINDER_LEAD_MIN
-        if (reminderAt > now) {
-            scheduleAt(context, mcNo, reminderAt, isReminder = true)
+        if (shouldScheduleReminder(estAbsMin, now)) {
+            scheduleAt(context, mcNo, estAbsMin - REMINDER_LEAD_MIN, isReminder = true)
         }
-        // Only schedule the "siap doff" alarm if the estimate is still in the future.
-        // For an already-past estimate, AlarmManager would fire it instantly — but the operator
-        // is looking at the screen when they enter it and the RadarCard already shows it as
-        // overdue, so an immediate notification would just be redundant noise.
-        if (estAbsMin > now) {
+        if (shouldScheduleReady(estAbsMin, now)) {
             scheduleAt(context, mcNo, estAbsMin, isReminder = false)
         }
     }
@@ -190,7 +198,7 @@ object NotificationHelper {
         context.getSystemService(NotificationManager::class.java).notify(notifId, notif)
     }
 
-    private fun notifIdFor(mcNo: String, isReminder: Boolean = false): Int {
+    internal fun notifIdFor(mcNo: String, isReminder: Boolean = false): Int {
         val base = mcNo.toIntOrNull() ?: mcNo.hashCode()
         return if (isReminder) base + REMINDER_ID_OFFSET else base
     }

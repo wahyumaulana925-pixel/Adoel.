@@ -216,6 +216,6 @@ private fun DoffingRow(
     }
 }
 
-internal fun shareHistory(context: Context, state: DoffState) {
-    shareIntent(context, buildShareHistoryText(state), "Bagikan riwayat")
+internal fun shareHistory(context: Context, state: DoffState, onFailure: () -> Unit = {}) {
+    if (!shareIntent(context, buildShareHistoryText(state), "Bagikan riwayat")) onFailure()
 }

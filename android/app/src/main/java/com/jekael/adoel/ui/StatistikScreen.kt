@@ -101,6 +101,7 @@ fun StatistikScreen(
     onClose: () -> Unit,
     onDeleteShift: (Int) -> Unit,
     showConfirm: (String, () -> Unit) -> Unit,
+    showToast: (String) -> Unit,
 ) {
     val colors = LocalAppColors.current
     var expandedShiftId by remember { mutableStateOf<Int?>(null) }
@@ -162,6 +163,7 @@ fun StatistikScreen(
                             onToggle = { expandedShiftId = if (expandedShiftId == shift.id) null else shift.id },
                             onDeleteShift = onDeleteShift,
                             showConfirm = showConfirm,
+                            showToast = showToast,
                             modifier = Modifier.animateItem(),
                         )
                     }
@@ -417,6 +419,7 @@ private fun ShiftRow(
     onToggle: () -> Unit,
     onDeleteShift: (Int) -> Unit,
     showConfirm: (String, () -> Unit) -> Unit,
+    showToast: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = LocalAppColors.current
@@ -436,7 +439,9 @@ private fun ShiftRow(
     // Tidak berarti apa-apa untuk shift tanpa doff (mis. diarsipkan dengan estimasi yang belum
     // sempat diselesaikan), jadi swipe-kanan pada shift kosong tidak melakukan apa-apa.
     fun requestShare() {
-        if (shift.aktual.isNotEmpty()) shareShift(context, shift, db)
+        if (shift.aktual.isNotEmpty()) {
+            shareShift(context, shift, db) { showToast("⚠ Tidak ada aplikasi untuk membagikan") }
+        }
     }
     fun requestDelete() {
         showConfirm("Hapus arsip Shift $shiftNo · $dateStr? Data ini tidak bisa dikembalikan.") {
@@ -538,6 +543,6 @@ private fun ShiftRow(
  * "Bravo!!!" casual register, same audience: rekan kerja), for whenever an operator needs to
  * resend a specific day's record instead of the whole running total. Opens the share-sheet
  * directly instead of a copy-then-paste round trip. */
-private fun shareShift(context: Context, shift: ShiftRecord, db: Map<String, MesinData>) {
-    shareIntent(context, buildShareShiftText(shift, db), "Bagikan shift")
+private fun shareShift(context: Context, shift: ShiftRecord, db: Map<String, MesinData>, onFailure: () -> Unit) {
+    if (!shareIntent(context, buildShareShiftText(shift, db), "Bagikan shift")) onFailure()
 }

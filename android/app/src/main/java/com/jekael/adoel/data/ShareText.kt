@@ -79,12 +79,13 @@ fun buildShareShiftText(shift: ShiftRecord, db: Map<String, MesinData>, zone: Ti
     return "Bravo!!!\nShift $shiftNo · $dateStr\n\n*Selesai (${shift.aktual.size} doff)*\n${lines.joinToString("\n")}\n\nTotal: ${shift.aktual.size} doff"
 }
 
-/** Launches the system share sheet with [text] — shared by both callers above so a failure to
- * resolve a share-capable app is swallowed the same way in both places. */
-fun shareIntent(context: Context, text: String, chooserTitle: String) {
+/** Launches the system share sheet with [text] — shared by both callers above. Returns false
+ * (instead of swallowing the failure silently) when no share-capable app could be launched, so
+ * callers can let the operator know instead of the tap silently doing nothing. */
+fun shareIntent(context: Context, text: String, chooserTitle: String): Boolean {
     val intent = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
         putExtra(Intent.EXTRA_TEXT, text)
     }
-    runCatching { context.startActivity(Intent.createChooser(intent, chooserTitle)) }
+    return runCatching { context.startActivity(Intent.createChooser(intent, chooserTitle)) }.isSuccess
 }
