@@ -238,10 +238,20 @@ fun RadarCard(
                 }
             }
         } else null
-        tryAwaitRelease()
-        chargeJob.cancel()
-        vibrationJob?.cancel()
-        scope.launch { pressCharge.animateTo(0f, tween(150)) }
+        // try/finally, not plain sequential cleanup after tryAwaitRelease() — a successful
+        // long-press flips the card (face changes), which restarts this pointerInput block
+        // (face is one of its keys) and cancels whatever coroutine is still suspended in
+        // tryAwaitRelease() at that moment. Without finally, that cancellation skipped the
+        // cleanup lines entirely, leaving vibrationJob's while(true) haptic loop running
+        // forever — it was launched on the composable's own long-lived scope, not the
+        // gesture's, so nothing else would ever stop it short of the card leaving composition.
+        try {
+            tryAwaitRelease()
+        } finally {
+            chargeJob.cancel()
+            vibrationJob?.cancel()
+            scope.launch { pressCharge.animateTo(0f, tween(150)) }
+        }
     }
     val handleLongPressFlip: (Offset) -> Unit = {
         scope.launch { pressCharge.snapTo(0f) }
