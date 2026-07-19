@@ -4,7 +4,7 @@ import { effectiveRemaining, urgencyLevel, type UrgencyLevel } from "../domain/e
 import { TIPE_COLOR } from "../domain/mesinVisual";
 import type { Estimasi, MesinData } from "../domain/types";
 import { WaveProgressBar } from "./WaveProgressBar";
-import { MesinTipeIcon, PauseIcon, PlayIcon, DeleteIcon } from "./Icons";
+import { MesinTipeIcon, PauseIcon, PlayIcon, DeleteIcon, CheckIcon, ScissorsIcon } from "./Icons";
 
 const REMINDER_LEAD_MIN = 5;
 const SWIPE_THRESHOLD_PX = 88;
@@ -66,6 +66,7 @@ export function RadarCard({
 
   const [offsetX, setOffsetX] = useState(0);
   const [dragging, setDragging] = useState(false);
+  const [charging, setCharging] = useState(false);
   const [completing, setCompleting] = useState<"NORMAL" | "MATCHING" | null>(null);
   const dragStartX = useRef<number | null>(null);
   const wasDrag = useRef(false);
@@ -78,14 +79,19 @@ export function RadarCard({
     }
   }
 
+  // Target ini khusus pengguna iOS (Safari/PWA) — navigator.vibrate() tidak pernah
+  // tersedia di WebKit, jadi umpan balik tekan-tahan & swipe di bawah ini sengaja
+  // 100% visual (charge overlay, panel reveal, animasi perayaan), bukan bergantung
+  // getaran seperti versi Android.
   function handlePointerDown(e: ReactPointerEvent) {
     if (completing || face !== "FRONT") return;
     dragStartX.current = e.clientX;
     wasDrag.current = false;
+    setCharging(true);
     longPressTimer.current = window.setTimeout(() => {
       longPressTimer.current = null;
       if (!wasDrag.current) {
-        navigator.vibrate?.(20);
+        setCharging(false);
         setShowActionsFace(true);
         setOffsetX(0);
         setDragging(false);
@@ -100,6 +106,7 @@ export function RadarCard({
     if (Math.abs(dx) > DRAG_INTENT_PX) {
       wasDrag.current = true;
       clearLongPress();
+      setCharging(false);
     }
     if (swipeEnabled && wasDrag.current) {
       setDragging(true);
@@ -109,6 +116,7 @@ export function RadarCard({
 
   function endDrag() {
     clearLongPress();
+    setCharging(false);
     dragStartX.current = null;
     setDragging(false);
     if (Math.abs(offsetX) >= SWIPE_THRESHOLD_PX) {
@@ -121,12 +129,11 @@ export function RadarCard({
   function triggerDoff(kind: "NORMAL" | "MATCHING") {
     if (completing) return;
     setCompleting(kind);
-    navigator.vibrate?.(kind === "NORMAL" ? 20 : [15, 60, 15]);
     setOffsetX(kind === "NORMAL" ? 420 : -420);
     window.setTimeout(() => {
       if (kind === "NORMAL") onDoff();
       else onDoffMatching();
-    }, 260);
+    }, 340);
   }
 
   function handleZoneClick(action: () => void) {
@@ -134,13 +141,25 @@ export function RadarCard({
     action();
   }
 
+  const revealSide: "right" | "left" | null = offsetX > 4 ? "right" : offsetX < -4 ? "left" : null;
+  const revealOpacity = Math.min(1, Math.abs(offsetX) / SWIPE_THRESHOLD_PX);
+
   return (
     <div className="radar-card-outer" style={{ ["--urgency-accent" as any]: style.accent }}>
+      {revealSide && !completing && (
+        <div className={`radar-card-swipe-bg ${revealSide}`} style={{ opacity: revealOpacity }}>
+          {revealSide === "right" ? <CheckIcon size={22} /> : <ScissorsIcon size={22} />}
+        </div>
+      )}
       <div
         className="radar-card-swipe"
         style={{
           transform: `translateX(${offsetX}px)`,
-          transition: dragging ? "none" : "transform 0.25s cubic-bezier(0.4,0,0.2,1)",
+          transition: dragging
+            ? "none"
+            : completing
+              ? "transform 0.3s cubic-bezier(0.4,0,0.2,1)"
+              : "transform 0.32s cubic-bezier(0.34,1.56,0.64,1)",
           opacity: completing ? 0.15 : 1,
         }}
         onPointerDown={handlePointerDown}
@@ -149,7 +168,8 @@ export function RadarCard({
         onPointerCancel={endDrag}
       >
         <div className={`radar-card-flipper${face !== "FRONT" ? " flipped" : ""}`}>
-          <div className={`radar-card-face radar-card-front${level === "OVERDUE" ? " overdue" : ""}`}>
+          <div className={`radar-card-face radar-card-front${level === "OVERDUE" ? " overdue" : ""}${charging ? " charging" : ""}`}>
+            <div className="radar-card-charge-overlay" />
             <div className="radar-card-accent" />
             <div className="radar-card-body">
               <div className="radar-card-main" onClick={() => handleZoneClick(onQuickEdit)} role="button">
@@ -197,6 +217,13 @@ export function RadarCard({
           </div>
         </div>
       </div>
+      {completing && (
+        <div className={`radar-card-celebrate ${completing === "MATCHING" ? "matching" : "normal"}`}>
+          <div className="radar-card-celebrate-icon">
+            {completing === "MATCHING" ? <ScissorsIcon size={26} /> : <CheckIcon size={26} />}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
