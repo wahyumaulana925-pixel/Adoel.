@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
@@ -31,4 +32,11 @@ export default defineConfig({
       },
     }),
   ],
+  // Test domain murni (parsing/rumus/format/serialisasi) — tidak butuh DOM, jadi environment
+  // "node". File test dikecualikan dari tsconfig.app.json supaya `tsc -b` (build) tidak ikut
+  // mengecek-tipe mereka; vitest yang meng-handle transpilasi + tipe test.
+  test: {
+    environment: "node",
+    include: ["src/**/*.test.ts"],
+  },
 });

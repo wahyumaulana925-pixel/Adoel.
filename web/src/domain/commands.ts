@@ -95,13 +95,6 @@ export function prosesBarisUmum(state: DoffState, ln: string): CommandOutcome {
   const mesin = state.db[mcNo];
   if (!mesin) return { result: { ok: false, msg: `Mc ${mcNo} tidak ditemukan` }, newState: state };
 
-  // Pintasan khusus D408: "<mesin> C <bacaan>" SELALU diproses sebagai update
-  // estimasi (rumus D408), apapun mode yang sedang aktif di UI — supaya operator
-  // bisa update bacaan counter tanpa ganti tab.
-  if (mesin.tipe === "D408" && parts[1]?.toLowerCase() === "c") {
-    return prosesBarisKondisiMesin(state, ln, nowAbsMin());
-  }
-
   const jam = nowTimeStr();
   let customYard: number | null = null;
   const ketTokens: string[] = [];
