@@ -60,7 +60,13 @@ function AppInner() {
     if (staleCount === 0) setStaleDismissed(false);
   }, [staleCount]);
 
-  const totalMc = Object.keys(state.db).length;
+  // Penyebut progress = mesin yang TERLIBAT shift ini (punya estimasi aktif atau sudah di-doff),
+  // bukan seluruh isi database (174 placeholder) — port dari totalMc di MainScreen.kt. Sebelum
+  // ada estimasi/doff, ini 0 sehingga bar progress header disembunyikan (bukan menampilkan 0/174).
+  const totalMc = useMemo(
+    () => new Set([...Object.keys(state.estimasi), ...state.aktual.map((a) => a.mcNo)]).size,
+    [state.estimasi, state.aktual],
+  );
   const doffCount = state.aktual.length;
 
   function openGuidedEstimasi(mcNo: string) {
