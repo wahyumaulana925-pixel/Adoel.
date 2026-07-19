@@ -159,7 +159,7 @@ function AppInner() {
       {page === "RADAR" ? (
         <RadarScreen onEditWaktu={openGuidedEstimasi} />
       ) : (
-        <DoffingScreen onOpenStatistik={() => setScreen("statistik")} />
+        <DoffingScreen />
       )}
 
       <ConsoleBar

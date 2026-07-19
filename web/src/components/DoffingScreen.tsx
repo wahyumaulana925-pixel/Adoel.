@@ -6,9 +6,9 @@ import { TIPE_COLOR } from "../domain/mesinVisual";
 import { useConsoleHandlers } from "../hooks/useConsoleHandlers";
 import type { AktualEntry } from "../domain/types";
 import { EditAktualDialog } from "./EditAktualDialog";
-import { BarChartIcon, DeleteIcon, EditIcon, FlagIcon, MesinTipeIcon, ShareIcon } from "./Icons";
+import { DeleteIcon, EditIcon, FlagIcon, MesinTipeIcon, ShareIcon } from "./Icons";
 
-export function DoffingScreen({ onOpenStatistik }: { onOpenStatistik: () => void }) {
+export function DoffingScreen() {
   const { state } = useDoffStore();
   const { showToast } = useUiStore();
   const { handleHapusAktual, handleFinishShift } = useConsoleHandlers();
@@ -46,9 +46,6 @@ export function DoffingScreen({ onOpenStatistik }: { onOpenStatistik: () => void
       <div className="btn-row">
         <button className="btn" onClick={handleShare}>
           <ShareIcon size={16} /> Bagikan
-        </button>
-        <button className="btn" onClick={onOpenStatistik}>
-          <BarChartIcon size={16} /> Statistik
         </button>
         <button className="btn danger" onClick={handleFinishShift}>
           <FlagIcon size={16} /> Selesai Shift
