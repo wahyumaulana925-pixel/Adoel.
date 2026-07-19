@@ -92,6 +92,15 @@ export function RadarScreen({ onEditWaktu }: { onEditWaktu: (mcNo: string) => vo
             <span>Menunggu</span>
             <span className="count">{menunggu.length}</span>
           </div>
+          {/* Leading break: kalau tidak ada yang overdue (Segera kosong) dan mesin terdekat
+              masih >= 30 menit lagi, tandai operator boleh istirahat DARI SEKARANG sampai Mc itu
+              — port dari leading break di MainScreen.kt. Diukur dari nowAbs (bukan antar-dua
+              estimasi seperti gap-row di bawah). */}
+          {segera.length === 0 && menunggu[0] && menunggu[0].estAbsMin - nowAbs >= BREAK_GAP_THRESHOLD_MIN && (
+            <div className="gap-row">
+              ⏸ bisa istirahat {formatDeltaMin(menunggu[0].estAbsMin - nowAbs)} sampai Mc {menunggu[0].mcNo}
+            </div>
+          )}
           {menunggu.map((est, i) => {
             const next = menunggu[i + 1];
             const gap = next ? next.estAbsMin - est.estAbsMin : 0;
