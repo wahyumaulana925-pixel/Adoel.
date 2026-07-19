@@ -2,11 +2,22 @@ import { useMemo, useRef, useState } from "react";
 import { useDoffStore } from "../store/DoffStore";
 import { useUiStore } from "../store/UiStore";
 import { TIPE_COLOR } from "../domain/mesinVisual";
+import { formatYard } from "../domain/format";
 import type { MesinData, MesinTipe, ThemeMode } from "../domain/types";
 import { CloseIcon, EditIcon, MesinTipeIcon } from "./Icons";
 import { WovenDivider } from "./WovenDivider";
 
 const TIPE_LIST: MesinTipe[] = ["TAPPET", "CAM", "D405", "D408"];
+
+/** Parse angka field mesin sama seperti `it.replace(',', '.').toDoubleOrNull()` di Android:
+ * menerima koma sebagai titik desimal, dan MEMPERTAHANKAN 0 (koreksi D408 0 itu valid — tanpa
+ * koreksi). Sengaja BUKAN `parseFloat(x) || null`, yang salah mengubah 0 menjadi null. */
+function parseMesinNum(raw: string): number | null {
+  const t = raw.trim().replace(",", ".");
+  if (t === "") return null;
+  const n = parseFloat(t);
+  return Number.isNaN(n) ? null : n;
+}
 
 export function SettingsScreen({ onClose }: { onClose: () => void }) {
   const { state, setMesin, resetMesin, setThemeMode, exportJson, importJson } = useDoffStore();
@@ -215,6 +226,7 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
 
       {activeMcNo && form && (
         <MesinEditDialog
+          key={activeMcNo}
           mcNo={activeMcNo}
           form={form}
           onChange={setForm}
@@ -245,6 +257,14 @@ function MesinEditDialog({
   onSave: () => void;
   onReset: () => void;
 }) {
+  // State teks MENTAH untuk field angka (seperti targetYardText/speedText/koreksiText di
+  // MesinEditPanel.kt) — supaya pengguna bisa mengetik desimal ("0.158" / "0,158") tanpa titik/
+  // koma-nya kebuang saat diketik ulang dari nilai numerik. Di-seed sekali dari form saat mount
+  // (dialog di-remount per mcNo lewat key parent), lalu jadi sumber kebenaran field teks.
+  const [targetYardText, setTargetYardText] = useState(form.targetYard != null ? formatYard(form.targetYard) : "");
+  const [speedText, setSpeedText] = useState(form.speed != null ? formatYard(form.speed) : "");
+  const [koreksiText, setKoreksiText] = useState(form.koreksi != null ? formatYard(form.koreksi) : "");
+
   return (
     <div className="dialog-backdrop" onClick={onClose}>
       <div className="dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 400 }}>
@@ -279,8 +299,11 @@ function MesinEditDialog({
               className="field-input"
               inputMode="decimal"
               placeholder="opsional"
-              value={form.targetYard ?? ""}
-              onChange={(e) => onChange({ ...form, targetYard: e.target.value === "" ? null : parseFloat(e.target.value) || null })}
+              value={targetYardText}
+              onChange={(e) => {
+                setTargetYardText(e.target.value);
+                onChange({ ...form, targetYard: parseMesinNum(e.target.value) });
+              }}
             />
           </div>
           <div>
@@ -289,8 +312,11 @@ function MesinEditDialog({
               className="field-input"
               inputMode="decimal"
               placeholder="opsional"
-              value={form.speed ?? ""}
-              onChange={(e) => onChange({ ...form, speed: e.target.value === "" ? null : parseFloat(e.target.value) || null })}
+              value={speedText}
+              onChange={(e) => {
+                setSpeedText(e.target.value);
+                onChange({ ...form, speed: parseMesinNum(e.target.value) });
+              }}
             />
           </div>
         </div>
@@ -301,8 +327,11 @@ function MesinEditDialog({
           className="field-input"
           inputMode="decimal"
           placeholder="opsional"
-          value={form.koreksi ?? ""}
-          onChange={(e) => onChange({ ...form, koreksi: e.target.value === "" ? null : parseFloat(e.target.value) || null })}
+          value={koreksiText}
+          onChange={(e) => {
+            setKoreksiText(e.target.value);
+            onChange({ ...form, koreksi: parseMesinNum(e.target.value) });
+          }}
         />
 
         <div className="actions" style={{ marginTop: 20, justifyContent: "space-between" }}>
