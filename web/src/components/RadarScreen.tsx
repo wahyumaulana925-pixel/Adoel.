@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDoffStore } from "../store/DoffStore";
 import { useConsoleHandlers } from "../hooks/useConsoleHandlers";
 import {
@@ -22,8 +22,13 @@ export function RadarScreen({ onEditWaktu }: { onEditWaktu: (mcNo: string) => vo
   const [, forceTick] = useState(0);
 
   // Re-render setiap 20 detik supaya "sisa waktu" & status OVERDUE tetap akurat
-  // tanpa perlu interaksi pengguna.
-  useInterval(() => forceTick((n) => n + 1), 20000);
+  // tanpa perlu interaksi pengguna. Pakai useEffect (bukan useMemo) supaya interval
+  // benar-benar dibersihkan saat unmount — kalau tidak, tiap kali layar Radar dibuka
+  // ulang akan menumpuk interval baru yang tidak pernah berhenti.
+  useEffect(() => {
+    const id = setInterval(() => forceTick((n) => n + 1), 20000);
+    return () => clearInterval(id);
+  }, []);
 
   const nowAbs = nowAbsMin();
   const all = useMemo(() => sortedByNearest(state.estimasi), [state.estimasi]);
@@ -133,12 +138,4 @@ function menungguAccent(menunggu: Estimasi[], nowAbs: number): string {
 }
 function rank(l: UrgencyLevel): number {
   return { CALM: 0, SOON: 1, IMMINENT: 2, OVERDUE: 3 }[l];
-}
-
-function useInterval(callback: () => void, delayMs: number) {
-  useMemo(() => {
-    const id = setInterval(callback, delayMs);
-    return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 }
