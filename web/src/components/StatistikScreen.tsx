@@ -3,7 +3,8 @@ import { useDoffStore } from "../store/DoffStore";
 import { useUiStore } from "../store/UiStore";
 import { formatDeltaMin, shiftNumberForEpochMin } from "../domain/format";
 import { shareOrCopy, shareShiftText } from "../domain/share";
-import type { ShiftRecord } from "../domain/types";
+import { TIPE_COLOR } from "../domain/mesinVisual";
+import type { MesinTipe, ShiftRecord } from "../domain/types";
 import { CloseIcon, DeleteIcon, ShareIcon } from "./Icons";
 import { WaveProgressBar } from "./WaveProgressBar";
 import { WovenDivider } from "./WovenDivider";
@@ -28,6 +29,20 @@ export function StatistikScreen({ onClose }: { onClose: () => void }) {
   const totalDoff = useMemo(() => state.history.reduce((sum, h) => sum + h.aktual.length, 0), [state.history]);
   const avgPerShift = state.history.length > 0 ? totalDoff / state.history.length : 0;
   const maxDoffCount = useMemo(() => Math.max(1, ...state.history.map((h) => h.aktual.length)), [state.history]);
+
+  // Breakdown jumlah doff per tipe mesin, urutan tetap TAPPET→CAM→D405→D408; hanya tipe dengan
+  // count > 0 yang ditampilkan — port dari TipeBreakdownBar di StatistikScreen.kt.
+  const tipeCounts = useMemo(() => {
+    const order: MesinTipe[] = ["TAPPET", "CAM", "D405", "D408"];
+    const byTipe: Partial<Record<MesinTipe, number>> = {};
+    for (const h of state.history) {
+      for (const a of h.aktual) {
+        const tipe = state.db[a.mcNo]?.tipe;
+        if (tipe) byTipe[tipe] = (byTipe[tipe] ?? 0) + 1;
+      }
+    }
+    return order.filter((t) => (byTipe[t] ?? 0) > 0).map((t) => ({ tipe: t, count: byTipe[t]! }));
+  }, [state.history, state.db]);
 
   function handleDelete(shift: ShiftRecord) {
     const shiftNo = shiftNumberForEpochMin(shift.startedAtEpochMin);
@@ -66,6 +81,26 @@ export function StatistikScreen({ onClose }: { onClose: () => void }) {
             <div style={{ fontSize: 11, color: "var(--text-faint)" }}>Shift Diarsipkan</div>
           </div>
         </div>
+
+        {tipeCounts.length > 0 && (
+          <div className="card">
+            <div style={{ display: "flex", height: 6, borderRadius: 3, overflow: "hidden" }}>
+              {tipeCounts.map(({ tipe, count }) => (
+                <div key={tipe} style={{ flexGrow: count, minWidth: 2, background: TIPE_COLOR[tipe] }} />
+              ))}
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 8 }}>
+              {tipeCounts.map(({ tipe, count }) => (
+                <div key={tipe} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: TIPE_COLOR[tipe], display: "inline-block" }} />
+                  <span style={{ fontSize: 12, color: "var(--text-faint)" }}>
+                    {tipe} {count}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <WovenDivider />
 

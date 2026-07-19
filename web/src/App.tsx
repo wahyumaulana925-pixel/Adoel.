@@ -11,6 +11,7 @@ import { ToastHost } from "./components/ToastHost";
 import { ConfirmDialog } from "./components/ConfirmDialog";
 import { GuidedEstimasiSheet } from "./components/GuidedEstimasiSheet";
 import { GuidedDoffingSheet } from "./components/GuidedDoffingSheet";
+import { OnboardingDialog } from "./components/OnboardingDialog";
 import { WaveProgressBar } from "./components/WaveProgressBar";
 import { BarChartIcon, SettingsIcon } from "./components/Icons";
 import { defaultMesinData } from "./domain/types";
@@ -20,7 +21,7 @@ type Page = "RADAR" | "RIWAYAT";
 type Screen = "main" | "statistik" | "settings";
 
 function AppInner() {
-  const { state, setMesin, undo, redo, canUndo, canRedo } = useDoffStore();
+  const { state, setMesin, setOnboardingSeen, undo, redo, canUndo, canRedo } = useDoffStore();
   const { showToast } = useUiStore();
   const { handleEstimasiSubmit, handleAktualSubmit, handleFinishShift } = useConsoleHandlers();
   const [page, setPage] = useState<Page>("RADAR");
@@ -28,6 +29,7 @@ function AppInner() {
   const [guidedEstimasiMcNo, setGuidedEstimasiMcNo] = useState<string | null>(null);
   const [guidedDoffingMcNo, setGuidedDoffingMcNo] = useState<string | null>(null);
   const [staleDismissed, setStaleDismissed] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [, forceTick] = useState(0);
 
   // Tema: SYSTEM mengikuti preferensi OS, DARK/LIGHT dipaksa lewat atribut di <html>.
@@ -60,7 +62,13 @@ function AppInner() {
     if (staleCount === 0) setStaleDismissed(false);
   }, [staleCount]);
 
-  const totalMc = Object.keys(state.db).length;
+  // Penyebut progress = mesin yang TERLIBAT shift ini (punya estimasi aktif atau sudah di-doff),
+  // bukan seluruh isi database (174 placeholder) — port dari totalMc di MainScreen.kt. Sebelum
+  // ada estimasi/doff, ini 0 sehingga bar progress header disembunyikan (bukan menampilkan 0/174).
+  const totalMc = useMemo(
+    () => new Set([...Object.keys(state.estimasi), ...state.aktual.map((a) => a.mcNo)]).size,
+    [state.estimasi, state.aktual],
+  );
   const doffCount = state.aktual.length;
 
   function openGuidedEstimasi(mcNo: string) {
@@ -151,7 +159,7 @@ function AppInner() {
       {page === "RADAR" ? (
         <RadarScreen onEditWaktu={openGuidedEstimasi} />
       ) : (
-        <DoffingScreen onOpenStatistik={() => setScreen("statistik")} />
+        <DoffingScreen />
       )}
 
       <ConsoleBar
@@ -185,7 +193,19 @@ function AppInner() {
       )}
 
       {screen === "statistik" && <StatistikScreen onClose={() => setScreen("main")} />}
-      {screen === "settings" && <SettingsScreen onClose={() => setScreen("main")} />}
+      {screen === "settings" && <SettingsScreen onClose={() => setScreen("main")} onOpenHelp={() => setHelpOpen(true)} />}
+
+      {/* Onboarding: otomatis muncul saat pertama buka (onboardingSeen false pada instalasi
+          baru), atau kapan saja lewat Pengaturan > Bantuan. Menutup selalu menandai sudah dilihat
+          (idempotent) supaya first-run tidak muncul lagi. */}
+      {(!state.onboardingSeen || helpOpen) && (
+        <OnboardingDialog
+          onClose={() => {
+            setOnboardingSeen();
+            setHelpOpen(false);
+          }}
+        />
+      )}
 
       <ConfirmDialog />
     </div>
