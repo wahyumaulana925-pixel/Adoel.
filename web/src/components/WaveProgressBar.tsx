@@ -1,7 +1,9 @@
+import { useEffect, useRef } from "react";
 import { useElementWidth } from "../hooks/useElementWidth";
 
 const WAVELENGTH_PX = 18;
 const STEP_PX = 2;
+const FLOW_PERIOD_MS = 1200;
 
 /** Bar progress track-and-fill dengan isian berbentuk gelombang sinus yang terus mengalir
  * (seperti air melalui talang), bukan bar flat — port 1:1 dari LinearProgressBar di
@@ -44,7 +46,36 @@ export function WaveProgressBar({
   }
 
   const rollDiameter = height * (1.6 + 1.4 * clamped);
-  const rollY = midY + amplitude * Math.sin((2 * Math.PI * progressWidth) / WAVELENGTH_PX);
+  // Fase di titik progressWidth pada t=0 — dipakai sebagai titik tolak diam (baseline) di
+  // bawah, lalu di-drive lanjut lewat rAF di bawah supaya bola betul-betul menunggangi
+  // puncak gelombang yang mengalir di baliknya (bukan bobbing sendiri lepas dari gelombang).
+  const rollBasePhase = (2 * Math.PI * progressWidth) / WAVELENGTH_PX;
+  const rollY = midY + amplitude * Math.sin(rollBasePhase);
+  const rollRef = useRef<HTMLDivElement>(null);
+
+  // Gelombang sendiri mengalir murni lewat CSS transform (lihat .wave-svg-animated) —
+  // ringan, tidak menghitung ulang path tiap frame. Tapi itu artinya posisi Y bola di
+  // ujung fill TIDAK otomatis ikut terhitung ulang oleh CSS itu — sebelumnya bola cuma
+  // diam di posisi awal + wobble generik ±1px yang tidak selaras dengan gelombang yang
+  // benar-benar lewat di baliknya, jadi ikut kelihatan berantakan. rAF di sini menghitung
+  // fase yang identik dengan translateX gelombang (satu wavelength = satu putaran fase
+  // penuh per FLOW_PERIOD_MS), lalu menulis delta-Y-nya langsung ke DOM lewat ref (bukan
+  // lewat state) supaya tidak memicu re-render React tiap frame.
+  useEffect(() => {
+    if (!animated || progressWidth <= 2) return;
+    let raf = 0;
+    const start = performance.now();
+    function tick(now: number) {
+      const elapsed = now - start;
+      const flowPhase = ((elapsed % FLOW_PERIOD_MS) / FLOW_PERIOD_MS) * 2 * Math.PI;
+      const y = amplitude * Math.sin(rollBasePhase - flowPhase);
+      const baseline = amplitude * Math.sin(rollBasePhase);
+      if (rollRef.current) rollRef.current.style.transform = `translateY(${(y - baseline).toFixed(2)}px)`;
+      raf = requestAnimationFrame(tick);
+    }
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [animated, progressWidth, amplitude, rollBasePhase]);
 
   return (
     <div
@@ -66,7 +97,8 @@ export function WaveProgressBar({
       )}
       {progressWidth > 2 && (
         <div
-          className={animated ? "wave-roll wave-roll-animated" : "wave-roll"}
+          ref={rollRef}
+          className="wave-roll"
           style={{
             width: rollDiameter,
             height: rollDiameter,

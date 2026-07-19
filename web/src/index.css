@@ -815,11 +815,13 @@ button:disabled {
   position: absolute;
   left: 0;
   top: 0;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: visible;
   transition: width 0.25s ease;
 }
 .wave-svg {
   display: block;
+  overflow: visible;
 }
 .wave-svg-animated {
   animation: wave-flow 1.2s linear infinite;
@@ -835,17 +837,6 @@ button:disabled {
 .wave-roll {
   position: absolute;
   border-radius: 50%;
-}
-.wave-roll-animated {
-  animation: wave-roll-bob 1.2s ease-in-out infinite alternate;
-}
-@keyframes wave-roll-bob {
-  from {
-    margin-top: -1px;
-  }
-  to {
-    margin-top: 1px;
-  }
 }
 
 .woven-divider {
