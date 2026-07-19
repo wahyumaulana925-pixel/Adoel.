@@ -49,5 +49,6 @@ export function standarisasiKeterangan(raw: string): string {
   if (["oh", "p.oh", "p. oh", "p oh", "overhaul"].includes(t)) return "P.OH";
   if (["el", "p.el", "p. el", "p el", "elektrik"].includes(t)) return "P.EL";
   if (["sel", "selvedge", "p.sel", "p. sel", "p sel"].includes(t)) return "P.Sel";
+  if (["matching", "match"].includes(t)) return "MATCHING";
   return raw.trim();
 }
