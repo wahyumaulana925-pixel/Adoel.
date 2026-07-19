@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { prosesBarisKondisiMesin, prosesBarisUmum } from "../domain/commands";
 import { buildDefaultDb } from "../domain/defaultDb";
 import { nowAbsMin } from "../domain/format";
@@ -253,32 +253,67 @@ export function DoffStoreProvider({ children }: { children: ReactNode }) {
     return parsed;
   }, []);
 
-  const store: DoffStore = {
-    state,
-    submitEstimasi,
-    submitAktual,
-    hapusEstimasi,
-    restoreEstimasi,
-    pauseEstimasi,
-    resumeEstimasi,
-    hapusAktualById,
-    restoreAktual,
-    hapusShift,
-    updateAktual,
-    finishShift,
-    setMesin,
-    resetMesin,
-    resetDb,
-    setThemeMode,
-    setOnboardingSeen,
-    exportJson,
-    importJson,
-    pushUndo,
-    canUndo: undoStack.length > 0,
-    canRedo: redoStack.length > 0,
-    undo,
-    redo,
-  };
+  const canUndo = undoStack.length > 0;
+  const canRedo = redoStack.length > 0;
+
+  // Di-memo supaya identitas value context hanya berubah saat ada yang benar-benar berubah
+  // (state, ketersediaan undo/redo, atau exportJson yang bergantung state) — bukan objek literal
+  // baru tiap render. Aksi lain sudah stabil lewat useCallback, jadi consumer tidak ikut
+  // re-render hanya karena provider merender ulang (mis. dari tick 20 detik di App).
+  const store = useMemo<DoffStore>(
+    () => ({
+      state,
+      submitEstimasi,
+      submitAktual,
+      hapusEstimasi,
+      restoreEstimasi,
+      pauseEstimasi,
+      resumeEstimasi,
+      hapusAktualById,
+      restoreAktual,
+      hapusShift,
+      updateAktual,
+      finishShift,
+      setMesin,
+      resetMesin,
+      resetDb,
+      setThemeMode,
+      setOnboardingSeen,
+      exportJson,
+      importJson,
+      pushUndo,
+      canUndo,
+      canRedo,
+      undo,
+      redo,
+    }),
+    [
+      state,
+      submitEstimasi,
+      submitAktual,
+      hapusEstimasi,
+      restoreEstimasi,
+      pauseEstimasi,
+      resumeEstimasi,
+      hapusAktualById,
+      restoreAktual,
+      hapusShift,
+      updateAktual,
+      finishShift,
+      setMesin,
+      resetMesin,
+      resetDb,
+      setThemeMode,
+      setOnboardingSeen,
+      exportJson,
+      importJson,
+      pushUndo,
+      canUndo,
+      canRedo,
+      undo,
+      redo,
+    ],
+  );
 
   return <Ctx.Provider value={store}>{children}</Ctx.Provider>;
 }

@@ -27,8 +27,11 @@ export function formatDeltaMin(deltaMin: number): string {
   return mag >= 60 ? `${sign}${Math.floor(mag / 60)}j${mag % 60}m` : `${sign}${mag}m`;
 }
 
+// String(y) di JS sudah menghilangkan ".0" untuk bilangan bulat (String(303) === "303") dan
+// mempertahankan pecahan (String(1.25) === "1.25") — jadi setara dengan formatYard di Models.kt
+// yang memisah cabang toLong()/toDouble(); tidak perlu ternary di sini.
 export function formatYard(y: number): string {
-  return Number.isInteger(y) ? String(y) : String(y);
+  return String(y);
 }
 
 /** Jadwal 3 shift tetap: Shift 1 06.00-14.00, Shift 2 14.00-22.00, Shift 3 22.00-06.00
