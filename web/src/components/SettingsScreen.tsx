@@ -19,7 +19,7 @@ function parseMesinNum(raw: string): number | null {
   return Number.isNaN(n) ? null : n;
 }
 
-export function SettingsScreen({ onClose }: { onClose: () => void }) {
+export function SettingsScreen({ onClose, onOpenHelp }: { onClose: () => void; onOpenHelp: () => void }) {
   const { state, setMesin, resetMesin, setThemeMode, exportJson, importJson } = useDoffStore();
   const { showToast, showConfirm } = useUiStore();
   const [search, setSearch] = useState("");
@@ -155,6 +155,13 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
             }}
           />
         </div>
+
+        <WovenDivider />
+
+        <div className="field-label">Bantuan</div>
+        <button className="btn" onClick={onOpenHelp}>
+          Cara Pakai Adoel
+        </button>
 
         <WovenDivider />
 
