@@ -469,9 +469,8 @@ fun RadarCard(
                             softWrap = false,
                         )
                         if (mesin != null) {
-                            Icon(
-                                imageVector = mesinTipeIcon(mesin.tipe),
-                                contentDescription = null,
+                            MesinTipeIcon(
+                                tipe = mesin.tipe,
                                 tint = mesinTipeColor(mesin.tipe),
                                 modifier = Modifier.size(12.dp).padding(bottom = 4.dp),
                             )

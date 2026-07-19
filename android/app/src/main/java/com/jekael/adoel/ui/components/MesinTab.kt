@@ -150,9 +150,8 @@ internal fun MesinTab(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Icon(
-                            imageVector = mesinTipeIcon(tipe),
-                            contentDescription = null,
+                        MesinTipeIcon(
+                            tipe = tipe,
                             tint = mesinTipeColor(tipe),
                             modifier = Modifier.size(14.dp),
                         )

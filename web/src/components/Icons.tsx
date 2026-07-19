@@ -130,35 +130,49 @@ export function PlayIcon({ size = 18 }: IconProps) {
   );
 }
 
-/** Satu ikon per MesinTipe — port 1:1 dari mesinTipeIcon di Icons.kt (aplikasi Android),
- * murni identitas visual, tidak membawa arti semantik lain. */
+/** Satu ikon per MesinTipe — port 1:1 dari mesinTipeIcon di Icons.kt (aplikasi Android).
+ * Satu keluarga (satu badan mesin horizontal + kaki, ditarik dari lay-out lantai produksi
+ * sungguhan), dengan satu elemen di atas badan yang beda per tipe — dan elemen itu justru
+ * yang secara mekanis benar-benar membedakan mesinnya: batang tappet tunggal, roda cam,
+ * atau kepala dobby (405 dengan 2 kait, 408 dengan 4 kait — model yang sama, kapasitas
+ * beda). Murni identitas visual, tidak membawa arti semantik lain. */
 export function MesinTipeIcon({ tipe, size = 12 }: IconProps & { tipe: "TAPPET" | "CAM" | "D405" | "D408" }) {
+  const body = (
+    <>
+      <rect x="3" y="13" width="18" height="6.5" rx="1.5" />
+      <path d="M6.5 19.5v1.8M17.5 19.5v1.8" />
+    </>
+  );
   switch (tipe) {
     case "TAPPET":
       return (
-        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="m14.7 6.3 3 3L8.4 18.6l-4 1 1-4Z" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="m17.5 3.5 3 3" strokeLinecap="round" strokeLinejoin="round" />
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+          {body}
+          <path d="M12 13V6" />
+          <circle cx="12" cy="5" r="1.3" />
         </svg>
       );
     case "CAM":
       return (
-        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="12" cy="12" r="8" />
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+          {body}
+          <circle cx="12" cy="9.3" r="3.3" />
         </svg>
       );
     case "D405":
       return (
-        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M12 4v3M12 17v3M4 12h3M17 12h3M6.3 6.3l2 2M15.7 15.7l2 2M6.3 17.7l2-2M15.7 8.3l2-2" strokeLinecap="round" />
-          <circle cx="12" cy="12" r="2.5" />
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+          {body}
+          <rect x="8.5" y="4" width="7" height="4.5" rx="1" />
+          <path d="M10.2 8.5v4.5M13.8 8.5v4.5" />
         </svg>
       );
     case "D408":
       return (
-        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <rect x="3" y="6" width="18" height="12" rx="2" />
-          <path d="M8 9v6M12 9v6M16 9v6" strokeLinecap="round" />
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+          {body}
+          <rect x="8.5" y="4" width="7" height="4.5" rx="1" />
+          <path d="M9.6 8.5v4.5M11.2 8.5v4.5M12.8 8.5v4.5M14.4 8.5v4.5" strokeWidth="1.4" />
         </svg>
       );
   }

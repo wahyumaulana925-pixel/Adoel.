@@ -30,8 +30,8 @@ import androidx.compose.ui.unit.sp
 import com.jekael.adoel.data.*
 import com.jekael.adoel.ui.components.EmptyState
 import com.jekael.adoel.ui.components.SwipeableCard
+import com.jekael.adoel.ui.components.MesinTipeIcon
 import com.jekael.adoel.ui.components.mesinTipeColor
-import com.jekael.adoel.ui.components.mesinTipeIcon
 import com.jekael.adoel.ui.theme.*
 
 /** RIWAYAT page's list content: empty state, or the recorded-doff rows (newest first). Bagikan
@@ -149,7 +149,6 @@ private fun DoffingRow(
         else -> corak
     }
     val tipeColor = mesin?.tipe?.let(::mesinTipeColor) ?: colors.textFaint
-    val tipeIcon = mesin?.tipe?.let(::mesinTipeIcon) ?: Icons.Outlined.Circle
     // Swipe right = edit (same as tapping the card), swipe left = hapus — matches RadarCard's
     // swipe model. Tap still opens edit too, both as a fallback for anyone who doesn't swipe and
     // because TalkBack can't perform the drag gesture at all (see customActions below for that).
@@ -180,12 +179,16 @@ private fun DoffingRow(
                 style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Black, color = colors.textMuted),
                 modifier = Modifier.width(22.dp),
             )
-            Icon(
-                imageVector = tipeIcon,
-                contentDescription = null,
-                tint = tipeColor,
-                modifier = Modifier.size(14.dp),
-            )
+            if (mesin != null) {
+                MesinTipeIcon(tipe = mesin.tipe, tint = tipeColor, modifier = Modifier.size(14.dp))
+            } else {
+                Icon(
+                    imageVector = Icons.Outlined.Circle,
+                    contentDescription = null,
+                    tint = tipeColor,
+                    modifier = Modifier.size(14.dp),
+                )
+            }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = entry.mcNo,
