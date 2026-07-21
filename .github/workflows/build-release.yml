@@ -3,6 +3,9 @@ name: Build Release APK
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -41,8 +44,22 @@ jobs:
           cd android
           ./gradlew assembleRelease
 
-      - uses: actions/upload-artifact@v4
+      - name: Read app version
+        id: appver
+        run: |
+          cd android
+          VERSION_NAME=$(grep -oP 'versionName\s+"\K[^"]+' app/build.gradle)
+          echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+
+      # Diterbitkan sebagai GitHub Release (bukan Actions artifact) — storage-nya
+      # terpisah total dari kuota Actions artifact yang pernah penuh dan memblokir
+      # upload berhari-hari. Tiap versionName dapat tag Release sendiri (v9.5, v9.6, ...)
+      # supaya riwayat APK signed tetap tertelusur, tidak saling menimpa seperti debug-latest.
+      - name: Publish signed release APK to release
+        uses: softprops/action-gh-release@v2
         with:
-          name: app-release-apk
-          path: android/app/build/outputs/apk/release/app-release.apk
-          retention-days: 7
+          tag_name: v${{ steps.appver.outputs.version_name }}
+          name: "Adoel v${{ steps.appver.outputs.version_name }}"
+          body: |
+            APK release signed dari commit ${{ github.sha }} (run #${{ github.run_number }}).
+          files: android/app/build/outputs/apk/release/app-release.apk
