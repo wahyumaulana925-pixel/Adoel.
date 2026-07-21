@@ -13,17 +13,30 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.jekael.adoel.data.DoffState
 import com.jekael.adoel.data.formatYard
+import com.jekael.adoel.data.minOfDayToTimeStr
+import com.jekael.adoel.data.parseJam
+import com.jekael.adoel.data.standarisasiKeterangan
 import com.jekael.adoel.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
+/** ket tersimpan sebagai "jam(extra)" atau cuma "jam" kalau tanpa keterangan tambahan (lihat
+ * prosesBarisUmum di DoffViewModel.kt) — field Jam & Keterangan di sheet ini dulu digabung
+ * jadi satu teks bebas berbasis ket, jadi mengedit jam berarti retype semuanya termasuk tanda
+ * kurungnya. Dipisah supaya tiap field independen: corak/yard yang sudah benar tidak perlu
+ * diketik ulang hanya karena mau mengoreksi jam, dan sebaliknya. */
+private fun extractExtraKeterangan(ket: String, jam: String): String {
+    if (!ket.startsWith(jam)) return ""
+    val rest = ket.removePrefix(jam)
+    val m = Regex("""^\(([^)]*)\)$""").matchEntire(rest)
+    return m?.groupValues?.get(1) ?: ""
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,10 +44,10 @@ fun EditAktSheet(
     aktualId: Int?,
     state: DoffState,
     onClose: () -> Unit,
-    onSave: (id: Int, ket: String, corakOverride: String?, customYard: Double?) -> Unit,
+    onSave: (id: Int, jam: String, ket: String, corakOverride: String?, customYard: Double?) -> Unit,
     onDelete: () -> Unit,
     onInvalidYard: () -> Unit = {},
-    onEmptyKet: () -> Unit = {},
+    onInvalidJam: () -> Unit = {},
 ) {
     if (aktualId == null) return
     val entry = state.aktual.find { it.id == aktualId } ?: return
@@ -42,7 +55,8 @@ fun EditAktSheet(
     val corakDefault = entry.corakOverride ?: mesin?.corak ?: ""
     val colors = LocalAppColors.current
 
-    var valInput by remember(aktualId) { mutableStateOf(entry.ket) }
+    var jamInput by remember(aktualId) { mutableStateOf(entry.jam) }
+    var ketInput by remember(aktualId) { mutableStateOf(extractExtraKeterangan(entry.ket, entry.jam)) }
     var corakInput by remember(aktualId) { mutableStateOf(corakDefault) }
     var yardInput by remember(aktualId) {
         mutableStateOf(entry.customYard?.let { formatYard(it) } ?: "")
@@ -53,9 +67,9 @@ fun EditAktSheet(
 
     fun doSave() {
         if (showCheck) return
-        val k = valInput.trim()
-        if (k.isEmpty()) {
-            onEmptyKet()
+        val jamMin = parseJam(jamInput.trim())
+        if (jamMin == null) {
+            onInvalidJam()
             return
         }
         val corakTrim = corakInput.trim()
@@ -66,10 +80,13 @@ fun EditAktSheet(
             return
         }
         val yardVal = yardTrim.toDoubleOrNull()
+        val jamStr = minOfDayToTimeStr(jamMin)
+        val extra = standarisasiKeterangan(ketInput.trim())
+        val newKet = if (extra.isNotEmpty()) "$jamStr($extra)" else jamStr
         showCheck = true
         scope.launch {
             delay(450)
-            onSave(entry.id, k, corakOverride, yardVal)
+            onSave(entry.id, jamStr, newKet, corakOverride, yardVal)
         }
     }
 
@@ -88,21 +105,32 @@ fun EditAktSheet(
                     text = "Mc ${entry.mcNo}",
                     style = AppType.NumberLarge.copy(color = colors.textPrimary),
                 )
-                Text(
-                    text = entry.jam,
-                    style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Medium, color = colors.textMuted),
-                )
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = onDelete) { TrashIcon() }
             }
 
             Spacer(Modifier.height(20.dp))
 
+            FieldLabel("Jam")
+            OutlinedTextField(
+                value = jamInput,
+                onValueChange = { jamInput = it },
+                modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
+                placeholder = { Text("14.30", color = colors.textFaint) },
+                colors = outlinedFieldColors(),
+                shape = RoundedCornerShape(Dimens.RadiusControl),
+                textStyle = AppType.FieldText.copy(color = colors.textPrimary),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                singleLine = true,
+            )
+
+            Spacer(Modifier.height(16.dp))
+
             FieldLabel("Corak")
             OutlinedTextField(
                 value = corakInput,
                 onValueChange = { corakInput = it },
-                modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
+                modifier = Modifier.fillMaxWidth(),
                 colors = outlinedFieldColors(),
                 shape = RoundedCornerShape(Dimens.RadiusControl),
                 textStyle = AppType.FieldText.copy(color = colors.textPrimary),
@@ -132,10 +160,10 @@ fun EditAktSheet(
 
             Spacer(Modifier.height(16.dp))
 
-            FieldLabel("Keterangan")
+            FieldLabel("Keterangan (opsional)")
             OutlinedTextField(
-                value = valInput,
-                onValueChange = { valInput = it },
+                value = ketInput,
+                onValueChange = { ketInput = it },
                 modifier = Modifier.fillMaxWidth(),
                 colors = outlinedFieldColors(),
                 shape = RoundedCornerShape(Dimens.RadiusControl),

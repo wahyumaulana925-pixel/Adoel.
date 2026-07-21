@@ -1,6 +1,7 @@
 // Port 1:1 dari shareHistory (DoffingSection.kt) dan shareShift (StatistikScreen.kt).
-import { absMinToTimeStr, formatYard, shiftNumberForEpochMin } from "./format";
+import { absMinToTimeStr, formatYard, nowAbsMin, shiftNumberForEpochMin } from "./format";
 import { sortedByNearest } from "./estimasiUtils";
+import { sortAktualChronological } from "./aktualOrder";
 import type { DoffState, MesinData, ShiftRecord } from "./types";
 
 function dateStrNow(): string {
@@ -22,7 +23,7 @@ function pad2(n: number): string {
  * lantai produksi juga perlu tahu mesin mana yang belum di-doff. */
 export function shareHistoryText(state: DoffState): string {
   const dateStr = dateStrNow();
-  const aktualChrono = [...state.aktual].reverse(); // oldest first (posisi doff asli)
+  const aktualChrono = sortAktualChronological(state.aktual, nowAbsMin());
   const lines = aktualChrono.map((a, i) => {
     const mesin = state.db[a.mcNo];
     const corak = a.corakOverride ?? mesin?.corak ?? "—";
@@ -51,7 +52,7 @@ export function shareHistoryText(state: DoffState): string {
 export function shareShiftText(shift: ShiftRecord, db: Record<string, MesinData>): string {
   const shiftNo = shiftNumberForEpochMin(shift.startedAtEpochMin);
   const dateStr = formatShiftDate(shift.startedAtEpochMin);
-  const chrono = [...shift.aktual].reverse();
+  const chrono = sortAktualChronological(shift.aktual, shift.startedAtEpochMin + 240);
   const lines = chrono.map((a, i) => {
     const mesin = db[a.mcNo];
     const corak = a.corakOverride ?? mesin?.corak ?? "—";

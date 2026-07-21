@@ -55,16 +55,29 @@ export function currentShiftStartAbsMin(epochMin: number): number {
   return Math.floor(d.getTime() / 60000);
 }
 
+/** Mengubah "jam" (menit sejak tengah malam, tanpa info tanggal) jadi epoch-minute absolut
+ * TERDEKAT dari [anchorAbsMin] — kalau selisihnya lebih dari 12 jam, geser +-1 hari supaya
+ * jadi yang paling masuk akal. Dipakai baik untuk bacaan counter D408 (anchor = sekarang)
+ * maupun untuk mengurutkan entri aktual berdasarkan jam yang mungkin sudah dikoreksi manual
+ * (anchor = titik tetap seperti mulainya shift, bukan sekarang — lihat pemakaian di
+ * DoffingScreen/StatistikScreen). */
+export function jamNearAbsMin(jamMin: number, anchorAbsMin: number): number {
+  const d = new Date(anchorAbsMin * 60000);
+  d.setHours(0, 0, 0, 0);
+  const midnightAbsMin = Math.floor(d.getTime() / 60000);
+  const candidate = midnightAbsMin + jamMin;
+  const diff = candidate - anchorAbsMin;
+  if (diff < -720) return candidate + 1440;
+  if (diff > 720) return candidate - 1440;
+  return candidate;
+}
+
 /** Dipakai khusus tipe mesin D408: mengubah "bacaan jam pada counter mesin" (bukan
- * jam sekarang) jadi waktu absolut TERDEKAT dari sekarang - kalau selisihnya lebih
- * dari 12 jam, geser +-1 hari supaya jadi yang paling masuk akal. */
+ * jam sekarang) jadi waktu absolut TERDEKAT dari sekarang. */
 export function jamKeShiftAbs(jamMin: number): number {
-  const startOfDay = new Date();
-  startOfDay.setHours(0, 0, 0, 0);
-  const epochMinToday = Math.floor(startOfDay.getTime() / 60000) + jamMin;
-  const currentEpochMin = nowAbsMin();
-  const diff = epochMinToday - currentEpochMin;
-  if (diff < -720) return epochMinToday + 1440;
-  if (diff > 720) return epochMinToday - 1440;
-  return epochMinToday;
+  return jamNearAbsMin(jamMin, nowAbsMin());
+}
+
+export function minOfDayToTimeStr(min: number): string {
+  return `${pad2(Math.floor(min / 60))}.${pad2(min % 60)}`;
 }

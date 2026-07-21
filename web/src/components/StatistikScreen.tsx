@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useDoffStore } from "../store/DoffStore";
 import { useUiStore } from "../store/UiStore";
 import { formatDeltaMin, shiftNumberForEpochMin } from "../domain/format";
+import { sortAktualChronological } from "../domain/aktualOrder";
 import { shareOrCopy, shareShiftText } from "../domain/share";
 import { TIPE_COLOR } from "../domain/mesinVisual";
 import type { MesinTipe, ShiftRecord } from "../domain/types";
@@ -145,7 +146,13 @@ function ShiftCard({
   const shiftNo = shiftNumberForEpochMin(shift.startedAtEpochMin);
   const dateStr = formatShiftDate(shift.startedAtEpochMin);
   const timeRange = `${formatShiftTime(shift.startedAtEpochMin)}–${formatShiftTime(shift.endedAtEpochMin)}`;
-  const chronological = useMemo(() => [...shift.aktual].reverse(), [shift.aktual]);
+  // +240 (4 jam setelah mulai) dipakai sebagai titik tengah yang aman dari pembungkusan
+  // tanggal untuk shift 8 jam manapun — shift ini sudah diarsipkan, bisa dibuka
+  // berhari-hari kemudian, jadi "sekarang" bukan acuan yang masuk akal.
+  const chronological = useMemo(
+    () => sortAktualChronological(shift.aktual, shift.startedAtEpochMin + 240),
+    [shift.aktual, shift.startedAtEpochMin],
+  );
   const avgGapMin = useMemo(() => {
     const stamped = chronological.map((a) => a.tsEpochMin).filter((t): t is number => t !== null);
     if (stamped.length < 2) return null;

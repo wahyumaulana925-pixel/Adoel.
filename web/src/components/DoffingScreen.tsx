@@ -4,6 +4,8 @@ import { useUiStore } from "../store/UiStore";
 import { shareHistoryText, shareOrCopy } from "../domain/share";
 import { TIPE_COLOR } from "../domain/mesinVisual";
 import { useConsoleHandlers } from "../hooks/useConsoleHandlers";
+import { nowAbsMin } from "../domain/format";
+import { sortAktualChronological } from "../domain/aktualOrder";
 import type { AktualEntry } from "../domain/types";
 import { EditAktualDialog } from "./EditAktualDialog";
 import { DeleteIcon, EditIcon, FlagIcon, MesinTipeIcon, ShareIcon } from "./Icons";
@@ -15,10 +17,7 @@ export function DoffingScreen() {
   const [filter, setFilter] = useState("");
   const [editing, setEditing] = useState<AktualEntry | null>(null);
 
-  // Terlama di atas — sama seperti aktualReversed di aplikasi Android: state.aktual
-  // menyimpan terbaru di indeks 0 (di-prepend), jadi dibalik dulu supaya nomor urut
-  // 1..N mencerminkan urutan doff SEBENARNYA di shift ini (bukan input filter).
-  const chronological = useMemo(() => [...state.aktual].reverse(), [state.aktual]);
+  const chronological = useMemo(() => sortAktualChronological(state.aktual, nowAbsMin()), [state.aktual]);
   const indexed = useMemo(() => chronological.map((entry, idx) => ({ entry, num: idx + 1 })), [chronological]);
   // Pencarian hanya nomor mesin (Master Blueprint v9.2 §4) — bukan corak/keterangan lagi.
   const filtered = useMemo(() => {

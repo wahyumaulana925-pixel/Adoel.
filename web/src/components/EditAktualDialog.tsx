@@ -1,9 +1,22 @@
 import { useState } from "react";
 import { useDoffStore } from "../store/DoffStore";
 import { useUiStore } from "../store/UiStore";
-import { formatYard } from "../domain/format";
+import { formatYard, minOfDayToTimeStr } from "../domain/format";
+import { parseJam, standarisasiKeterangan } from "../domain/parse";
 import type { AktualEntry } from "../domain/types";
 import { DeleteIcon } from "./Icons";
+
+/** ket tersimpan sebagai "jam(extra)" atau cuma "jam" kalau tanpa keterangan tambahan
+ * (lihat prosesBarisUmum di commands.ts) — field Jam & Keterangan di dialog ini dulu
+ * digabung jadi satu teks bebas berbasis ket, jadi mengedit jam berarti retype semuanya
+ * termasuk tanda kurungnya. Dipisah di sini supaya tiap field independen: jam.mcNo yang
+ * sudah benar tidak perlu diketik ulang hanya karena mau mengoreksi jam, dan sebaliknya. */
+function extractExtraKeterangan(ket: string, jam: string): string {
+  if (!ket.startsWith(jam)) return "";
+  const rest = ket.slice(jam.length);
+  const m = /^\(([^)]*)\)$/.exec(rest);
+  return m ? m[1] : "";
+}
 
 export function EditAktualDialog({
   entry,
@@ -16,13 +29,15 @@ export function EditAktualDialog({
 }) {
   const { updateAktual } = useDoffStore();
   const { showToast } = useUiStore();
-  const [ket, setKet] = useState(entry.ket);
+  const [jam, setJam] = useState(entry.jam);
+  const [extraKet, setExtraKet] = useState(extractExtraKeterangan(entry.ket, entry.jam));
   const [corak, setCorak] = useState(entry.corakOverride ?? "");
   const [yard, setYard] = useState(entry.customYard != null ? formatYard(entry.customYard) : "");
 
   function handleSave() {
-    if (ket.trim() === "") {
-      showToast("Keterangan tidak boleh kosong");
+    const jamMin = parseJam(jam.trim());
+    if (jamMin === null) {
+      showToast("Jam tidak valid — format 14.30");
       return;
     }
     let yardVal: number | null = null;
@@ -34,7 +49,10 @@ export function EditAktualDialog({
       }
       yardVal = parsed;
     }
-    updateAktual(entry.id, ket.trim(), corak.trim() === "" ? null : corak.trim(), yardVal);
+    const jamStr = minOfDayToTimeStr(jamMin);
+    const extra = standarisasiKeterangan(extraKet.trim());
+    const newKet = extra.length > 0 ? `${jamStr}(${extra})` : jamStr;
+    updateAktual(entry.id, jamStr, newKet, corak.trim() === "" ? null : corak.trim(), yardVal);
     onClose();
   }
 
@@ -55,8 +73,17 @@ export function EditAktualDialog({
             <DeleteIcon />
           </button>
         </div>
-        <div className="field-label">Keterangan</div>
-        <input className="field-input" value={ket} onChange={(e) => setKet(e.target.value)} />
+        <div className="field-label">Jam</div>
+        <input
+          className="field-input"
+          placeholder="14.30"
+          inputMode="numeric"
+          value={jam}
+          onChange={(e) => setJam(e.target.value)}
+        />
+        <div style={{ height: 12 }} />
+        <div className="field-label">Keterangan (opsional)</div>
+        <input className="field-input" value={extraKet} onChange={(e) => setExtraKet(e.target.value)} />
         <div style={{ height: 12 }} />
         <div className="field-label">Corak (kosongkan untuk pakai default mesin)</div>
         <input className="field-input" inputMode="numeric" value={corak} onChange={(e) => setCorak(e.target.value)} />

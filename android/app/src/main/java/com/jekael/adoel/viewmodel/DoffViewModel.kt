@@ -219,10 +219,10 @@ class DoffViewModel @JvmOverloads constructor(
         s.copy(history = s.history.filter { it.id != id })
     }
 
-    fun updateAktual(id: Int, ket: String, corakOverride: String?, customYard: Double?) = updateState { s ->
+    fun updateAktual(id: Int, jam: String, ket: String, corakOverride: String?, customYard: Double?) = updateState { s ->
         s.copy(
             aktual = s.aktual.map {
-                if (it.id == id) it.copy(ket = ket, corakOverride = corakOverride, customYard = customYard) else it
+                if (it.id == id) it.copy(jam = jam, ket = ket, corakOverride = corakOverride, customYard = customYard) else it
             },
         )
     }

@@ -110,6 +110,10 @@ fun nowTimeStr(): String {
     return "%02d.%02d".format(cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE))
 }
 
+/** [min]: menit sejak tengah malam (hasil [parseJam]) — bukan epoch-minute absolut, jadi
+ * bukan [absMinToTimeStr]. Dipakai saat mengoreksi jam di [EditAktSheet]. */
+fun minOfDayToTimeStr(min: Int): String = "%02d.%02d".format(min / 60, min % 60)
+
 fun formatDeltaMin(deltaMin: Long): String {
     val sign = if (deltaMin < 0) "−" else ""
     val mag = abs(deltaMin)
@@ -191,6 +195,25 @@ fun parseJam(str: String): Int? {
     }
     return null
 }
+
+/** Urutan entri aktual berdasarkan jam ASLI tiap entri (bisa dikoreksi manual lewat
+ * EditAktSheet), bukan urutan input ke aplikasi. Dulu list Riwayat/Statistik/teks bagikan
+ * cuma membalik daftar aktual (terbaru di-prepend di indeks 0), yang diam-diam mengasumsikan
+ * operator selalu mencatat doff persis sesuai urutan kejadiannya — jebol begitu operator
+ * mengecek riwayat potong di mesin lalu input belakangan sambil mengoreksi jam supaya sesuai
+ * kronologi sebenarnya (mis. gantian rekan saat istirahat): entrinya tetap nyangkut di
+ * posisi KAPAN DIKETIK, bukan pindah ke posisi jam yang sudah dikoreksi.
+ *
+ * [anchorEpochMin] menentukan hari mana yang dimaksud sebuah jam (karena "jam" cuma string
+ * "14.30" tanpa info tanggal) — pakai waktu sekarang untuk shift yang sedang berjalan, atau
+ * titik tetap seperti mulainya shift untuk shift yang sudah diarsipkan (supaya tidak salah
+ * hari kalau dibuka berhari-hari kemudian). Entri dengan jam tidak valid didorong ke akhir. */
+fun sortAktualChronological(
+    aktual: List<AktualEntry>,
+    anchorEpochMin: Long,
+    zone: TimeZone = TimeZone.getDefault(),
+): List<AktualEntry> =
+    aktual.sortedBy { entry -> parseJam(entry.jam)?.let { jamKeShiftAbs(it, anchorEpochMin, zone) } ?: Long.MAX_VALUE }
 
 fun parseDurasi(str: String): Int? {
     val s = str.trim().replace(',', '.')

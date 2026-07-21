@@ -69,6 +69,7 @@ import com.jekael.adoel.data.formatShiftTime
 import com.jekael.adoel.data.formatYard
 import com.jekael.adoel.data.shareIntent
 import com.jekael.adoel.data.shiftNumberForEpochMin
+import com.jekael.adoel.data.sortAktualChronological
 import com.jekael.adoel.ui.components.CloseIcon
 import com.jekael.adoel.ui.components.EmptyState
 import com.jekael.adoel.ui.components.LinearProgressBar
@@ -426,7 +427,12 @@ private fun ShiftRow(
     val timeRange = remember(shift.startedAtEpochMin, shift.endedAtEpochMin) {
         "${formatShiftTime(shift.startedAtEpochMin)}–${formatShiftTime(shift.endedAtEpochMin)}"
     }
-    val chronological = remember(shift.aktual) { shift.aktual.asReversed() }
+    // +240 (4 jam setelah mulai) dipakai sebagai titik tengah yang aman dari pembungkusan
+    // tanggal untuk shift 8 jam manapun — shift ini sudah diarsipkan, bisa dibuka
+    // berhari-hari kemudian, jadi "sekarang" bukan acuan yang masuk akal.
+    val chronological = remember(shift.aktual, shift.startedAtEpochMin) {
+        sortAktualChronological(shift.aktual, shift.startedAtEpochMin + 240)
+    }
     val avgGapMin = remember(chronological) {
         val stamped = chronological.mapNotNull { it.tsEpochMin }
         if (stamped.size >= 2) stamped.zipWithNext { a, b -> b - a }.average() else null

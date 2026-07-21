@@ -260,7 +260,7 @@ fun MainScreen(
     val totalMc = remember(state.estimasi, state.aktual) {
         (state.estimasi.keys + state.aktual.map { it.mcNo }).toSet().size
     }
-    val aktualReversed = remember(state.aktual) { state.aktual.asReversed() }
+    val aktualReversed = remember(state.aktual) { sortAktualChronological(state.aktual, nowAbsMin()) }
 
     Box(
         modifier = Modifier
@@ -530,13 +530,13 @@ fun MainScreen(
             aktualId = editAktId,
             state = state,
             onClose = { activeOverlay = ActiveOverlay.None },
-            onSave = { id, ket, corakOverride, customYard ->
-                doffVm.updateAktual(id, ket, corakOverride, customYard)
+            onSave = { id, jam, ket, corakOverride, customYard ->
+                doffVm.updateAktual(id, jam, ket, corakOverride, customYard)
                 uiVm.showToast("Riwayat diperbarui")
                 activeOverlay = ActiveOverlay.None
             },
             onInvalidYard = { uiVm.showToast("Yard tidak valid") },
-            onEmptyKet = { uiVm.showToast("Keterangan tidak boleh kosong") },
+            onInvalidJam = { uiVm.showToast("Jam tidak valid — format 14.30") },
             onDelete = { handlers.handleHapusAktual(editAktId) { activeOverlay = ActiveOverlay.None } },
         )
     }

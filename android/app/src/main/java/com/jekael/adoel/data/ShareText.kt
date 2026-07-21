@@ -26,7 +26,7 @@ fun buildShareHistoryText(
         cal.get(Calendar.MONTH) + 1,
         cal.get(Calendar.YEAR),
     )
-    val lines = state.aktual.asReversed().mapIndexed { i, a ->
+    val lines = sortAktualChronological(state.aktual, nowMillis / 60000L, zone).mapIndexed { i, a ->
         val mesin = state.db[a.mcNo]
         val corak = a.corakOverride ?: mesin?.corak ?: "—"
         val yard = a.customYard ?: mesin?.targetYard
@@ -69,7 +69,10 @@ fun buildShareHistoryText(
 fun buildShareShiftText(shift: ShiftRecord, db: Map<String, MesinData>, zone: TimeZone = TimeZone.getDefault()): String {
     val shiftNo = shiftNumberForEpochMin(shift.startedAtEpochMin, zone)
     val dateStr = formatShiftDate(shift.startedAtEpochMin, zone)
-    val lines = shift.aktual.asReversed().mapIndexed { i, a ->
+    // +240 (4 jam setelah mulai) dipakai sebagai titik tengah yang aman dari pembungkusan
+    // tanggal untuk shift 8 jam manapun — shift ini sudah diarsipkan, jadi "sekarang" bukan
+    // acuan yang masuk akal untuk menentukan hari mana yang dimaksud sebuah jam.
+    val lines = sortAktualChronological(shift.aktual, shift.startedAtEpochMin + 240, zone).mapIndexed { i, a ->
         val mesin = db[a.mcNo]
         val corak = a.corakOverride ?: mesin?.corak ?: "—"
         val yard = a.customYard ?: mesin?.targetYard

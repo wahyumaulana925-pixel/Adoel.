@@ -28,7 +28,7 @@ interface DoffStore {
   hapusAktualById: (id: number) => void;
   restoreAktual: (entry: AktualEntry) => void;
   hapusShift: (id: number) => void;
-  updateAktual: (id: number, ket: string, corakOverride: string | null, customYard: number | null) => void;
+  updateAktual: (id: number, jam: string, ket: string, corakOverride: string | null, customYard: number | null) => void;
   finishShift: () => void;
   setMesin: (mcNo: string, data: MesinData) => void;
   resetMesin: (mcNo: string) => void;
@@ -180,10 +180,10 @@ export function DoffStoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateAktual = useCallback(
-    (id: number, ket: string, corakOverride: string | null, customYard: number | null) => {
+    (id: number, jam: string, ket: string, corakOverride: string | null, customYard: number | null) => {
       setState((s) => ({
         ...s,
-        aktual: s.aktual.map((a) => (a.id === id ? { ...a, ket, corakOverride, customYard } : a)),
+        aktual: s.aktual.map((a) => (a.id === id ? { ...a, jam, ket, corakOverride, customYard } : a)),
       }));
     },
     [],
