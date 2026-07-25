@@ -800,9 +800,8 @@ button:disabled {
   color: var(--text-faint);
 }
 
-/* ---- Wave progress bar — sine-wave fill instead of a flat bar (RadarCard animates
-   continuously; header/Statistik use the same shape but held still). Port 1:1 of
-   LinearProgressBar's visual language from the Android app. ---- */
+/* ---- Progress bar — plain straight track-and-fill, port 1:1 of LinearProgressBar's visual
+   language from the Android app. ---- */
 .wave-track {
   position: relative;
   flex-shrink: 0;
@@ -811,32 +810,11 @@ button:disabled {
   position: absolute;
   inset: 0;
 }
-.wave-fill-clip {
+.wave-fill {
   position: absolute;
   left: 0;
   top: 0;
-  overflow-x: hidden;
-  overflow-y: visible;
   transition: width 0.25s ease;
-}
-.wave-svg {
-  display: block;
-  overflow: visible;
-}
-.wave-svg-animated {
-  animation: wave-flow 1.2s linear infinite;
-}
-@keyframes wave-flow {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(calc(-1 * var(--wave-wavelength)));
-  }
-}
-.wave-roll {
-  position: absolute;
-  border-radius: 50%;
 }
 
 .woven-divider {

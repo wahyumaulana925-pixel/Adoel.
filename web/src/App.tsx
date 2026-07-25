@@ -125,7 +125,6 @@ function AppInner() {
                 fillColor="var(--cyan-500)"
                 height={4}
                 width={70}
-                animated={false}
               />
             </div>
           )}

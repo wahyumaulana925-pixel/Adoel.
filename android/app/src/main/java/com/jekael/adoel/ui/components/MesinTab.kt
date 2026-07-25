@@ -96,15 +96,15 @@ internal fun MesinTab(
         ) {
             // Scrolls behind the floating header/tab-switcher card above instead of being pushed
             // down by it — see the Box-overlay comment on SettingsDrawer's root.
-            item(key = "top_spacer") { Spacer(Modifier.height(10.dp + headerHeight + 16.dp)) }
+            item(key = "top_spacer") { Spacer(Modifier.height(10.dp + headerHeight + Dimens.Space16)) }
             item(key = "search_hint") {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Dimens.Space12)) {
                     Row(
                         modifier = Modifier
                             .clickable { showAll = !showAll }
                             .padding(vertical = 2.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(Dimens.Space8),
                     ) {
                         Checkbox(
                             checked = showAll,
@@ -146,9 +146,9 @@ internal fun MesinTab(
                             .fillMaxWidth()
                             .background(colors.bg)
                             .fabricTextureSubtle()
-                            .padding(vertical = 8.dp),
+                            .padding(vertical = Dimens.Space8),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(Dimens.Space8),
                     ) {
                         MesinTipeIcon(
                             tipe = tipe,
@@ -171,8 +171,8 @@ internal fun MesinTab(
                             .fillMaxWidth()
                             .elevatedListCard(backgroundColor = colors.bgElevated2)
                             .clickable { loadFrom(k, v) }
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            .padding(horizontal = Dimens.Space12, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(Dimens.Space12),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(k, style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary), modifier = Modifier.width(32.dp))
@@ -196,7 +196,7 @@ internal fun MesinTab(
                     }
                 }
             }
-            item(key = "bottom_spacer") { Spacer(Modifier.height(consoleHeight + 16.dp)) }
+            item(key = "bottom_spacer") { Spacer(Modifier.height(consoleHeight + Dimens.Space16)) }
         }
 
         // Top/bottom fade — same soft-edge treatment as MainScreen's list (Master Blueprint
@@ -219,17 +219,17 @@ internal fun MesinTab(
                 .onGloballyPositioned { coords ->
                     consoleHeight = with(density) { coords.size.height.toDp() }
                 }
-                .padding(horizontal = 12.dp)
-                .padding(bottom = 12.dp)
+                .padding(horizontal = Dimens.Space12)
+                .padding(bottom = Dimens.Space12)
                 .floatingHeaderCard(),
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp)
+                    .padding(horizontal = Dimens.Space12)
                     .padding(vertical = 10.dp)
                     .navigationBarsPadding(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(Dimens.Space8),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 OutlinedTextField(
@@ -238,9 +238,9 @@ internal fun MesinTab(
                     modifier = Modifier.weight(1f),
                     placeholder = { Text("Cari / edit nomor mesin", color = colors.textFaint) },
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Violet500,
+                        focusedBorderColor = Amber500,
                         unfocusedBorderColor = colors.border,
-                        cursorColor = Violet500,
+                        cursorColor = Amber500,
                         focusedContainerColor = colors.bgElevated2,
                         unfocusedContainerColor = colors.bgElevated2,
                     ),

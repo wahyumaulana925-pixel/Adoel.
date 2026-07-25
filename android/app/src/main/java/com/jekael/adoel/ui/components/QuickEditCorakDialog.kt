@@ -54,7 +54,7 @@ fun QuickEditCorakDialog(
             style = AppType.DialogTitle.copy(color = colors.textPrimary),
         )
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(Dimens.Space16))
 
         FieldLabel("Corak")
         OutlinedTextField(
@@ -68,7 +68,7 @@ fun QuickEditCorakDialog(
             singleLine = true,
         )
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(Dimens.Space16))
 
         FieldLabel("Target Yard")
         OutlinedTextField(
@@ -83,9 +83,9 @@ fun QuickEditCorakDialog(
             singleLine = true,
         )
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(Dimens.Space20))
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(Dimens.Space8)) {
             OutlinedButton(
                 onClick = onDismiss,
                 modifier = Modifier.weight(1f).height(48.dp),

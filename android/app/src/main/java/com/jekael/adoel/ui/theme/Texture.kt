@@ -14,7 +14,6 @@ import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
@@ -87,21 +86,18 @@ fun Modifier.fabricTextureSubtle(): Modifier = twillTexture(alpha = 0.05f)
 @Composable
 fun Modifier.fabricTextureBold(): Modifier = twillTexture(alpha = 0.05f)
 
-/** Drop-in replacement for `HorizontalDivider(color = colors.border)` — two dash patterns on the
- * same wavy line, phase-shifted by exactly one dash length so the second fills the first's gaps,
- * drawn in a slightly different tone. Reads as two threads crossing (warp/weft) rather than a
- * plain dashed rule — following a gentle sine curve instead of a flat rule leans further into that
- * "woven thread" identity than a straight line ever could. Thickness/saturation pushed up from the
- * original 1dp/0.35 mix so the weft thread stays legibly distinct from the warp even under dim
- * factory-floor lighting. */
+/** Drop-in replacement for `HorizontalDivider(color = colors.border)` — a dashed line following a
+ * gentle sine curve instead of a flat rule, leaning into the "woven thread" identity without being
+ * a literal photograph. Single color and a shallow amplitude on purpose — an earlier version drew
+ * this twice (two dash patterns, phase-shifted, one tinted cyan) to read as crossing warp/weft
+ * threads, but that came across as busier/more attention-grabbing than a divider should be; one
+ * pass in the plain border color keeps the woven cue without it competing with actual content. */
 @Composable
-fun WovenDivider(modifier: Modifier = Modifier, thickness: Dp = 1.5.dp) {
+fun WovenDivider(modifier: Modifier = Modifier, thickness: Dp = 1.dp) {
     val colors = LocalAppColors.current
-    val warpColor = colors.border
-    val weftColor = lerp(colors.border, Cyan500, 0.45f)
     Canvas(modifier = modifier.fillMaxWidth().height(16.dp)) {
         val midY = size.height / 2f
-        val amplitude = 3.dp.toPx()
+        val amplitude = 1.5.dp.toPx()
         val wavelength = 16.dp.toPx()
         val step = 1.dp.toPx()
         val dash = 10.dp.toPx()
@@ -117,13 +113,8 @@ fun WovenDivider(modifier: Modifier = Modifier, thickness: Dp = 1.5.dp) {
         }
         drawPath(
             path = wavePath,
-            color = warpColor,
+            color = colors.border,
             style = Stroke(width = thickness.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, gap), phase = 0f)),
-        )
-        drawPath(
-            path = wavePath,
-            color = weftColor,
-            style = Stroke(width = thickness.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, gap), phase = dash)),
         )
     }
 }

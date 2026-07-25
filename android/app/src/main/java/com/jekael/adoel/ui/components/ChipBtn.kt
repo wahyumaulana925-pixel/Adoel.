@@ -26,7 +26,7 @@ internal fun ChipBtn(label: String, selected: Boolean, onClick: () -> Unit) {
             .background(if (selected) Cyan600 else Color.Transparent)
             .border(1.dp, if (selected) Cyan500 else colors.border, shape)
             .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .padding(horizontal = 14.dp, vertical = Dimens.Space12),
         contentAlignment = Alignment.Center,
     ) {
         Text(

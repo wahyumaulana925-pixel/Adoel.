@@ -71,24 +71,24 @@ internal fun DataTab(
     Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         // Scrolls behind the floating header/tab-switcher card above instead of being pushed
         // down by it — see the Box-overlay comment on SettingsDrawer's root.
-        Spacer(Modifier.height(10.dp + headerHeight + 16.dp))
+        Spacer(Modifier.height(10.dp + headerHeight + Dimens.Space16))
         FieldLabel("Tema Aplikasi")
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(Dimens.Space8)) {
             ChipBtn("Sistem", currentTheme == ThemeMode.SYSTEM) { onSetThemeMode(ThemeMode.SYSTEM) }
             ChipBtn("Gelap", currentTheme == ThemeMode.DARK) { onSetThemeMode(ThemeMode.DARK) }
             ChipBtn("Terang", currentTheme == ThemeMode.LIGHT) { onSetThemeMode(ThemeMode.LIGHT) }
         }
 
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(Dimens.Space4))
         WovenDivider()
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(Dimens.Space4))
 
         FieldLabel("Cadangan Data")
         Text(
             "Cadangkan seluruh data (mesin, estimasi, riwayat doff, tema) ke file, atau pulihkan dari file cadangan.",
             style = AppType.Caption.copy(color = colors.textMuted),
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(Dimens.Space8)) {
             OutlinedButton(
                 onClick = {
                     val stamp = SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(Date())
@@ -110,9 +110,9 @@ internal fun DataTab(
             ) { Text("Pulihkan") }
         }
 
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(Dimens.Space4))
         WovenDivider()
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(Dimens.Space4))
 
         OutlinedButton(
             onClick = {
@@ -127,13 +127,13 @@ internal fun DataTab(
             border = BorderStroke(1.dp, Red700.copy(alpha = 0.5f)),
         ) { Text("Reset ke Default") }
 
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(Dimens.Space4))
         WovenDivider()
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(Dimens.Space4))
 
         var aboutOpen by remember { mutableStateOf(false) }
         var helpOpen by remember { mutableStateOf(false) }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(Dimens.Space8)) {
             OutlinedButton(
                 onClick = { helpOpen = true },
                 modifier = Modifier.weight(1f).height(52.dp),
@@ -156,6 +156,6 @@ internal fun DataTab(
             OnboardingDialog(onClose = { helpOpen = false })
         }
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(Dimens.Space8))
     }
 }

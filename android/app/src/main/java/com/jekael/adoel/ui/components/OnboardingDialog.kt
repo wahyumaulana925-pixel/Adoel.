@@ -26,7 +26,7 @@ fun OnboardingDialog(onClose: () -> Unit) {
     val colors = LocalAppColors.current
     FloatingEditDialog(onDismissRequest = onClose) {
         Text("Cara Pakai Adoel", style = AppType.DialogTitle.copy(color = colors.textPrimary))
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(Dimens.Space16))
 
         val bullets = listOf(
             "ESTIMASI (⏱): Ketik nomor mesin di konsol bawah, ketuk ikon jam, lalu isi sisa menit (Tappet/Cam), yard berjalan (D405), atau jam counter (D408) sesuai petunjuk di layar.",

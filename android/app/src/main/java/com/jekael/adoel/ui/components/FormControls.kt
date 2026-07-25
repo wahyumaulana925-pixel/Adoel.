@@ -43,6 +43,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import com.jekael.adoel.ui.theme.Cyan500
+import com.jekael.adoel.ui.theme.Dimens
 import com.jekael.adoel.ui.theme.LocalAppColors
 import com.jekael.adoel.ui.theme.Motion
 import com.jekael.adoel.ui.theme.floatingHeaderCard
@@ -151,7 +152,11 @@ fun FloatingEditDialog(
                         .fillMaxWidth()
                         .imePadding()
                         .navigationBarsPadding()
-                        .padding(16.dp)
+                        // Bottom gets extra margin beyond the other 3 sides — navigationBarsPadding
+                        // alone isn't enough breathing room on gesture-nav devices, where the system
+                        // inset it reports is thin, leaving the action row reading as glued to the
+                        // screen edge even though it's technically clear of the gesture bar.
+                        .padding(start = Dimens.Space16, end = Dimens.Space16, top = Dimens.Space16, bottom = Dimens.Space24)
                         .heightIn(max = maxCardHeight)
                         // Reuses the same clip/border/premium-gradient stack every other floating
                         // surface uses (see CardStyles.kt) instead of a hand-rolled duplicate, but
@@ -159,7 +164,7 @@ fun FloatingEditDialog(
                         // Blueprint §2B), where the texture behind the fields it hosts undercuts
                         // legibility more than it reinforces the woven identity.
                         .floatingHeaderCard(textured = false)
-                        .padding(20.dp)
+                        .padding(Dimens.Space20)
                         .verticalScroll(rememberScrollState()),
                     content = content,
                 )

@@ -17,7 +17,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.jekael.adoel.data.DoffState
+import com.jekael.adoel.data.AktualEntry
+import com.jekael.adoel.data.MesinData
 import com.jekael.adoel.data.formatYard
 import com.jekael.adoel.data.minOfDayToTimeStr
 import com.jekael.adoel.data.parseJam
@@ -41,24 +42,21 @@ private fun extractExtraKeterangan(ket: String, jam: String): String {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditAktSheet(
-    aktualId: Int?,
-    state: DoffState,
+    entry: AktualEntry,
+    mesin: MesinData?,
     onClose: () -> Unit,
     onSave: (id: Int, jam: String, ket: String, corakOverride: String?, customYard: Double?) -> Unit,
     onDelete: () -> Unit,
     onInvalidYard: () -> Unit = {},
     onInvalidJam: () -> Unit = {},
 ) {
-    if (aktualId == null) return
-    val entry = state.aktual.find { it.id == aktualId } ?: return
-    val mesin = state.db[entry.mcNo]
     val corakDefault = entry.corakOverride ?: mesin?.corak ?: ""
     val colors = LocalAppColors.current
 
-    var jamInput by remember(aktualId) { mutableStateOf(entry.jam) }
-    var ketInput by remember(aktualId) { mutableStateOf(extractExtraKeterangan(entry.ket, entry.jam)) }
-    var corakInput by remember(aktualId) { mutableStateOf(corakDefault) }
-    var yardInput by remember(aktualId) {
+    var jamInput by remember(entry.id) { mutableStateOf(entry.jam) }
+    var ketInput by remember(entry.id) { mutableStateOf(extractExtraKeterangan(entry.ket, entry.jam)) }
+    var corakInput by remember(entry.id) { mutableStateOf(corakDefault) }
+    var yardInput by remember(entry.id) {
         mutableStateOf(entry.customYard?.let { formatYard(it) } ?: "")
     }
     val focusRequester = remember { FocusRequester() }
@@ -90,7 +88,7 @@ fun EditAktSheet(
         }
     }
 
-    LaunchedEffect(aktualId) {
+    LaunchedEffect(entry.id) {
         delay(100)
         focusRequester.requestFocus()
     }
@@ -99,7 +97,7 @@ fun EditAktSheet(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(Dimens.Space12),
             ) {
                 Text(
                     text = "Mc ${entry.mcNo}",
@@ -109,7 +107,7 @@ fun EditAktSheet(
                 IconButton(onClick = onDelete) { TrashIcon() }
             }
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(Dimens.Space20))
 
             FieldLabel("Jam")
             OutlinedTextField(
@@ -124,7 +122,7 @@ fun EditAktSheet(
                 singleLine = true,
             )
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(Dimens.Space16))
 
             FieldLabel("Corak")
             OutlinedTextField(
@@ -138,7 +136,7 @@ fun EditAktSheet(
                 singleLine = true,
             )
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(Dimens.Space16))
 
             FieldLabel("Panjang / Batas Potong (yard)")
             OutlinedTextField(
@@ -158,7 +156,7 @@ fun EditAktSheet(
                 singleLine = true,
             )
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(Dimens.Space16))
 
             FieldLabel("Keterangan (opsional)")
             OutlinedTextField(
@@ -173,7 +171,7 @@ fun EditAktSheet(
                 singleLine = true,
             )
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(Dimens.Space20))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -203,6 +201,6 @@ fun EditAktSheet(
                 }
             }
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Dimens.Space8))
     }
 }

@@ -185,7 +185,7 @@ export function RadarCard({
                   </span>
                 </div>
                 <div className="radar-card-corak">{corakLine}</div>
-                <WaveProgressBar fraction={progress} trackColor="var(--bg-elevated-2)" fillColor={style.bar} height={3} animated />
+                <WaveProgressBar fraction={progress} trackColor="var(--bg-elevated-2)" fillColor={style.bar} height={3} />
               </div>
               <div className="radar-card-time" onClick={() => handleZoneClick(onEditWaktu)} role="button">
                 {showDot && <span className={`ping-dot${remaining < 0 ? " danger" : ""}`} />}

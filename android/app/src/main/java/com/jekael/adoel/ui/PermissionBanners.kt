@@ -41,7 +41,7 @@ fun LazyListScope.permissionBanners(
                     containerColor = colors.bannerWarnBg,
                     contentColor = colors.bannerWarnFg,
                 ),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+                contentPadding = PaddingValues(horizontal = Dimens.Space16, vertical = 10.dp),
             ) {
                 Text("Notifikasi nonaktif — ketuk untuk izinkan", style = AppType.Caption)
             }
@@ -59,7 +59,7 @@ fun LazyListScope.permissionBanners(
                     containerColor = colors.bannerWarnBg,
                     contentColor = colors.bannerWarnFg,
                 ),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+                contentPadding = PaddingValues(horizontal = Dimens.Space16, vertical = 10.dp),
             ) {
                 Text(
                     "Izin alarm tepat waktu nonaktif — ketuk untuk izinkan (wajib agar notifikasi doff tepat waktu)",
@@ -80,7 +80,7 @@ fun LazyListScope.permissionBanners(
                     containerColor = colors.bannerWarnBg,
                     contentColor = colors.bannerWarnFg,
                 ),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+                contentPadding = PaddingValues(horizontal = Dimens.Space16, vertical = 10.dp),
             ) {
                 Text("Baterai dioptimalkan — ketuk agar notifikasi tidak diblokir sistem", style = AppType.Caption)
             }
@@ -104,7 +104,7 @@ fun LazyListScope.staleShiftBanner(staleCount: Int, onFinishClick: () -> Unit, o
                 .animateItem()
                 .clip(RoundedCornerShape(Dimens.RadiusControl))
                 .background(colors.bannerWarnBg)
-                .padding(horizontal = 16.dp, vertical = 6.dp),
+                .padding(horizontal = Dimens.Space16, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
@@ -115,14 +115,14 @@ fun LazyListScope.staleShiftBanner(staleCount: Int, onFinishClick: () -> Unit, o
             TextButton(
                 onClick = onFinishClick,
                 modifier = Modifier.heightIn(min = 48.dp),
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+                contentPadding = PaddingValues(horizontal = Dimens.Space8, vertical = Dimens.Space8),
             ) {
                 Text("Selesai Shift", style = AppType.LabelSmallBold.copy(color = colors.bannerWarnFg))
             }
             TextButton(
                 onClick = onDismiss,
                 modifier = Modifier.heightIn(min = 48.dp),
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+                contentPadding = PaddingValues(horizontal = Dimens.Space8, vertical = Dimens.Space8),
             ) {
                 Text("Nanti", style = AppType.Caption.copy(color = colors.bannerWarnFg.copy(alpha = 0.7f)))
             }

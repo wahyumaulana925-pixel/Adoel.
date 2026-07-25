@@ -49,16 +49,16 @@ internal fun MesinEditPanel(
             style = AppType.NumberLarge.copy(color = colors.textPrimary),
         )
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(Dimens.Space16))
 
         FieldLabel("Tipe Mesin")
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(Dimens.Space8)) {
             MesinTipe.entries.forEach { t ->
                 ChipBtn(t.name, f.tipe == t) { onFormChange(f.copy(tipe = t)) }
             }
         }
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(Dimens.Space20))
 
         FieldLabel("Corak")
         OutlinedTextField(
@@ -72,7 +72,7 @@ internal fun MesinEditPanel(
             singleLine = true,
         )
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(Dimens.Space16))
 
         FieldLabel("Target Yard")
         OutlinedTextField(
@@ -91,7 +91,7 @@ internal fun MesinEditPanel(
         )
 
         if (f.tipe == MesinTipe.D405) {
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(Dimens.Space16))
             FieldLabel("Speed (yard/menit)")
             OutlinedTextField(
                 value = speedText,
@@ -110,7 +110,7 @@ internal fun MesinEditPanel(
         }
 
         if (f.tipe == MesinTipe.D408) {
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(Dimens.Space16))
             FieldLabel("Koreksi (menit)")
             OutlinedTextField(
                 value = koreksiText,
@@ -127,9 +127,9 @@ internal fun MesinEditPanel(
                 singleLine = true,
             )
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(Dimens.Space12))
             FieldLabel("Hitung Koreksi dari Selisih")
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Dimens.Space8)) {
                 OutlinedTextField(
                     value = waktuAktualText,
                     onValueChange = { waktuAktualText = it },
@@ -155,7 +155,7 @@ internal fun MesinEditPanel(
                     singleLine = true,
                 )
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Dimens.Space8))
             OutlinedButton(
                 onClick = {
                     val aktualMin = parseJam(waktuAktualText)
@@ -178,9 +178,9 @@ internal fun MesinEditPanel(
             ) { Text("Hitung & Isi Koreksi") }
         }
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(Dimens.Space20))
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(Dimens.Space8)) {
             OutlinedButton(
                 onClick = onCancel,
                 modifier = Modifier.height(48.dp),

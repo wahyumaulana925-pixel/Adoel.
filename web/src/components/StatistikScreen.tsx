@@ -175,7 +175,6 @@ function ShiftCard({
               trackColor="var(--bg-elevated-2)"
               fillColor="var(--cyan-500)"
               height={4}
-              animated={false}
             />
           </div>
         </div>

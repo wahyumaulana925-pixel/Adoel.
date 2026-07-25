@@ -1,0 +1,217 @@
+package com.jekael.adoel.ui.components
+
+import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
+import com.jekael.adoel.data.MesinData
+import com.jekael.adoel.data.formatYard
+import com.jekael.adoel.data.minOfDayToTimeStr
+import com.jekael.adoel.data.parseJam
+import com.jekael.adoel.data.standarisasiKeterangan
+import com.jekael.adoel.ui.theme.*
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
+/** Backfills a doff record straight into an already-archived Statistik shift — for a cut that got
+ * missed while monitoring live and only gets noticed after "Selesai Shift" already closed the
+ * shift out. Unlike [EditAktSheet] (which edits an entry that already exists), the machine number
+ * itself is free-typed here since there's no existing [com.jekael.adoel.data.AktualEntry] to
+ * anchor to yet — corak/target yard still prefill from [db] once a known Mc number is typed, same
+ * convenience the guided Doffing sheet gives for a live entry. */
+@Composable
+fun TambahAktSheet(
+    db: Map<String, MesinData>,
+    onClose: () -> Unit,
+    onSave: (mcNo: String, jam: String, ket: String, corakOverride: String?, customYard: Double?) -> Unit,
+    onInvalidMcNo: () -> Unit = {},
+    onInvalidYard: () -> Unit = {},
+    onInvalidJam: () -> Unit = {},
+) {
+    val colors = LocalAppColors.current
+    var mcNoInput by remember { mutableStateOf("") }
+    var jamInput by remember { mutableStateOf("") }
+    var corakInput by remember { mutableStateOf("") }
+    var yardInput by remember { mutableStateOf("") }
+    var ketInput by remember { mutableStateOf("") }
+    val focusRequester = remember { FocusRequester() }
+    val scope = rememberCoroutineScope()
+    var showCheck by remember { mutableStateOf(false) }
+
+    val mesin = db[mcNoInput.trim()]
+    // Prefills once a recognized Mc number resolves, same convenience as the guided sheets — but
+    // only while corak/yard are still untouched, so it doesn't clobber something the operator
+    // already typed if they correct the Mc number after starting to fill the rest in.
+    LaunchedEffect(mesin) {
+        if (mesin != null) {
+            if (corakInput.isBlank()) corakInput = mesin.corak.takeIf { it != "-" } ?: ""
+            if (yardInput.isBlank()) yardInput = mesin.targetYard?.let { formatYard(it) } ?: ""
+        }
+    }
+
+    fun doSave() {
+        if (showCheck) return
+        val mcNoTrim = mcNoInput.trim()
+        if (db[mcNoTrim] == null) {
+            onInvalidMcNo()
+            return
+        }
+        val jamMin = parseJam(jamInput.trim())
+        if (jamMin == null) {
+            onInvalidJam()
+            return
+        }
+        val corakTrim = corakInput.trim()
+        val corakOverride = if (corakTrim.isNotEmpty() && corakTrim != (mesin?.corak ?: "")) corakTrim else null
+        val yardTrim = yardInput.trim().replace(',', '.')
+        if (yardTrim.isNotEmpty() && yardTrim.toDoubleOrNull() == null) {
+            onInvalidYard()
+            return
+        }
+        val yardVal = yardTrim.toDoubleOrNull()
+        val jamStr = minOfDayToTimeStr(jamMin)
+        val extra = standarisasiKeterangan(ketInput.trim())
+        val newKet = if (extra.isNotEmpty()) "$jamStr($extra)" else jamStr
+        showCheck = true
+        scope.launch {
+            delay(450)
+            onSave(mcNoTrim, jamStr, newKet, corakOverride, yardVal)
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        delay(100)
+        focusRequester.requestFocus()
+    }
+
+    FloatingEditDialog(onDismissRequest = onClose) {
+        Text(
+            text = "Tambah Potongan",
+            style = AppType.NumberLarge.copy(color = colors.textPrimary),
+        )
+
+        Spacer(Modifier.height(Dimens.Space20))
+
+        FieldLabel("Nomor Mesin")
+        OutlinedTextField(
+            value = mcNoInput,
+            onValueChange = { mcNoInput = it.filter(Char::isDigit).take(3) },
+            modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
+            placeholder = { Text("cth: 12", color = colors.textFaint) },
+            colors = outlinedFieldColors(),
+            shape = RoundedCornerShape(Dimens.RadiusControl),
+            textStyle = AppType.FieldText.copy(color = colors.textPrimary),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+            singleLine = true,
+        )
+
+        Spacer(Modifier.height(Dimens.Space16))
+
+        FieldLabel("Jam")
+        OutlinedTextField(
+            value = jamInput,
+            onValueChange = { jamInput = it },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("14.30", color = colors.textFaint) },
+            colors = outlinedFieldColors(),
+            shape = RoundedCornerShape(Dimens.RadiusControl),
+            textStyle = AppType.FieldText.copy(color = colors.textPrimary),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+            singleLine = true,
+        )
+
+        Spacer(Modifier.height(Dimens.Space16))
+
+        FieldLabel("Corak")
+        OutlinedTextField(
+            value = corakInput,
+            onValueChange = { corakInput = it },
+            modifier = Modifier.fillMaxWidth(),
+            colors = outlinedFieldColors(),
+            shape = RoundedCornerShape(Dimens.RadiusControl),
+            textStyle = AppType.FieldText.copy(color = colors.textPrimary),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+            singleLine = true,
+        )
+
+        Spacer(Modifier.height(Dimens.Space16))
+
+        FieldLabel("Panjang / Batas Potong (yard)")
+        OutlinedTextField(
+            value = yardInput,
+            onValueChange = { yardInput = it },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = {
+                val standar = mesin?.targetYard
+                if (standar != null) {
+                    Text("Standar: ${formatYard(standar)}y", color = colors.textFaint)
+                }
+            },
+            colors = outlinedFieldColors(),
+            shape = RoundedCornerShape(Dimens.RadiusControl),
+            textStyle = AppType.FieldText.copy(color = colors.textPrimary),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+            singleLine = true,
+        )
+
+        Spacer(Modifier.height(Dimens.Space16))
+
+        FieldLabel("Keterangan (opsional)")
+        OutlinedTextField(
+            value = ketInput,
+            onValueChange = { ketInput = it },
+            modifier = Modifier.fillMaxWidth(),
+            colors = outlinedFieldColors(),
+            shape = RoundedCornerShape(Dimens.RadiusControl),
+            textStyle = AppType.FieldText.copy(color = colors.textPrimary),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { doSave() }),
+            singleLine = true,
+        )
+
+        Spacer(Modifier.height(Dimens.Space20))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            OutlinedButton(
+                onClick = onClose,
+                modifier = Modifier.weight(1f).height(48.dp),
+                shape = RoundedCornerShape(Dimens.RadiusControl),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
+                border = BorderStroke(1.dp, colors.border),
+            ) { Text("Batal") }
+            Button(
+                onClick = { doSave() },
+                enabled = !showCheck,
+                modifier = Modifier.weight(1f).height(48.dp),
+                shape = RoundedCornerShape(Dimens.RadiusControl),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Cyan600,
+                    disabledContainerColor = Emerald500,
+                    disabledContentColor = Color.White,
+                ),
+            ) {
+                Crossfade(targetState = showCheck, label = "saveIcon") { checked ->
+                    if (checked) CheckIcon() else Text("Simpan", fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+
+        Spacer(Modifier.height(Dimens.Space8))
+    }
+}

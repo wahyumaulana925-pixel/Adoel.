@@ -305,7 +305,7 @@ fun MainScreen(
                         top = 10.dp + headerHeight + 16.dp,
                         bottom = 10.dp + consoleBarHeight + 16.dp,
                     ),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(Dimens.Space8),
                 ) {
                     permissionBanners(
                         notifGranted = permission.notifGranted,
@@ -459,7 +459,7 @@ fun MainScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.TopCenter)
-                .padding(top = headerHeight + 8.dp),
+                .padding(top = headerHeight + Dimens.Space8),
         ) {
             ToastHost(toast = toast, onDismiss = { uiVm.dismissToast() })
         }
@@ -504,6 +504,14 @@ fun MainScreen(
                 onClose = { activeOverlay = ActiveOverlay.None },
                 onDeleteShift = { id -> doffVm.hapusShift(id) },
                 showConfirm = { msg, fn -> uiVm.showConfirm(msg, onConfirm = fn) },
+                showToast = { uiVm.showToast(it) },
+                onEditEntrySave = { shiftId, id, jam, ket, corakOverride, customYard ->
+                    doffVm.updateAktualInShift(shiftId, id, jam, ket, corakOverride, customYard)
+                },
+                onDeleteEntry = { shiftId, id -> doffVm.hapusAktualDariShift(shiftId, id) },
+                onAddEntry = { shiftId, mcNo, jam, ket, corakOverride, customYard ->
+                    doffVm.tambahAktualKeShift(shiftId, mcNo, jam, ket, corakOverride, customYard)
+                },
             )
         }
 
@@ -525,10 +533,11 @@ fun MainScreen(
             activeOverlay = ActiveOverlay.None
         }
     }
-    if (editAktId != null && state.aktual.any { it.id == editAktId }) {
+    val editAktEntry = editAktId?.let { id -> state.aktual.find { it.id == id } }
+    if (editAktEntry != null) {
         EditAktSheet(
-            aktualId = editAktId,
-            state = state,
+            entry = editAktEntry,
+            mesin = state.db[editAktEntry.mcNo],
             onClose = { activeOverlay = ActiveOverlay.None },
             onSave = { id, jam, ket, corakOverride, customYard ->
                 doffVm.updateAktual(id, jam, ket, corakOverride, customYard)

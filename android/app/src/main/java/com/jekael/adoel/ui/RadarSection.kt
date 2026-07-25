@@ -76,7 +76,7 @@ internal fun LazyListScope.estimasiSection(
     if (segeraList.isEmpty() && menungguList.isEmpty()) {
         item(key = "est_filter_empty") {
             EmptyState(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                modifier = Modifier.fillMaxWidth().padding(vertical = Dimens.Space24),
                 title = "Tidak ditemukan",
                 subtitle = "Coba kata kunci lain — cari berdasarkan nomor mesin",
             )
@@ -159,7 +159,7 @@ private fun UrgencyBandHeader(label: String, count: Int, color: Color, modifier:
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = 44.dp)
-            .padding(horizontal = 4.dp),
+            .padding(horizontal = Dimens.Space4),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
@@ -207,7 +207,7 @@ private fun BreakGapCard(
         modifier = modifier
             .fillMaxWidth()
             .elevatedListCard(backgroundColor = lerp(colors.bgElevated, Emerald500, 0.08f))
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = Dimens.Space16, vertical = 14.dp),
         // Centers this card's content when stretched taller than it needs to match a grid-paired
         // RadarCard sibling (see MenungguGridSlot) — a no-op when its own height already fits.
         verticalArrangement = Arrangement.Center,
@@ -224,12 +224,12 @@ private fun BreakGapCard(
                 style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = Emerald500),
             )
         }
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(Dimens.Space4))
         Text(
-            // Total break length — fixed, not a live countdown. formatDeltaMin(remainingMin)
-            // used to be here, but that answers "how long until this ends", not "how long is
-            // this break" — the actual question this card exists to answer at a glance.
-            text = formatDeltaMin(gapMin),
+            // Live countdown of time left in the break, not the fixed total gap length — one
+            // clear number that actually ticks down as the break runs, instead of a frozen total
+            // up top plus a second live countdown repeated in the caption below.
+            text = formatDeltaMin(remainingMin),
             style = TextStyle(
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Black,
@@ -238,10 +238,10 @@ private fun BreakGapCard(
             ),
         )
         Text(
-            text = "Sampai ${absMinToTimeStr(nextAbsMin)} (${formatDeltaMin(remainingMin)} lagi) — sebelum Mc $nextMcNo",
+            text = "Sampai ${absMinToTimeStr(nextAbsMin)} — sebelum Mc $nextMcNo",
             style = AppType.Caption.copy(color = colors.textFaint),
         )
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(Dimens.Space8))
         Box(
             modifier = Modifier
                 .fillMaxWidth()

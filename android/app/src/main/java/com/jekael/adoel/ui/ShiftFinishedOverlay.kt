@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import com.jekael.adoel.ui.theme.AppType
+import com.jekael.adoel.ui.theme.Dimens
 import com.jekael.adoel.ui.theme.Emerald500
 import com.jekael.adoel.ui.theme.Zinc100
 
@@ -46,7 +47,7 @@ internal fun ShiftFinishedOverlay(checkScale: () -> Float, backdropAlpha: () -> 
                     .size(96.dp)
                     .graphicsLayer { scaleX = checkScale(); scaleY = checkScale(); alpha = backdropAlpha() },
             )
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(Dimens.Space12))
             Text(
                 "Shift Selesai",
                 style = AppType.DialogTitle.copy(color = Zinc100),

@@ -99,7 +99,7 @@ internal fun SettingsDrawer(
                 targetState = tab,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 20.dp),
+                    .padding(horizontal = Dimens.Space20),
                 transitionSpec = {
                     val dir = if (targetState.ordinal > initialState.ordinal) 1 else -1
                     (slideInHorizontally(animationSpec = tween(220)) { w -> dir * w } + fadeIn(tween(180)))
@@ -123,8 +123,8 @@ internal fun SettingsDrawer(
                     .onGloballyPositioned { coords ->
                         headerHeight = with(density) { coords.size.height.toDp() }
                     }
-                    .padding(horizontal = 12.dp)
-                    .padding(top = 12.dp)
+                    .padding(horizontal = Dimens.Space12)
+                    .padding(top = Dimens.Space12)
                     .floatingHeaderCard(),
             ) {
                 // Single row: the Mesin/Data toggle doubles as the header's title (no separate
@@ -133,8 +133,8 @@ internal fun SettingsDrawer(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 20.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        .padding(start = Dimens.Space20, end = Dimens.Space8, top = 10.dp, bottom = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Dimens.Space8),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     SlidingToggle(

@@ -1,14 +1,16 @@
 import { useElementWidth } from "../hooks/useElementWidth";
 
-/** Pengganti garis pembatas polos — dua pola dash pada satu garis sinus yang sama,
- * digeser fasenya persis sepanjang satu dash supaya yang kedua mengisi celah yang
- * pertama, dengan warna sedikit berbeda. Terbaca sebagai dua benang bersilang (lungsin/
- * pakan) alih-alih garis putus-putus datar. Port 1:1 dari WovenDivider di Texture.kt. */
+/** Pengganti garis pembatas polos — garis putus-putus mengikuti kurva sinus landai, bukan
+ * garis lurus datar, sebagai isyarat "benang" tanpa jadi foto literal. Satu warna dan
+ * amplitudo dangkal sengaja — versi sebelumnya menggambar ini dua kali (dua pola dash
+ * beda fase, satu diberi warna cyan) supaya terbaca sebagai benang bersilang, tapi itu
+ * jadi lebih ramai/mencolok dari yang seharusnya untuk sekadar pembatas. Port 1:1 dari
+ * WovenDivider di Texture.kt. */
 export function WovenDivider() {
   const { ref, width } = useElementWidth<HTMLDivElement>();
   const height = 16;
   const midY = height / 2;
-  const amplitude = 3;
+  const amplitude = 1.5;
   const wavelength = 16;
   const step = 1;
 
@@ -26,15 +28,7 @@ export function WovenDivider() {
     <div ref={ref} className="woven-divider">
       {width > 0 && (
         <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
-          <path d={d} fill="none" stroke="var(--border)" strokeWidth={1.5} strokeDasharray="10 6" strokeDashoffset={0} />
-          <path
-            d={d}
-            fill="none"
-            stroke="color-mix(in srgb, var(--border) 55%, var(--cyan-500))"
-            strokeWidth={1.5}
-            strokeDasharray="10 6"
-            strokeDashoffset={-10}
-          />
+          <path d={d} fill="none" stroke="var(--border)" strokeWidth={1} strokeDasharray="10 6" />
         </svg>
       )}
     </div>

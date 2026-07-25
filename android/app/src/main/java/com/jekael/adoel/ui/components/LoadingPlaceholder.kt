@@ -27,6 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.jekael.adoel.ui.theme.Cyan500
+import com.jekael.adoel.ui.theme.Dimens
 import com.jekael.adoel.ui.theme.LocalAppColors
 
 private val ShuttleTrackWidth = 96.dp
@@ -61,7 +62,7 @@ internal fun LoadingPlaceholder() {
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(20.dp),
+            verticalArrangement = Arrangement.spacedBy(Dimens.Space20),
         ) {
             Box(modifier = Modifier.width(ShuttleTrackWidth).height(ShuttleSize), contentAlignment = Alignment.Center) {
                 Box(modifier = Modifier.fillMaxWidth().height(2.dp).background(colors.border))
@@ -74,7 +75,7 @@ internal fun LoadingPlaceholder() {
                         .background(Cyan500),
                 )
             }
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Dimens.Space8)) {
                 ThreadRow(transition, width = 64.dp, delayMillis = 0)
                 ThreadRow(transition, width = 96.dp, delayMillis = 150)
                 ThreadRow(transition, width = 48.dp, delayMillis = 300)

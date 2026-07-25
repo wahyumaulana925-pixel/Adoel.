@@ -227,6 +227,58 @@ class DoffViewModel @JvmOverloads constructor(
         )
     }
 
+    /** Same as [updateAktual] but for an entry already archived into [DoffState.history] (Statistik's
+     * expanded shift rows) — a finished shift's doff record isn't actually immutable, an operator
+     * can still spot a mistyped jam/corak after the fact, same as they could before "Selesai Shift". */
+    fun updateAktualInShift(shiftId: Int, id: Int, jam: String, ket: String, corakOverride: String?, customYard: Double?) = updateState { s ->
+        s.copy(
+            history = s.history.map { shift ->
+                if (shift.id != shiftId) shift
+                else shift.copy(
+                    aktual = shift.aktual.map {
+                        if (it.id == id) it.copy(jam = jam, ket = ket, corakOverride = corakOverride, customYard = customYard) else it
+                    },
+                )
+            },
+        )
+    }
+
+    fun hapusAktualDariShift(shiftId: Int, id: Int) = updateState { s ->
+        s.copy(
+            history = s.history.map { shift ->
+                if (shift.id != shiftId) shift else shift.copy(aktual = shift.aktual.filter { it.id != id })
+            },
+        )
+    }
+
+    /** Backfills a doff record straight into an already-archived shift — for when a cut got
+     * missed while monitoring live (operator on break, machine on the far end of the floor, etc.)
+     * and only gets noticed after "Selesai Shift" already closed the shift out. No live-aktual
+     * equivalent needed for this one: a live miss just goes through the normal console/guided
+     * flow instead. tsEpochMin is left null (unlike the live prosesBarisUmum path) — there's no
+     * real "recorded at" moment for a backfilled entry, so it's excluded from Statistik's
+     * avg-gap-between-doffs calculation instead of skewing it with a fabricated timestamp.
+     * Chronological placement among the shift's other entries is automatic (StatistikScreen
+     * already re-sorts by [jam] on every render), no separate reorder step needed. */
+    fun tambahAktualKeShift(shiftId: Int, mcNo: String, jam: String, ket: String, corakOverride: String?, customYard: Double?) = updateState { s ->
+        val entryId = s.nextId
+        val entry = AktualEntry(
+            id = entryId,
+            mcNo = mcNo,
+            jam = jam,
+            ket = ket,
+            corakOverride = corakOverride,
+            customYard = customYard,
+            tsEpochMin = null,
+        )
+        s.copy(
+            nextId = entryId + 1,
+            history = s.history.map { shift ->
+                if (shift.id != shiftId) shift else shift.copy(aktual = shift.aktual + entry)
+            },
+        )
+    }
+
     /** Archives the current shift's doffs/estimasi into [DoffState.history] before clearing them,
      * so "Selesai Shift" no longer silently discards a shift's data with no way to look back. */
     fun finishShift() = updateState { s ->

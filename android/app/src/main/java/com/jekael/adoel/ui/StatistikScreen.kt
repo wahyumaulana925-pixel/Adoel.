@@ -18,20 +18,25 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -71,11 +76,13 @@ import com.jekael.adoel.data.shareIntent
 import com.jekael.adoel.data.shiftNumberForEpochMin
 import com.jekael.adoel.data.sortAktualChronological
 import com.jekael.adoel.ui.components.CloseIcon
+import com.jekael.adoel.ui.components.EditAktSheet
 import com.jekael.adoel.ui.components.EmptyState
 import com.jekael.adoel.ui.components.LinearProgressBar
+import com.jekael.adoel.ui.components.MesinTipeIcon
 import com.jekael.adoel.ui.components.SlidePanel
 import com.jekael.adoel.ui.components.SwipeableCard
-import com.jekael.adoel.ui.components.MesinTipeIcon
+import com.jekael.adoel.ui.components.TambahAktSheet
 import com.jekael.adoel.ui.components.mesinTipeColor
 import com.jekael.adoel.ui.theme.AppType
 import com.jekael.adoel.ui.theme.Cyan400
@@ -102,11 +109,21 @@ fun StatistikScreen(
     onClose: () -> Unit,
     onDeleteShift: (Int) -> Unit,
     showConfirm: (String, () -> Unit) -> Unit,
+    showToast: (String) -> Unit,
+    onEditEntrySave: (shiftId: Int, id: Int, jam: String, ket: String, corakOverride: String?, customYard: Double?) -> Unit,
+    onDeleteEntry: (shiftId: Int, id: Int) -> Unit,
+    onAddEntry: (shiftId: Int, mcNo: String, jam: String, ket: String, corakOverride: String?, customYard: Double?) -> Unit,
 ) {
     val colors = LocalAppColors.current
     var expandedShiftId by remember { mutableStateOf<Int?>(null) }
     var headerHeight by remember { mutableStateOf(0.dp) }
     val density = LocalDensity.current
+    // (shiftId, entryId) of the archived doff record being edited, if any — a finished shift's
+    // entries aren't actually immutable, an operator can still spot a mistyped jam/corak/yard
+    // after the fact, same as they could in Riwayat before "Selesai Shift" archived it here.
+    var editingEntry by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+    // Shift a missed doff is being backfilled into, if any — see TambahAktSheet.
+    var addingToShiftId by remember { mutableStateOf<Int?>(null) }
 
     SlidePanel(onClose = onClose) { requestClose ->
         // Same "floating header overlays a full-bleed scrollable list" concept as MainScreen —
@@ -142,7 +159,7 @@ fun StatistikScreen(
                         top = 10.dp + headerHeight + 16.dp,
                         bottom = 20.dp,
                     ),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(Dimens.Space12),
                 ) {
                     item {
                         AggregateStatsCard(
@@ -163,6 +180,8 @@ fun StatistikScreen(
                             onToggle = { expandedShiftId = if (expandedShiftId == shift.id) null else shift.id },
                             onDeleteShift = onDeleteShift,
                             showConfirm = showConfirm,
+                            onEditEntry = { entryId -> editingEntry = shift.id to entryId },
+                            onAddEntry = { addingToShiftId = shift.id },
                             modifier = Modifier.animateItem(),
                         )
                     }
@@ -179,12 +198,12 @@ fun StatistikScreen(
                     .onGloballyPositioned { coords ->
                         headerHeight = with(density) { coords.size.height.toDp() }
                     }
-                    .padding(horizontal = 12.dp)
-                    .padding(top = 12.dp)
+                    .padding(horizontal = Dimens.Space12)
+                    .padding(top = Dimens.Space12)
                     .floatingHeaderCard(),
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = Dimens.Space20, vertical = Dimens.Space12),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -194,6 +213,44 @@ fun StatistikScreen(
                     }
                 }
             }
+        }
+
+        val (editingShiftId, editingEntryId) = editingEntry ?: (null to null)
+        val editingRecord = editingShiftId?.let { sid -> history.find { it.id == sid } }
+        val editingAktual = editingRecord?.aktual?.find { it.id == editingEntryId }
+        if (editingRecord != null && editingAktual != null) {
+            EditAktSheet(
+                entry = editingAktual,
+                mesin = db[editingAktual.mcNo],
+                onClose = { editingEntry = null },
+                onSave = { id, jam, ket, corakOverride, customYard ->
+                    onEditEntrySave(editingRecord.id, id, jam, ket, corakOverride, customYard)
+                    showToast("Riwayat diperbarui")
+                    editingEntry = null
+                },
+                onInvalidYard = { showToast("Yard tidak valid") },
+                onInvalidJam = { showToast("Jam tidak valid — format 14.30") },
+                onDelete = {
+                    onDeleteEntry(editingRecord.id, editingAktual.id)
+                    editingEntry = null
+                },
+            )
+        }
+
+        val addingShiftId = addingToShiftId
+        if (addingShiftId != null) {
+            TambahAktSheet(
+                db = db,
+                onClose = { addingToShiftId = null },
+                onSave = { mcNo, jam, ket, corakOverride, customYard ->
+                    onAddEntry(addingShiftId, mcNo, jam, ket, corakOverride, customYard)
+                    showToast("Potongan ditambahkan")
+                    addingToShiftId = null
+                },
+                onInvalidMcNo = { showToast("Nomor mesin tidak ditemukan") },
+                onInvalidYard = { showToast("Yard tidak valid") },
+                onInvalidJam = { showToast("Jam tidak valid — format 14.30") },
+            )
         }
     }
 }
@@ -225,14 +282,14 @@ private fun AggregateStatsCard(
         modifier = Modifier
             .fillMaxWidth()
             .elevatedListCard(backgroundColor = colors.bgElevated)
-            .padding(16.dp),
+            .padding(Dimens.Space16),
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(Dimens.Space24)) {
             StatFigure(label = "Total doff", value = "$animatedTotal")
             StatFigure(label = "Shift", value = "$animatedShifts")
             StatFigure(label = "Rata-rata/shift", value = "%.1f".format(avgPerShift))
         }
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(Dimens.Space12))
         DoffCountChart(history = history, selectedShiftId = selectedShiftId, onBarClick = onBarClick)
         Spacer(Modifier.height(14.dp))
         TipeBreakdownBar(history = history, db = db)
@@ -279,9 +336,9 @@ private fun TipeBreakdownBar(history: List<ShiftRecord>, db: Map<String, MesinDa
             }
         }
         Spacer(Modifier.height(6.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(Dimens.Space12)) {
             counts.forEach { (tipe, count) ->
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Dimens.Space4)) {
                     Box(
                         modifier = Modifier
                             .size(6.dp)
@@ -391,7 +448,7 @@ private fun DoffCountChart(history: List<ShiftRecord>, selectedShiftId: Int?, on
             }
         }
         WovenDivider()
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(Dimens.Space4))
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -418,6 +475,8 @@ private fun ShiftRow(
     onToggle: () -> Unit,
     onDeleteShift: (Int) -> Unit,
     showConfirm: (String, () -> Unit) -> Unit,
+    onEditEntry: (entryId: Int) -> Unit,
+    onAddEntry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = LocalAppColors.current
@@ -487,7 +546,6 @@ private fun ShiftRow(
                         trackColor = colors.bgElevated2,
                         fillColor = Cyan500,
                         width = 60.dp,
-                        animated = false,
                     )
                 }
                 Column(horizontalAlignment = Alignment.End) {
@@ -518,7 +576,13 @@ private fun ShiftRow(
                     val ketCode = entry.ket.removePrefix(entry.jam).removeSurrounding("(", ")")
                     val line = if (ketCode.isNotEmpty()) "$corakLine · $ketCode" else corakLine
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            // Wins over the shift card's own onToggle clickable above it (innermost
+                            // clickable consumes the tap) — tapping a single archived entry opens
+                            // edit for just that record instead of collapsing the whole shift.
+                            .clickable(onClickLabel = "Edit riwayat Mc ${entry.mcNo}") { onEditEntry(entry.id) }
+                            .padding(vertical = 3.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -542,6 +606,17 @@ private fun ShiftRow(
                         }
                         Text(entry.jam, style = AppType.Caption.copy(color = colors.textFaint))
                     }
+                }
+                Spacer(Modifier.height(6.dp))
+                TextButton(
+                    // Wins over the outer onToggle clickable the same way the entry rows above do.
+                    onClick = onAddEntry,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 40.dp),
+                    colors = ButtonDefaults.textButtonColors(contentColor = Cyan400),
+                ) {
+                    Icon(imageVector = Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Tambah Potongan", style = AppType.LabelSmallBold)
                 }
             }
         }

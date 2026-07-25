@@ -67,15 +67,15 @@ internal fun MainScreenHeader(
             .onGloballyPositioned { coords ->
                 onHeightMeasured(with(density) { coords.size.height.toDp() })
             }
-            .padding(horizontal = 12.dp)
-            .padding(top = 12.dp)
+            .padding(horizontal = Dimens.Space12)
+            .padding(top = Dimens.Space12)
             .floatingHeaderCard(),
     ) {
       Column {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
+                .padding(horizontal = Dimens.Space16, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // Branding — a one-shot ~320ms tap pulse: logo settles to 0.97, the dot hops up
@@ -167,7 +167,7 @@ internal fun MainScreenHeader(
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 onToggleShowRemaining()
                             }
-                            .padding(horizontal = 10.dp, vertical = 4.dp),
+                            .padding(horizontal = 10.dp, vertical = Dimens.Space4),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Text(
@@ -178,12 +178,11 @@ internal fun MainScreenHeader(
                             },
                             style = AppType.LabelSmallBold.copy(color = Cyan400),
                         )
-                        Spacer(Modifier.height(4.dp))
+                        Spacer(Modifier.height(Dimens.Space4))
                         LinearProgressBar(
                             fraction = animatedFraction,
                             trackColor = colors.bgElevated2,
                             fillColor = Cyan500,
-                            animated = false,
                         )
                     }
                 }
@@ -217,7 +216,7 @@ internal fun MainScreenHeader(
             activeTextColorLeft = Zinc950,
             activeTextColorRight = Zinc950,
             inactiveTextColor = colors.textSecondary,
-            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
+            modifier = Modifier.fillMaxWidth().padding(start = Dimens.Space16, end = Dimens.Space16, bottom = Dimens.Space12),
             height = 38.dp,
         )
       }

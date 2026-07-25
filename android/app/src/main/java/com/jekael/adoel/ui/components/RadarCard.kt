@@ -323,6 +323,8 @@ fun RadarCard(
             leftIcon = Icons.Filled.Verified,
             rightColor = Emerald500,
             leftColor = Sky500,
+            rightLabel = "Normal",
+            leftLabel = "Matching",
         )
         Box(
             modifier = Modifier
@@ -427,7 +429,7 @@ fun RadarCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp),
+                    .padding(start = Dimens.Space16, end = Dimens.Space16, top = Dimens.Space16, bottom = Dimens.Space16),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -453,7 +455,7 @@ fun RadarCard(
                             onLongClick = { handleLongPressFlip(Offset.Zero) },
                         ),
                 ) {
-                    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(Dimens.Space8)) {
                         Text(
                             text = est.mcNo,
                             // A 3-digit mcNo at the 2-digit size wraps mid-number in a half-width
@@ -472,7 +474,7 @@ fun RadarCard(
                             MesinTipeIcon(
                                 tipe = mesin.tipe,
                                 tint = mesinTipeColor(mesin.tipe),
-                                modifier = Modifier.size(12.dp).padding(bottom = 4.dp),
+                                modifier = Modifier.size(12.dp).padding(bottom = Dimens.Space4),
                             )
                         }
                         Text(
@@ -486,18 +488,18 @@ fun RadarCard(
                                 // type is its own identity, independent of how close the doff is.
                                 color = mesin?.tipe?.let { mesinTipeColor(it) } ?: colors.textFaint,
                             ),
-                            modifier = Modifier.padding(bottom = 4.dp),
+                            modifier = Modifier.padding(bottom = Dimens.Space4),
                         )
                         if (clr.icon != null) {
                             Icon(
                                 imageVector = clr.icon,
                                 contentDescription = null,
                                 tint = clr.labelColor,
-                                modifier = Modifier.size(12.dp).padding(bottom = 4.dp),
+                                modifier = Modifier.size(12.dp).padding(bottom = Dimens.Space4),
                             )
                         }
                     }
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Dimens.Space4)) {
                         // Small standard Material icon marking "this line is about the fabric
                         // itself" (corak/yard) — not a fabric illustration, just a modest visual
                         // anchor next to the one line of text that's actually about the kain,
@@ -691,9 +693,9 @@ private fun CardActionsFace(
 private fun CardPausedFace(mcNo: String, onLanjutkan: () -> Unit) {
     val colors = LocalAppColors.current
     Column(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+        modifier = Modifier.fillMaxSize().padding(horizontal = Dimens.Space16),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(Dimens.Space12),
     ) {
         Text(
             text = "Mc $mcNo sedang dijeda",
@@ -708,7 +710,7 @@ private fun CardFaceButton(icon: ImageVector, label: String, accent: Color, onCl
     // No haptic here — [onClick] (onJeda/onHapus/onLanjutkan) already triggers it in
     // MainScreenHandlers, the single source both this tap and RadarCard's TalkBack custom actions
     // funnel through (see triggerDoff for the same pattern), so adding one here too would double-buzz.
-    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Dimens.Space4)) {
         Box(
             modifier = Modifier
                 .size(48.dp)

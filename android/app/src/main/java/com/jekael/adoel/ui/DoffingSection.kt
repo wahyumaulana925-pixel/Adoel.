@@ -2,7 +2,6 @@ package com.jekael.adoel.ui
 
 import android.content.Context
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
@@ -52,7 +51,7 @@ fun LazyListScope.doffingSection(
         val colors = LocalAppColors.current
         Row(
             modifier = Modifier.fillMaxWidth().animateItem(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(Dimens.Space8),
         ) {
             OutlinedButton(
                 onClick = onShare,
@@ -63,7 +62,7 @@ fun LazyListScope.doffingSection(
             ) {
                 Icon(imageVector = Icons.Outlined.Share, contentDescription = null, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))
-                Text("Bagikan WA", style = AppType.TabLabel)
+                Text("Bagikan", style = AppType.TabLabel)
             }
             Button(
                 onClick = onFinish,
@@ -112,7 +111,7 @@ fun LazyListScope.doffingSection(
     if (filteredIndexed.isEmpty()) {
         item(key = "doff_filter_empty") {
             EmptyState(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                modifier = Modifier.fillMaxWidth().padding(vertical = Dimens.Space24),
                 title = "Tidak ditemukan",
                 subtitle = "Coba kata kunci lain — cari berdasarkan nomor mesin, corak, atau keterangan",
             )
@@ -149,9 +148,10 @@ private fun DoffingRow(
         else -> corak
     }
     val tipeColor = mesin?.tipe?.let(::mesinTipeColor) ?: colors.textFaint
-    // Swipe right = edit (same as tapping the card), swipe left = hapus — matches RadarCard's
-    // swipe model. Tap still opens edit too, both as a fallback for anyone who doesn't swipe and
-    // because TalkBack can't perform the drag gesture at all (see customActions below for that).
+    // Swipe right = edit, swipe left = hapus — matches RadarCard's swipe model. Tap no longer
+    // duplicates the swipe-right action (it used to, which just meant two gestures did the exact
+    // same thing); TalkBack still reaches both via the customActions below, since it can't
+    // perform the drag gesture at all.
     SwipeableCard(
         modifier = modifier.fillMaxWidth(),
         onSwipeRight = onEdit,
@@ -163,7 +163,6 @@ private fun DoffingRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .elevatedListCard(backgroundColor = colors.bgElevated)
-                .clickable(onClick = onEdit)
                 .semantics(mergeDescendants = true) {
                     customActions = listOf(
                         CustomAccessibilityAction("Edit riwayat Mc ${entry.mcNo}") { onEdit(); true },
@@ -172,7 +171,7 @@ private fun DoffingRow(
                 }
                 .padding(horizontal = 14.dp, vertical = 11.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(Dimens.Space12),
         ) {
             Text(
                 text = "$num",
@@ -194,7 +193,7 @@ private fun DoffingRow(
                     text = entry.mcNo,
                     style = AppType.NumberLarge.copy(color = Cyan500, letterSpacing = (-1).sp),
                 )
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Dimens.Space4)) {
                     // Same kain marker as RadarCard's corak/yard line (see Icons.Outlined.Texture
                     // there) — this history row shows the identical corak/yard pairing.
                     Icon(

@@ -17,14 +17,14 @@ internal fun AboutDialog(onClose: () -> Unit) {
     val colors = LocalAppColors.current
     FloatingEditDialog(onDismissRequest = onClose) {
         Text("Tentang", style = AppType.DialogTitle.copy(color = colors.textPrimary))
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(Dimens.Space16))
         Text("Adoel.", style = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Black, color = colors.textPrimary))
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(Dimens.Space4))
         Text(
             "Versi ${BuildConfig.VERSION_NAME} (build ${BuildConfig.VERSION_CODE})",
             style = AppType.BodySmall.copy(color = colors.textSecondary),
         )
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(Dimens.Space20))
         Button(
             onClick = onClose,
             modifier = Modifier.fillMaxWidth(),

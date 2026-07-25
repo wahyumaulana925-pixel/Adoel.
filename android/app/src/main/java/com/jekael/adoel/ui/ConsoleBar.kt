@@ -67,14 +67,14 @@ internal fun ConsoleBar(
             .onGloballyPositioned { coords ->
                 onHeightMeasured(with(density) { coords.size.height.toDp() })
             }
-            .padding(horizontal = 12.dp)
-            .padding(bottom = 12.dp)
+            .padding(horizontal = Dimens.Space12)
+            .padding(bottom = Dimens.Space12)
             .floatingHeaderCard(),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp)
+                .padding(horizontal = Dimens.Space12)
                 .padding(top = 10.dp)
                 .navigationBarsPadding()
                 .padding(bottom = 10.dp),
@@ -82,7 +82,7 @@ internal fun ConsoleBar(
             Text(
                 text = "Ketik nomor mesin, lalu ketuk jam (estimasi) atau gunting (doffing)",
                 style = AppType.Caption.copy(color = colors.textFaint),
-                modifier = Modifier.padding(start = 4.dp, bottom = 6.dp),
+                modifier = Modifier.padding(start = Dimens.Space4, bottom = 6.dp),
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -98,17 +98,18 @@ internal fun ConsoleBar(
                     icon = Icons.Outlined.Undo,
                     contentDescription = "Undo",
                     enabled = canUndo,
-                    // Violet — already this bar's own accent (the text field's focus/cursor
-                    // color), so Undo/Redo read as a pair native to the console itself, distinct
-                    // from Estimasi's Cyan and Doffing's Emerald.
-                    accent = Violet500,
+                    // Amber — the app icon's own accent color (the dot on the "A."), already this
+                    // bar's own accent (the text field's focus/cursor color), so Undo/Redo read as
+                    // a pair native to the console itself, distinct from Estimasi's Cyan and
+                    // Doffing's Emerald.
+                    accent = Amber500,
                     onClick = onUndo,
                 )
                 ConsoleIconButton(
                     icon = Icons.Outlined.Redo,
                     contentDescription = "Redo",
                     enabled = canRedo,
-                    accent = Violet500,
+                    accent = Amber500,
                     onClick = onRedo,
                 )
                 OutlinedTextField(
@@ -120,9 +121,9 @@ internal fun ConsoleBar(
                     // instruction), and singleLine would otherwise just clip it mid-word.
                     placeholder = { Text("No. Mc", color = colors.textFaint, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Violet500,
+                        focusedBorderColor = Amber500,
                         unfocusedBorderColor = colors.border,
-                        cursorColor = Violet500,
+                        cursorColor = Amber500,
                         focusedContainerColor = colors.bgElevated2,
                         unfocusedContainerColor = colors.bgElevated2,
                     ),

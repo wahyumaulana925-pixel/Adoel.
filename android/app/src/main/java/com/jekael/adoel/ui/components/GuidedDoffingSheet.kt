@@ -60,7 +60,7 @@ fun GuidedDoffingSheet(
             text = "Catat Doffing — Mc $mcNo",
             style = AppType.DialogTitle.copy(color = colors.textPrimary),
         )
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(Dimens.Space16))
 
         when (step) {
             GuidedDoffingStep.SETUP -> SetupStep(
@@ -108,7 +108,7 @@ private fun SetupStep(onSave: (corak: String, targetYard: Double?) -> Unit, onCa
         singleLine = true,
     )
 
-    Spacer(Modifier.height(12.dp))
+    Spacer(Modifier.height(Dimens.Space12))
     FieldLabel("Target Yard (Opsional)")
     OutlinedTextField(
         value = targetYardInput,
@@ -122,7 +122,7 @@ private fun SetupStep(onSave: (corak: String, targetYard: Double?) -> Unit, onCa
         singleLine = true,
     )
 
-    Spacer(Modifier.height(20.dp))
+    Spacer(Modifier.height(Dimens.Space20))
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         OutlinedButton(
             onClick = onCancel,
@@ -191,7 +191,7 @@ private fun NormalYardStep(standardYard: Double?, onBack: () -> Unit, onConfirm:
     }
     YardDeltaField(standardYard = standardYard, yardInput = yardInput, onYardInputChange = { yardInput = it })
 
-    Spacer(Modifier.height(20.dp))
+    Spacer(Modifier.height(Dimens.Space20))
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         OutlinedButton(
             onClick = onBack,
@@ -241,7 +241,7 @@ private fun YardDeltaField(standardYard: Double?, yardInput: String, onYardInput
             OutlinedButton(
                 onClick = { step(delta) },
                 modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(horizontal = 2.dp, vertical = 8.dp),
+                contentPadding = PaddingValues(horizontal = 2.dp, vertical = Dimens.Space8),
                 shape = RoundedCornerShape(10.dp),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
                 border = BorderStroke(1.dp, colors.border),
@@ -272,7 +272,7 @@ private fun KeteranganStep(standardYard: Double?, onBack: () -> Unit, onConfirm:
 
     FieldLabel("Keterangan")
     FlowRowChips(codes = KETERANGAN_CODES, selected = ket.takeIf { it in KETERANGAN_CODES }, onSelect = { ket = it })
-    Spacer(Modifier.height(8.dp))
+    Spacer(Modifier.height(Dimens.Space8))
     OutlinedTextField(
         value = ket,
         onValueChange = { ket = it.uppercase() },
@@ -286,7 +286,7 @@ private fun KeteranganStep(standardYard: Double?, onBack: () -> Unit, onConfirm:
 
     Spacer(Modifier.height(14.dp))
     FieldLabel("Yard aktual (opsional)")
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(horizontalArrangement = Arrangement.spacedBy(Dimens.Space8), verticalAlignment = Alignment.CenterVertically) {
         OutlinedTextField(
             value = yardInput,
             onValueChange = { yardInput = it },
@@ -307,7 +307,7 @@ private fun KeteranganStep(standardYard: Double?, onBack: () -> Unit, onConfirm:
         OutlinedButton(
             onClick = ::toggleDelta,
             modifier = Modifier.height(56.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp),
+            contentPadding = PaddingValues(horizontal = Dimens.Space16),
             shape = RoundedCornerShape(Dimens.RadiusControl),
             colors = ButtonDefaults.outlinedButtonColors(
                 contentColor = if (yardInput.startsWith("+")) Cyan600 else colors.textSecondary,
@@ -316,7 +316,7 @@ private fun KeteranganStep(standardYard: Double?, onBack: () -> Unit, onConfirm:
         ) { Text("+", style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold)) }
     }
 
-    Spacer(Modifier.height(20.dp))
+    Spacer(Modifier.height(Dimens.Space20))
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         OutlinedButton(
             onClick = onBack,
@@ -343,9 +343,9 @@ private fun FlowRowChips(codes: List<String>, selected: String?, onSelect: (Stri
     // Two fixed rows of up to 3 — six keterangan codes always fits, and this avoids pulling in
     // the separate accompanist/foundation FlowRow API just for a list this small and static.
     val rows = codes.chunked(3)
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Dimens.Space8)) {
         rows.forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Dimens.Space8)) {
                 row.forEach { code ->
                     Box(modifier = Modifier.weight(1f)) {
                         ChipBtn(label = code, selected = selected == code, onClick = { onSelect(code) })

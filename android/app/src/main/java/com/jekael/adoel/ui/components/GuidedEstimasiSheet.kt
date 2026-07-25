@@ -77,7 +77,7 @@ fun GuidedEstimasiSheet(
             text = "Update Estimasi — Mc $mcNo (${tipe.name})",
             style = AppType.DialogTitle.copy(color = colors.textPrimary),
         )
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(Dimens.Space16))
 
         if (needQuickCorakSetup) {
             FieldLabel("Masukkan Corak Baru")
@@ -93,7 +93,7 @@ fun GuidedEstimasiSheet(
                 singleLine = true,
             )
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(Dimens.Space12))
             FieldLabel("Target Yard (Opsional)")
             OutlinedTextField(
                 value = targetYardInput,
@@ -107,7 +107,7 @@ fun GuidedEstimasiSheet(
                 singleLine = true,
             )
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(Dimens.Space20))
             Button(
                 onClick = {
                     if (corakInput.isNotBlank()) {
@@ -180,7 +180,7 @@ fun GuidedEstimasiSheet(
                 style = AppType.Caption.copy(color = if (preview != null) Cyan600 else colors.textFaint),
             )
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(Dimens.Space20))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),

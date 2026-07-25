@@ -43,6 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.jekael.adoel.ui.theme.AppType
+import com.jekael.adoel.ui.theme.Dimens
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -91,7 +92,7 @@ fun SlidingToggle(
                 accessibilityLabel?.let { contentDescription = it }
             }
             .background(containerColor, RoundedCornerShape(50.dp))
-            .padding(4.dp),
+            .padding(Dimens.Space4),
     ) {
         val segmentWidth = maxWidth / 2
         val widthPx = with(density) { maxWidth.toPx() }

@@ -43,7 +43,7 @@ fun ToastHost(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                    .padding(horizontal = Dimens.Space16, vertical = Dimens.Space12),
                 contentAlignment = Alignment.Center,
             ) {
                 Row(
@@ -51,9 +51,9 @@ fun ToastHost(
                         .shadow(elevation = 10.dp, shape = RoundedCornerShape(24.dp), ambientColor = Color.Black.copy(alpha = 0.4f))
                         .background(colors.bgElevated2, RoundedCornerShape(24.dp))
                         .fabricTextureSubtle()
-                        .padding(horizontal = 20.dp, vertical = 14.dp),
+                        .padding(horizontal = Dimens.Space20, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Dimens.Space12),
                 ) {
                     Text(
                         text = it.msg,

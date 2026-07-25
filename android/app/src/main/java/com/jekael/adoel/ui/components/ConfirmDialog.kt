@@ -105,18 +105,18 @@ fun ConfirmDialog(
                         .border(1.dp, colors.border, RoundedCornerShape(20.dp))
                         .premiumSurface(colors.bgElevated)
                         .fabricTextureSubtle()
-                        .padding(20.dp),
+                        .padding(Dimens.Space20),
                 ) {
                     Text(
                         text = "Konfirmasi",
                         style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary),
                     )
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(Dimens.Space12))
                     Text(
                         text = current.msg,
                         style = TextStyle(fontSize = 14.sp, color = colors.textSecondary),
                     )
-                    Spacer(Modifier.height(20.dp))
+                    Spacer(Modifier.height(Dimens.Space20))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End,
