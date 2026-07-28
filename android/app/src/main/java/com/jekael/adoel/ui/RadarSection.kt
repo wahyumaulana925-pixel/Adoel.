@@ -179,17 +179,18 @@ private fun UrgencyBandHeader(label: String, count: Int, color: Color, modifier:
 }
 
 /** Sits between two RadarCards in the Menunggu band when the gap to the next doff is long enough
- * to actually step away. The break's total length ([gapMin], fixed — not a live countdown) is the
- * headline (same big/bold treatment as a RadarCard's countdown) so an operator reads "how long is
- * this break" at a glance instead of doing the subtraction themselves between the two neighboring
- * cards' times — the whole point of this card existing. The caption below still carries the live
- * end time so "when does it end" stays answerable too. Emerald is used nowhere in the urgency
- * scale (Cyan/Amber/Orange/Red), so this reads as "good news" rather than competing with any
- * urgency color.
+ * to actually step away. The headline number (same big/bold treatment as a RadarCard's countdown)
+ * answers "how long is this break" at a glance instead of making an operator do the subtraction
+ * between the two neighboring cards' times themselves — the whole point of this card existing.
+ * The caption below carries the live end time so "when does it end" stays answerable too. Emerald
+ * is used nowhere in the urgency scale (Cyan/Amber/Orange/Red), so this reads as "good news"
+ * rather than competing with any urgency color.
  *
- * [isActive] gates the progress bar: only the topmost jeda card (the one whose window has
- * actually started) fills in — a jeda further down the list is a preview of a gap that hasn't
- * begun yet, so animating a bar for it would misleadingly suggest it's the current, live gap. */
+ * [isActive] gates both the headline number and the progress bar: only the topmost jeda card (the
+ * one whose window has actually started) counts the headline down live and fills its bar — a jeda
+ * further down the list is a preview of a gap that hasn't begun yet, so [nowAbs]..[nextAbsMin]
+ * there spans however many hours away the whole thing is, not the break's own length. That preview
+ * case shows the fixed [gapMin] instead — the actual break length, unchanging until it starts. */
 @Composable
 private fun BreakGapCard(
     gapMin: Long,
@@ -226,10 +227,12 @@ private fun BreakGapCard(
         }
         Spacer(Modifier.height(Dimens.Space4))
         Text(
-            // Live countdown of time left in the break, not the fixed total gap length — one
-            // clear number that actually ticks down as the break runs, instead of a frozen total
-            // up top plus a second live countdown repeated in the caption below.
-            text = formatDeltaMin(remainingMin),
+            // isActive (the topmost, currently-running gap): live countdown of time left in the
+            // break, ticking down as it runs. A preview gap further down the list hasn't started
+            // yet — nowAbs..nextAbsMin there spans however many hours away the whole thing is, not
+            // the break's own length, so that case shows the fixed gap duration instead (the
+            // actual answer to "how long is this break", same as before it starts counting down).
+            text = formatDeltaMin(if (isActive) remainingMin else gapMin),
             style = TextStyle(
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Black,
