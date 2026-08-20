@@ -75,7 +75,7 @@ class ShareTextTest {
 
         val text = buildShareHistoryText(state, nowMillis, wib)
 
-        assertEquals("Bravo!!!\n15/01/2026\n\n*Selesai (0 doff)*\n\nTotal: 0 doff", text)
+        assertEquals("Bravo!!!\n15/01/2026\n\n*Selesai (0 doff)*\n\n\nTotal: 0 doff", text)
     }
 
     @Test
