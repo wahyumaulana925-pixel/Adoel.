@@ -69,6 +69,16 @@ class ShareTextTest {
     }
 
     @Test
+    fun buildShareHistoryText_shiftThreeAfterMidnightUsesShiftStartDate() {
+        val state = DoffState()
+        val nowMillis = epochMin(2026, 1, 16, 5, 0) * 60000L
+
+        val text = buildShareHistoryText(state, nowMillis, wib)
+
+        assertEquals("Bravo!!!\n15/01/2026\n\n*Selesai (0 doff)*\n\nTotal: 0 doff", text)
+    }
+
+    @Test
     fun buildShareShiftText_matchesArchivedShiftFormat() {
         val db = mapOf("61" to MesinData(MesinTipe.D405, "60357", targetYard = 303.0))
         val shift = ShiftRecord(

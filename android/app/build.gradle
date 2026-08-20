@@ -14,8 +14,8 @@ android {
         targetSdk 36
         // CI passes VERSION_CODE (its own monotonically-increasing run number) so versionCode
         // always advances automatically; local builds fall back to a static value.
-        versionCode (System.getenv("VERSION_CODE") != null ? System.getenv("VERSION_CODE").toInteger() : 9)
-        versionName "9.7"
+        versionCode (System.getenv("VERSION_CODE") != null ? System.getenv("VERSION_CODE").toInteger() : 10)
+        versionName "9.8"
     }
 
     // Release signing reads the keystore + passwords from environment variables. In CI these come

@@ -44,6 +44,13 @@ jobs:
           cd android
           ./gradlew assembleRelease
 
+      - name: Upload signed release APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: adoel-release-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+
       - name: Read app version
         id: appver
         run: |

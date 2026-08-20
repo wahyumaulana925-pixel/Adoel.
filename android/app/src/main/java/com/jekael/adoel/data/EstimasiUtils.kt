@@ -1,6 +1,7 @@
 package com.jekael.adoel.data
 
 import java.util.TimeZone
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
@@ -33,6 +34,20 @@ fun urgencyLevel(remainingMin: Long): UrgencyLevel = when {
 
 fun sortedByNearest(estimasi: Map<String, Estimasi>): List<Estimasi> =
     estimasi.values.sortedBy { it.estAbsMin }
+
+fun findClashingMachines(
+    targetMcNo: String,
+    allEstimasi: Collection<Estimasi>,
+    thresholdMin: Long = 10L,
+): List<String> {
+    val targetEstimasi = allEstimasi.firstOrNull { it.mcNo == targetMcNo } ?: return emptyList()
+    return allEstimasi
+        .asSequence()
+        .filter { it.mcNo != targetMcNo }
+        .filter { abs(it.estAbsMin - targetEstimasi.estAbsMin) <= thresholdMin }
+        .map { it.mcNo }
+        .toList()
+}
 
 /** Minutes remaining as the operator should actually see it — frozen at whatever it was the
  * moment Jeda was pressed (see [Estimasi.pausedAtAbsMin]) instead of continuing to count down

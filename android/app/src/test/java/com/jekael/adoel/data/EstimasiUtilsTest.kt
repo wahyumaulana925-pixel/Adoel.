@@ -53,6 +53,19 @@ class EstimasiUtilsTest {
     }
 
     @Test
+    fun findClashingMachinesUsesAbsoluteTenMinuteThresholdAndExcludesTarget() {
+        val estimasi = listOf(
+            est("target", 100),
+            est("before", 90),
+            est("after", 110),
+            est("outside", 111),
+        )
+
+        assertEquals(listOf("before", "after"), findClashingMachines("target", estimasi))
+        assertEquals(emptyList<String>(), findClashingMachines("missing", estimasi))
+    }
+
+    @Test
     fun nearestUpcomingPrefersEarliestOverdueThenSoonest() {
         val map = mapOf("late" to est("late", 90), "soon" to est("soon", 110))
         assertEquals("late", nearestUpcoming(map, nowAbs = 100)?.mcNo)

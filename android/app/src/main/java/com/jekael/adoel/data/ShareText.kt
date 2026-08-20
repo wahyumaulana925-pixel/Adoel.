@@ -21,6 +21,9 @@ fun buildShareHistoryText(
     zone: TimeZone = TimeZone.getDefault(),
 ): String {
     val cal = Calendar.getInstance(zone).apply { timeInMillis = nowMillis }
+    if (shiftNumberForEpochMin(nowMillis / 60000L, zone) == 3 && cal.get(Calendar.HOUR_OF_DAY) < 7) {
+        cal.add(Calendar.DAY_OF_YEAR, -1)
+    }
     val dateStr = "%02d/%02d/%04d".format(
         cal.get(Calendar.DAY_OF_MONTH),
         cal.get(Calendar.MONTH) + 1,

@@ -122,6 +122,7 @@ fun RadarCard(
     onEditWaktu: () -> Unit,
     modifier: Modifier = Modifier,
     entranceDelayMs: Long = 0L,
+    clashingMcNos: List<String> = emptyList(),
 ) {
     // Frozen while paused (see Estimasi.pausedAtAbsMin/effectiveRemaining) so a long Jeda doesn't
     // quietly count itself into OVERDUE against wall-clock time.
@@ -513,6 +514,19 @@ fun RadarCard(
                         Text(
                             text = corakLine,
                             style = AppType.LabelBold.copy(color = colors.textMuted),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    if (clashingMcNos.isNotEmpty()) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = "⚡ Bentrok Mc ${clashingMcNos.joinToString(", ")}",
+                            style = AppType.Caption.copy(color = Amber700, fontWeight = FontWeight.Bold),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(Amber500.copy(alpha = 0.16f))
+                                .padding(horizontal = 6.dp, vertical = 3.dp),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
