@@ -118,9 +118,9 @@ internal fun LazyListScope.estimasiSection(
                 is MenungguRow.CardRow -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     if (row.est.estAbsMin > currentShiftStartAbsMin(nowAbs) + 480 && (index == 0 || (menungguRows[index - 1] as? MenungguRow.CardRow)?.est?.estAbsMin?.let { it <= currentShiftStartAbsMin(nowAbs) + 480 } == true)) {
                         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            HorizontalDivider(modifier = Modifier.weight(1f), color = Orange400.copy(alpha = 0.45f))
-                            Text("⏭️ OPERAN SHIFT", style = AppType.Caption.copy(color = Orange400, fontWeight = FontWeight.Bold), modifier = Modifier.padding(horizontal = 8.dp))
-                            HorizontalDivider(modifier = Modifier.weight(1f), color = Orange400.copy(alpha = 0.45f))
+                            HorizontalDivider(modifier = Modifier.weight(1f), color = Amber400.copy(alpha = 0.45f))
+                            Text("⏭️ OPERAN SHIFT", style = AppType.Caption.copy(color = Amber400, fontWeight = FontWeight.Bold), modifier = Modifier.padding(horizontal = 8.dp))
+                            HorizontalDivider(modifier = Modifier.weight(1f), color = Amber400.copy(alpha = 0.45f))
                         }
                     }
                     RadarCard(
@@ -172,11 +172,9 @@ private fun UrgencyBandHeader(label: String, count: Int, color: Color, modifier:
             .heightIn(min = 44.dp)
             .padding(horizontal = Dimens.Space4),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Box(
-                modifier = Modifier
+            text = formatDeltaMin(if (isActive) remainingMin else gapMin),
+            style = TextStyle(fontSize = 28.sp, fontWeight = FontWeight.Black, letterSpacing = (-1).sp, color = colors.textPrimary),
+        )
                     .size(6.dp)
                     .clip(CircleShape)
                     .background(animatedColor),
