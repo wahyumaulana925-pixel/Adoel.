@@ -172,9 +172,11 @@ private fun UrgencyBandHeader(label: String, count: Int, color: Color, modifier:
             .heightIn(min = 44.dp)
             .padding(horizontal = Dimens.Space4),
         verticalAlignment = Alignment.CenterVertically,
-            text = formatDeltaMin(if (isActive) remainingMin else gapMin),
-            style = TextStyle(fontSize = 28.sp, fontWeight = FontWeight.Black, letterSpacing = (-1).sp, color = colors.textPrimary),
-        )
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Box(
+                modifier = Modifier
                     .size(6.dp)
                     .clip(CircleShape)
                     .background(animatedColor),
@@ -236,11 +238,9 @@ private fun BreakGapCard(
         }
         Spacer(Modifier.height(Dimens.Space4))
         Text(
-            // isActive (the topmost, currently-running gap): live countdown of time left in the
-            // break, ticking down as it runs. A preview gap further down the list hasn't started
-            // yet — nowAbs..nextAbsMin there spans however many hours away the whole thing is, not
-            // the break's own length, so that case shows the fixed gap duration instead (the
-            // actual answer to "how long is this break", same as before it starts counting down).
+            text = formatDeltaMin(if (isActive) remainingMin else gapMin),
+            style = TextStyle(fontSize = 28.sp, fontWeight = FontWeight.Black, letterSpacing = (-1).sp, color = colors.textPrimary),
+        )
         Text(
             text = "Sampai ${absMinToTimeStr(nextAbsMin)} — sebelum Mc $nextMcNo",
             style = AppType.Caption.copy(color = colors.textFaint),
