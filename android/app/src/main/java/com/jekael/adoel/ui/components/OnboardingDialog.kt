@@ -6,8 +6,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -25,7 +31,14 @@ import com.jekael.adoel.ui.theme.LocalAppColors
 fun OnboardingDialog(onClose: () -> Unit) {
     val colors = LocalAppColors.current
     FloatingEditDialog(onDismissRequest = onClose) {
-        Text("Cara Pakai Adoel", style = AppType.DialogTitle.copy(color = colors.textPrimary))
+        Text("Panduan Penggunaan", style = AppType.DialogTitle.copy(color = colors.textPrimary))
+        Spacer(Modifier.height(Dimens.Space16))
+
+        var tab by remember { mutableIntStateOf(0) }
+        TabRow(selectedTabIndex = tab) {
+            Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("Input Data Mesin") })
+            Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Simulasi 5 Gestur") })
+        }
         Spacer(Modifier.height(Dimens.Space16))
 
         val bullets = listOf(
@@ -34,12 +47,31 @@ fun OnboardingDialog(onClose: () -> Unit) {
             "URUNGKAN & ULANG (↩ / ↪): Salah mencatat atau salah hapus? Tombol Undo/Redo di kiri konsol bawah mengembalikan data secara instan.",
             "KENDALA MESIN & MACET: Jika mesin berhenti/macet (mis. putus lusi), hapus estimasinya (tekan lama kartu radar lalu pilih Hapus) agar perhitungan waktu JEDA istirahat tetap akurat.",
         )
-        bullets.forEach {
+        if (tab == 0) bullets.forEach {
             Text(
                 "•  $it",
                 style = AppType.BodySmall.copy(color = colors.textSecondary, lineHeight = 18.sp),
             )
             Spacer(Modifier.height(10.dp))
+        }
+
+        if (tab == 1) {
+            var selectedGesture by remember { mutableIntStateOf(0) }
+            val gestures = listOf(
+                "Geser kanan" to "Doffing normal",
+                "Geser kiri" to "Doffing matching",
+                "Tekan lama" to "Buka aksi kartu",
+                "Ketuk waktu" to "Edit estimasi",
+                "Ketuk nomor/corak" to "Edit data mesin",
+            )
+            gestures.forEachIndexed { index, (gesture, action) ->
+                Button(
+                    onClick = { selectedGesture = index },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = if (selectedGesture == index) Cyan600 else colors.bgElevated2),
+                ) { Text("$gesture  ->  $action") }
+                Spacer(Modifier.height(6.dp))
+            }
         }
 
         Spacer(Modifier.height(10.dp))

@@ -1,5 +1,5 @@
 // Port 1:1 dari shareHistory (DoffingSection.kt) dan shareShift (StatistikScreen.kt).
-import { absMinToTimeStr, formatYard, nowAbsMin, shiftNumberForEpochMin } from "./format";
+import { absMinToTimeStr, currentShiftStartAbsMin, formatYard, nowAbsMin, shiftNumberForEpochMin } from "./format";
 import { sortedByNearest } from "./estimasiUtils";
 import { sortAktualChronological } from "./aktualOrder";
 import type { DoffState, MesinData, ShiftRecord } from "./types";
@@ -31,13 +31,17 @@ export function shareHistoryText(state: DoffState): string {
     const suffix = yard != null ? ` · ${formatYard(yard)}y` : "";
     return `${i + 1}. Mc${a.mcNo} · ${corak}${suffix} · ${a.ket}`;
   });
-  const berjalan = sortedByNearest(state.estimasi).map((est) => {
+  const shiftEnd = currentShiftStartAbsMin(nowAbsMin()) + 8 * 60;
+  const estimasiBerjalan = sortedByNearest(state.estimasi).filter((est) => est.estAbsMin <= shiftEnd);
+  const estimasiOperan = sortedByNearest(state.estimasi).filter((est) => est.estAbsMin > shiftEnd);
+  const berjalan = estimasiBerjalan.map((est) => {
     const mesin = state.db[est.mcNo];
     const corak = est.corakOverride ?? mesin?.corak ?? "—";
     const yard = est.yardOverride ?? mesin?.targetYard;
     const suffix = yard != null ? ` · ${formatYard(yard)}y` : "";
     return `• Mc${est.mcNo} · ${corak}${suffix} · est. ${absMinToTimeStr(est.estAbsMin)}`;
   });
+  const operan = estimasiOperan.map((est) => `• Mc${est.mcNo} · est. ${absMinToTimeStr(est.estAbsMin)}`);
   const selesaiCount = state.aktual.length;
   const berjalanCount = berjalan.length;
   const totalLine =
@@ -45,7 +49,8 @@ export function shareHistoryText(state: DoffState): string {
       ? `Total: ${selesaiCount} selesai + ${berjalanCount} berjalan = ${selesaiCount + berjalanCount} mc`
       : `Total: ${selesaiCount} doff`;
   const berjalanBlock = berjalan.length > 0 ? `\n\n*Sedang Berjalan (${berjalanCount})*\n${berjalan.join("\n")}` : "";
-  return `Bravo!!!\n${dateStr}\n\n*Selesai (${selesaiCount} doff)*\n${lines.join("\n")}${berjalanBlock}\n\n${totalLine}`;
+  const operanBlock = operan.length > 0 ? `\n\n*Operan Shift Berikutnya (${operan.length})*\n${operan.join("\n")}` : "";
+  return `Bravo!!!\n${dateStr}\n\n*Selesai (${selesaiCount} doff)*\n${lines.join("\n")}${berjalanBlock}${operanBlock}\n\n${totalLine}`;
 }
 
 /** Teks ringkasan siap-bagikan untuk satu shift yang sudah diarsipkan. */

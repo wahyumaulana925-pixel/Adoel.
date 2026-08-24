@@ -64,6 +64,13 @@ export function estimasiFieldHint(tipe: MesinTipe): EstimasiFieldHint {
   }
 }
 
+export function selisihKoreksiD408(waktuAktualMin: number, bacaanCounterMin: number): number {
+  const raw = waktuAktualMin - bacaanCounterMin;
+  if (raw < -720) return raw + 1440;
+  if (raw > 720) return raw - 1440;
+  return raw;
+}
+
 /** Preview "≈ jam" langsung di dialog terpandu, memakai rumus murni yang identik dengan
  * yang dipakai commands.ts saat submit — supaya yang dipratinjau di sini dijamin sama
  * dengan yang benar-benar tersimpan. Port 1:1 dari previewEstimasi di GuidedEstimasiSheet.kt. */

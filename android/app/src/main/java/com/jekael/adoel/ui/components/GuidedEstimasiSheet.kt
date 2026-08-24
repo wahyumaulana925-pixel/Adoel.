@@ -29,6 +29,7 @@ import com.jekael.adoel.data.estimasiFieldHint
 import com.jekael.adoel.data.nowAbsMin
 import com.jekael.adoel.data.parseDurasi
 import com.jekael.adoel.data.parseJam
+import com.jekael.adoel.data.selisihKoreksiD408
 import com.jekael.adoel.data.sisaMenitD405
 import com.jekael.adoel.ui.theme.AppType
 import com.jekael.adoel.ui.theme.Cyan500
@@ -56,7 +57,7 @@ fun GuidedEstimasiSheet(
     mesin: MesinData?,
     onDismiss: () -> Unit,
     onSubmit: (value: String) -> Unit,
-    onQuickUpdate: (corak: String, targetYard: Double?) -> Unit,
+    onQuickUpdate: (corak: String, targetYard: Double?, tipe: MesinTipe, koreksi: Double?) -> Unit,
 ) {
     val colors = LocalAppColors.current
     val tipe = mesin?.tipe ?: MesinTipe.TAPPET
@@ -65,6 +66,9 @@ fun GuidedEstimasiSheet(
     var corakInput by remember(mcNo) { mutableStateOf("") }
     var targetYardInput by remember(mcNo) { mutableStateOf("") }
     var valueInput by remember(mcNo) { mutableStateOf("") }
+    var setupTipe by remember(mcNo) { mutableStateOf(mesin?.tipe ?: MesinTipe.TAPPET) }
+    var koreksiInput by remember(mcNo) { mutableStateOf("") }
+    var correctionOpen by remember(mcNo) { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
 
     LaunchedEffect(mcNo, needQuickCorakSetup) {
@@ -81,6 +85,12 @@ fun GuidedEstimasiSheet(
 
         if (needQuickCorakSetup) {
             FieldLabel("Masukkan Corak Baru")
+            FieldLabel("Tipe Mesin")
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                MesinTipe.values().forEach { candidate ->
+                    FilterChip(selected = setupTipe == candidate, onClick = { setupTipe = candidate }, label = { Text(candidate.name) })
+                }
+            }
             OutlinedTextField(
                 value = corakInput,
                 onValueChange = { corakInput = it.uppercase() },
@@ -92,6 +102,14 @@ fun GuidedEstimasiSheet(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
             )
+
+            if (setupTipe == MesinTipe.D408) {
+                Spacer(Modifier.height(Dimens.Space12))
+                FieldLabel("Koreksi Menit")
+                OutlinedTextField(value = koreksiInput, onValueChange = { koreksiInput = it }, modifier = Modifier.fillMaxWidth(), placeholder = { Text("cth: +10 atau -5") }, colors = outlinedFieldColors(), shape = RoundedCornerShape(Dimens.RadiusControl), singleLine = true)
+                Spacer(Modifier.height(Dimens.Space8))
+                OutlinedButton(onClick = { correctionOpen = true }) { Text("🧮 Hitung Koreksi") }
+            }
 
             Spacer(Modifier.height(Dimens.Space12))
             FieldLabel("Target Yard (Opsional)")
@@ -112,7 +130,7 @@ fun GuidedEstimasiSheet(
                 onClick = {
                     if (corakInput.isNotBlank()) {
                         val yard = targetYardInput.trim().replace(',', '.').toDoubleOrNull()
-                        onQuickUpdate(corakInput.trim(), yard)
+                        onQuickUpdate(corakInput.trim(), yard, setupTipe, koreksiInput.replace(',', '.').toDoubleOrNull())
                         needQuickCorakSetup = false
                     }
                 },
@@ -203,6 +221,33 @@ fun GuidedEstimasiSheet(
             }
         }
     }
+
+    if (correctionOpen) {
+        D408CorrectionDialog(
+            onDismiss = { correctionOpen = false },
+            onApply = { value -> koreksiInput = if (value >= 0) "+$value" else value.toString(); correctionOpen = false },
+        )
+    }
+}
+
+@Composable
+private fun D408CorrectionDialog(onDismiss: () -> Unit, onApply: (Int) -> Unit) {
+    var panel by remember { mutableStateOf("") }
+    var actual by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Hitung Koreksi D408") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(panel, { panel = it }, label = { Text("Waktu di Panel Mesin (HH:mm)") }, singleLine = true)
+                OutlinedTextField(actual, { actual = it }, label = { Text("Waktu Nyata Lapangan (HH:mm)") }, singleLine = true)
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { val p = parseJam(panel); val a = parseJam(actual); if (p != null && a != null) onApply(selisihKoreksiD408(a, p)) }) { Text("Terapkan") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Batal") } },
+    )
 }
 
 private fun previewEstimasi(tipe: MesinTipe, raw: String, mesin: MesinData?): String? {

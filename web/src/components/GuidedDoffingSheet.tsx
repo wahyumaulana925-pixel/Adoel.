@@ -48,6 +48,7 @@ export function GuidedDoffingSheet({
         {step === "CHOOSE" && (
           <ChooseStep
             onPickNormal={() => setStep("NORMAL")}
+            onPickMatching={() => onSubmitDoffing(`${mcNo} MATCHING`)}
             onPickKeterangan={() => setStep("KETERANGAN")}
             onCancel={onDismiss}
           />
@@ -117,16 +118,19 @@ function SetupStep({ onSave, onCancel }: { onSave: (corak: string, targetYard: n
 
 function ChooseStep({
   onPickNormal,
+  onPickMatching,
   onPickKeterangan,
   onCancel,
 }: {
   onPickNormal: () => void;
+  onPickMatching: () => void;
   onPickKeterangan: () => void;
   onCancel: () => void;
 }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <BigChoiceButton label="Doffing normal" subtitle="Selesai sesuai target yard" onClick={onPickNormal} />
+      <BigChoiceButton label="Doffing matching" subtitle="Potong sampel / cek kualitas beam baru" onClick={onPickMatching} accent="var(--orange-400)" />
       <BigChoiceButton
         label="Ada keterangan"
         subtitle="HB, P.LP, P.SN, P.OH, P.EL, P.Sel, atau lainnya"

@@ -36,6 +36,7 @@ export function RadarCard({
   onLanjutkan,
   onQuickEdit,
   onEditWaktu,
+  shiftHandover = false,
 }: {
   est: Estimasi;
   mesin: MesinData | null;
@@ -47,12 +48,13 @@ export function RadarCard({
   onLanjutkan: () => void;
   onQuickEdit: () => void;
   onEditWaktu: () => void;
+  shiftHandover?: boolean;
 }) {
   const remaining = effectiveRemaining(est, nowAbs);
   const level = urgencyLevel(remaining);
   const style = URGENCY_STYLE[level];
   const totalDur = est.estAbsMin - est.startAbsMin;
-  const elapsed = nowAbs - est.startAbsMin;
+  const elapsed = est.pausedAtAbsMin == null ? nowAbs - est.startAbsMin : est.pausedAtAbsMin - est.startAbsMin;
   const progress = totalDur > 0 ? Math.min(1, Math.max(0, elapsed / totalDur)) : 0;
   const corak = est.corakOverride ?? mesin?.corak ?? "—";
   const standardYard = est.yardOverride ?? mesin?.targetYard ?? null;
@@ -183,6 +185,7 @@ export function RadarCard({
                   <span className="radar-card-tipe-label" style={{ color: mesin ? TIPE_COLOR[mesin.tipe] : "var(--text-faint)" }}>
                     {mesin?.tipe ?? "?"}
                   </span>
+                  {shiftHandover && <span className="shift-badge">⏭️ OPERAN SHIFT</span>}
                 </div>
                 <div className="radar-card-corak">{corakLine}</div>
                 <WaveProgressBar fraction={progress} trackColor="var(--bg-elevated-2)" fillColor={style.bar} height={3} />

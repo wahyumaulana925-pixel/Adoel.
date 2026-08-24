@@ -185,7 +185,7 @@ fun MainScreen(
     // Derived (not a plain remember(nowAbs, ...)) — partitioning only needs to actually re-propagate
     // to whatever reads segeraList/menungguList when a card crosses the Segera/Menunggu boundary,
     // not on every 5-second nowAbs tick that leaves the partition unchanged.
-    val (segeraList, menungguList) = remember(filteredRadarList) {
+    val (segeraList, menungguList) = remember(filteredRadarList, nowAbs) {
         derivedStateOf { partitionSegeraMenunggu(filteredRadarList, nowAbs) }
     }.value
     // Flags doff entries left over from a shift the operator forgot to close via "Selesai Shift"
@@ -236,7 +236,8 @@ fun MainScreen(
             // (it's just measured from leadingGapAnchor instead of from that machine's estimate).
             // Only valid when nothing is overdue (Segera empty) — an operator with something
             // already due doesn't have free time to call out yet.
-            val first = menungguList.firstOrNull()
+            val activeMenunggu = menungguList.filter { it.pausedAtAbsMin == null }
+            val first = activeMenunggu.firstOrNull()
             if (noSegera && first != null) {
                 val gap = first.estAbsMin - leadingGapAnchor
                 if (gap >= BREAK_GAP_THRESHOLD_MIN) {
@@ -245,8 +246,9 @@ fun MainScreen(
             }
             menungguList.forEachIndexed { index, est ->
                 add(MenungguRow.CardRow(est))
-                val next = menungguList.getOrNull(index + 1)
-                if (next != null) {
+                val activeIndex = activeMenunggu.indexOfFirst { it.mcNo == est.mcNo }
+                val next = if (activeIndex >= 0) activeMenunggu.getOrNull(activeIndex + 1) else null
+                if (next != null && est.pausedAtAbsMin == null) {
                     val gap = next.estAbsMin - est.estAbsMin
                     if (gap >= BREAK_GAP_THRESHOLD_MIN) {
                         add(MenungguRow.GapRow(afterMcNo = est.mcNo, nextMcNo = next.mcNo, gapMin = gap, nextAbsMin = next.estAbsMin))
@@ -578,9 +580,9 @@ fun MainScreen(
                     activeOverlay = ActiveOverlay.None
                 }
             },
-            onQuickUpdate = { corak, targetYard ->
+            onQuickUpdate = { corak, targetYard, tipe, koreksi ->
                 val mesin = state.db[guidedEstimasiMcNo] ?: MesinData()
-                doffVm.setMesin(guidedEstimasiMcNo, mesin.copy(corak = corak, targetYard = targetYard))
+                doffVm.setMesin(guidedEstimasiMcNo, mesin.copy(corak = corak, targetYard = targetYard, tipe = tipe, koreksi = koreksi))
             },
         )
     }

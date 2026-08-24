@@ -9,7 +9,7 @@ import {
   urgencyLevel,
   type UrgencyLevel,
 } from "../domain/estimasiUtils";
-import { formatDeltaMin, nowAbsMin } from "../domain/format";
+import { currentShiftStartAbsMin, formatDeltaMin, nowAbsMin } from "../domain/format";
 import type { Estimasi } from "../domain/types";
 import { RadarCard } from "./RadarCard";
 import { QuickEditDialog } from "./QuickEditDialog";
@@ -39,6 +39,8 @@ export function RadarScreen({ onEditWaktu }: { onEditWaktu: (mcNo: string) => vo
     return all.filter((e) => e.mcNo.toLowerCase().includes(f));
   }, [all, filter]);
   const [segera, menunggu] = useMemo(() => partitionSegeraMenunggu(filtered, nowAbs), [filtered, nowAbs]);
+  const shiftEndAbs = currentShiftStartAbsMin(nowAbs) + 8 * 60;
+  const activeMenunggu = menunggu.filter((est) => est.pausedAtAbsMin == null);
 
   if (all.length === 0) {
     return (
@@ -81,6 +83,7 @@ export function RadarScreen({ onEditWaktu }: { onEditWaktu: (mcNo: string) => vo
               onLanjutkan={() => handleLanjutkan(est.mcNo)}
               onQuickEdit={() => setQuickEditMcNo(est.mcNo)}
               onEditWaktu={() => onEditWaktu(est.mcNo)}
+              shiftHandover={est.estAbsMin > shiftEndAbs}
             />
           ))}
         </>
@@ -96,16 +99,20 @@ export function RadarScreen({ onEditWaktu }: { onEditWaktu: (mcNo: string) => vo
               masih >= 30 menit lagi, tandai operator boleh istirahat DARI SEKARANG sampai Mc itu
               — port dari leading break di MainScreen.kt. Diukur dari nowAbs (bukan antar-dua
               estimasi seperti gap-row di bawah). */}
-          {segera.length === 0 && menunggu[0] && menunggu[0].estAbsMin - nowAbs >= BREAK_GAP_THRESHOLD_MIN && (
+          {segera.length === 0 && activeMenunggu[0] && activeMenunggu[0].estAbsMin - nowAbs >= BREAK_GAP_THRESHOLD_MIN && (
             <div className="gap-row">
-              ⏸ bisa istirahat {formatDeltaMin(menunggu[0].estAbsMin - nowAbs)} sampai Mc {menunggu[0].mcNo}
+              ⏳ Selang Waktu {formatDeltaMin(activeMenunggu[0].estAbsMin - nowAbs)} sampai Mc {activeMenunggu[0].mcNo}
             </div>
           )}
           {menunggu.map((est, i) => {
-            const next = menunggu[i + 1];
+            const activeIndex = activeMenunggu.findIndex((candidate) => candidate.mcNo === est.mcNo);
+            const next = activeIndex >= 0 ? activeMenunggu[activeIndex + 1] : undefined;
             const gap = next ? next.estAbsMin - est.estAbsMin : 0;
             return (
               <div key={est.mcNo}>
+                {est.estAbsMin > shiftEndAbs && (i === 0 || menunggu[i - 1].estAbsMin <= shiftEndAbs) && (
+                  <div className="shift-divider"><span>🏁 BATAS AKHIR SHIFT {new Date(shiftEndAbs * 60000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span></div>
+                )}
                 <RadarCard
                   est={est}
                   mesin={state.db[est.mcNo] ?? null}
@@ -117,10 +124,11 @@ export function RadarScreen({ onEditWaktu }: { onEditWaktu: (mcNo: string) => vo
                   onLanjutkan={() => handleLanjutkan(est.mcNo)}
                   onQuickEdit={() => setQuickEditMcNo(est.mcNo)}
                   onEditWaktu={() => onEditWaktu(est.mcNo)}
+                  shiftHandover={est.estAbsMin > shiftEndAbs}
                 />
                 {next && gap >= BREAK_GAP_THRESHOLD_MIN && (
                   <div className="gap-row">
-                    ⏸ jeda {formatDeltaMin(gap)} sampai Mc {next.mcNo}
+                    ⏳ Selang Waktu {formatDeltaMin(gap)} sampai Mc {next.mcNo}
                   </div>
                 )}
               </div>

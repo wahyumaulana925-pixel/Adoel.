@@ -72,6 +72,7 @@ fun GuidedDoffingSheet(
             )
             GuidedDoffingStep.CHOOSE -> ChooseStep(
                 onPickNormal = { step = GuidedDoffingStep.NORMAL },
+                onPickMatching = { onSubmitDoffing("$mcNo MATCHING") },
                 onPickKeterangan = { step = GuidedDoffingStep.KETERANGAN },
                 onCancel = onDismiss,
             )
@@ -149,12 +150,14 @@ private fun SetupStep(onSave: (corak: String, targetYard: Double?) -> Unit, onCa
 @Composable
 private fun ChooseStep(
     onPickNormal: () -> Unit,
+    onPickMatching: () -> Unit,
     onPickKeterangan: () -> Unit,
     onCancel: () -> Unit,
 ) {
     val colors = LocalAppColors.current
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         BigChoiceButton(label = "Doffing normal", subtitle = "Selesai sesuai target yard", onClick = onPickNormal)
+        BigChoiceButton(label = "Doffing matching", subtitle = "Potong sampel / cek kualitas beam baru", onClick = onPickMatching, accent = Color(0xFFF59E0B))
         BigChoiceButton(label = "Ada keterangan", subtitle = "HB, P.LP, P.SN, P.OH, P.EL, P.Sel, atau lainnya", onClick = onPickKeterangan)
         Spacer(Modifier.height(6.dp))
         OutlinedButton(

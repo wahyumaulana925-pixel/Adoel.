@@ -158,9 +158,12 @@ export function SettingsScreen({ onClose, onOpenHelp }: { onClose: () => void; o
 
         <WovenDivider />
 
-        <div className="field-label">Bantuan</div>
+        <div className="field-label">Panduan Penggunaan</div>
+        <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: -6 }}>
+          Pelajari cara input mesin dan latihan gestur kartu.
+        </div>
         <button className="btn" onClick={onOpenHelp}>
-          Cara Pakai Adoel
+          📖 Panduan Penggunaan
         </button>
 
         <WovenDivider />

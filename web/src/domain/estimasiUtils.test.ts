@@ -3,6 +3,7 @@ import {
   effectiveRemaining,
   nearestUpcoming,
   partitionSegeraMenunggu,
+  selisihKoreksiD408,
   sortedByNearest,
   urgencyLevel,
 } from "./estimasiUtils";
@@ -58,5 +59,15 @@ describe("effectiveRemaining", () => {
   it("beku di titik jeda saat dijeda (now diabaikan)", () => {
     expect(effectiveRemaining(est("a", 150, 120), 100)).toBe(30);
     expect(effectiveRemaining(est("a", 150, 120), 99999)).toBe(30);
+  });
+});
+
+describe("selisihKoreksiD408", () => {
+  it("menghitung selisih counter dalam menit", () => {
+    expect(selisihKoreksiD408(12 * 60 + 48, 12 * 60 + 30)).toBe(18);
+  });
+
+  it("memilih selisih terdekat saat melewati tengah malam", () => {
+    expect(selisihKoreksiD408(5, 23 * 60 + 50)).toBe(15);
   });
 });

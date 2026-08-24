@@ -115,21 +115,30 @@ internal fun LazyListScope.estimasiSection(
         itemsIndexed(menungguRows, key = { _, row -> rowKey(row) }) { index, row ->
             val entranceDelayMs = (index * Motion.LIST_STAGGER_STEP_MS).coerceAtMost(Motion.LIST_STAGGER_MAX_MS)
             when (row) {
-                is MenungguRow.CardRow -> RadarCard(
-                    est = row.est,
-                    mesin = db[row.est.mcNo],
-                    nowAbs = nowAbs,
-                    clashingMcNos = findClashingMachines(row.est.mcNo, radarList),
-                    onDoff = { onDoff(row.est.mcNo) },
-                    onDoffMatching = { onDoffMatching(row.est.mcNo) },
-                    onHapus = { onHapus(row.est.mcNo) },
-                    onJeda = { onJeda(row.est.mcNo) },
-                    onLanjutkan = { onLanjutkan(row.est.mcNo) },
-                    onQuickEdit = { onQuickEdit(row.est.mcNo) },
-                    onEditWaktu = { onEditWaktu(row.est.mcNo) },
-                    modifier = Modifier.animateItem(),
-                    entranceDelayMs = entranceDelayMs,
-                )
+                is MenungguRow.CardRow -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (row.est.estAbsMin > currentShiftStartAbsMin(nowAbs) + 480 && (index == 0 || (menungguRows[index - 1] as? MenungguRow.CardRow)?.est?.estAbsMin?.let { it <= currentShiftStartAbsMin(nowAbs) + 480 } == true)) {
+                        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            HorizontalDivider(modifier = Modifier.weight(1f), color = Orange400.copy(alpha = 0.45f))
+                            Text("⏭️ OPERAN SHIFT", style = AppType.Caption.copy(color = Orange400, fontWeight = FontWeight.Bold), modifier = Modifier.padding(horizontal = 8.dp))
+                            HorizontalDivider(modifier = Modifier.weight(1f), color = Orange400.copy(alpha = 0.45f))
+                        }
+                    }
+                    RadarCard(
+                        est = row.est,
+                        mesin = db[row.est.mcNo],
+                        nowAbs = nowAbs,
+                        clashingMcNos = findClashingMachines(row.est.mcNo, radarList),
+                        onDoff = { onDoff(row.est.mcNo) },
+                        onDoffMatching = { onDoffMatching(row.est.mcNo) },
+                        onHapus = { onHapus(row.est.mcNo) },
+                        onJeda = { onJeda(row.est.mcNo) },
+                        onLanjutkan = { onLanjutkan(row.est.mcNo) },
+                        onQuickEdit = { onQuickEdit(row.est.mcNo) },
+                        onEditWaktu = { onEditWaktu(row.est.mcNo) },
+                        modifier = Modifier.animateItem(),
+                        entranceDelayMs = entranceDelayMs,
+                    )
+                }
                 is MenungguRow.GapRow -> BreakGapCard(
                     gapMin = row.gapMin,
                     nextMcNo = row.nextMcNo,
@@ -223,7 +232,7 @@ private fun BreakGapCard(
                 modifier = Modifier.size(14.dp),
             )
             Text(
-                text = "JEDA",
+                text = "⏳ Selang Waktu ${if (isActive) remainingMin else gapMin} Menit",
                 style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = Emerald500),
             )
         }
@@ -234,14 +243,6 @@ private fun BreakGapCard(
             // yet — nowAbs..nextAbsMin there spans however many hours away the whole thing is, not
             // the break's own length, so that case shows the fixed gap duration instead (the
             // actual answer to "how long is this break", same as before it starts counting down).
-            text = formatDeltaMin(if (isActive) remainingMin else gapMin),
-            style = TextStyle(
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = (-1).sp,
-                color = colors.textPrimary,
-            ),
-        )
         Text(
             text = "Sampai ${absMinToTimeStr(nextAbsMin)} — sebelum Mc $nextMcNo",
             style = AppType.Caption.copy(color = colors.textFaint),

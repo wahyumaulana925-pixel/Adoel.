@@ -65,17 +65,14 @@ function AppInner() {
   // Penyebut progress = mesin yang TERLIBAT shift ini (punya estimasi aktif atau sudah di-doff),
   // bukan seluruh isi database (174 placeholder) — port dari totalMc di MainScreen.kt. Sebelum
   // ada estimasi/doff, ini 0 sehingga bar progress header disembunyikan (bukan menampilkan 0/174).
+  const shiftEndAbs = currentShiftStartAbsMin(nowAbs) + 8 * 60;
   const totalMc = useMemo(
-    () => new Set([...Object.keys(state.estimasi), ...state.aktual.map((a) => a.mcNo)]).size,
-    [state.estimasi, state.aktual],
+    () => new Set([...Object.values(state.estimasi).filter((est) => est.estAbsMin <= shiftEndAbs).map((est) => est.mcNo), ...state.aktual.map((a) => a.mcNo)]).size,
+    [state.estimasi, state.aktual, shiftEndAbs],
   );
   const doffCount = state.aktual.length;
 
   function openGuidedEstimasi(mcNo: string) {
-    if (!state.db[mcNo]) {
-      showToast(`⚠ Mc ${mcNo} tidak ditemukan`);
-      return;
-    }
     setGuidedEstimasiMcNo(mcNo);
   }
 
@@ -87,9 +84,9 @@ function AppInner() {
     setGuidedDoffingMcNo(mcNo);
   }
 
-  function quickUpdateMesin(mcNo: string, corak: string, targetYard: number | null) {
+  function quickUpdateMesin(mcNo: string, corak: string, targetYard: number | null, tipe = defaultMesinData().tipe, koreksi: number | null = null) {
     const mesin = state.db[mcNo] ?? defaultMesinData();
-    setMesin(mcNo, { ...mesin, corak, targetYard });
+    setMesin(mcNo, { ...mesin, tipe, corak, targetYard, koreksi });
   }
 
   // Tap di mana pun di luar field yang sedang aktif (kartu, tombol, area kosong)
@@ -176,7 +173,7 @@ function AppInner() {
           mesin={state.db[guidedEstimasiMcNo] ?? null}
           onDismiss={() => setGuidedEstimasiMcNo(null)}
           onSubmit={(value) => handleEstimasiSubmit(value, () => setGuidedEstimasiMcNo(null))}
-          onQuickUpdate={(corak, targetYard) => quickUpdateMesin(guidedEstimasiMcNo, corak, targetYard)}
+          onQuickUpdate={(corak, targetYard, tipe, koreksi) => quickUpdateMesin(guidedEstimasiMcNo, corak, targetYard, tipe, koreksi)}
         />
       )}
 

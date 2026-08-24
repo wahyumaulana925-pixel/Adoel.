@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { estimasiFieldHint, previewEstimasi } from "../domain/estimasiUtils";
+import { estimasiFieldHint, previewEstimasi, selisihKoreksiD408 } from "../domain/estimasiUtils";
 import type { MesinData, MesinTipe } from "../domain/types";
+import { parseJam } from "../domain/parse";
 
 /** Terpandu (guided) ESTIMASI — satu field yang label/keyboard-nya menyesuaikan tipe mesin,
  * dengan pratinjau "≈ jam" hidup dari rumus murni yang sama dipakai commands.ts. Port 1:1 dari
@@ -17,7 +18,7 @@ export function GuidedEstimasiSheet({
   mesin: MesinData | null;
   onDismiss: () => void;
   onSubmit: (value: string) => void;
-  onQuickUpdate: (corak: string, targetYard: number | null) => void;
+  onQuickUpdate: (corak: string, targetYard: number | null, tipe: MesinTipe, koreksi: number | null) => void;
 }) {
   const tipe: MesinTipe = mesin?.tipe ?? "TAPPET";
   const needsSetup = !mesin || mesin.corak.trim() === "" || mesin.corak.trim() === "-";
@@ -25,6 +26,11 @@ export function GuidedEstimasiSheet({
   const [corakInput, setCorakInput] = useState("");
   const [targetYardInput, setTargetYardInput] = useState("");
   const [valueInput, setValueInput] = useState("");
+  const [setupTipe, setSetupTipe] = useState<MesinTipe>(tipe);
+  const [koreksiInput, setKoreksiInput] = useState("");
+  const [correctionOpen, setCorrectionOpen] = useState(false);
+  const [panelTime, setPanelTime] = useState("");
+  const [actualTime, setActualTime] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -40,7 +46,8 @@ export function GuidedEstimasiSheet({
   function saveSetup() {
     if (corakInput.trim() === "") return;
     const yard = targetYardInput.trim() === "" ? null : parseFloat(targetYardInput.trim().replace(",", "."));
-    onQuickUpdate(corakInput.trim(), yard != null && !Number.isNaN(yard) ? yard : null);
+    const koreksi = koreksiInput.trim() === "" ? null : parseFloat(koreksiInput.replace(",", "."));
+    onQuickUpdate(corakInput.trim(), yard != null && !Number.isNaN(yard) ? yard : null, setupTipe, koreksi != null && !Number.isNaN(koreksi) ? koreksi : null);
     setNeedQuickCorakSetup(false);
   }
 
@@ -57,6 +64,14 @@ export function GuidedEstimasiSheet({
         {needQuickCorakSetup ? (
           <>
             <div className="field-label">Masukkan Corak Baru</div>
+            <div className="field-label">Tipe Mesin</div>
+            <div className="chip-row-wrap">
+              {(["TAPPET", "CAM", "D405", "D408"] as MesinTipe[]).map((candidate) => (
+                <button key={candidate} className={`chip-btn${setupTipe === candidate ? " active" : ""}`} onClick={() => setSetupTipe(candidate)}>
+                  {candidate}
+                </button>
+              ))}
+            </div>
             <input
               ref={inputRef}
               className="field-input"
@@ -74,6 +89,46 @@ export function GuidedEstimasiSheet({
               value={targetYardInput}
               onChange={(e) => setTargetYardInput(e.target.value)}
             />
+            {setupTipe === "D408" && (
+              <>
+                <div style={{ height: 12 }} />
+                <div className="field-label">Koreksi Menit</div>
+                <input className="field-input" placeholder="cth: +10 atau -5" inputMode="numeric" value={koreksiInput} onChange={(e) => setKoreksiInput(e.target.value)} />
+                <div className="actions" style={{ marginTop: 8 }}>
+                  <button
+                    className="btn"
+                    onClick={() => setCorrectionOpen(true)}
+                  >
+                    🧮 Hitung Koreksi
+                  </button>
+                </div>
+                {correctionOpen && (
+                  <div className="dialog-inset">
+                    <div className="field-label">Waktu di Panel Mesin (HH:mm)</div>
+                    <input className="field-input" placeholder="08:48" inputMode="numeric" value={panelTime} onChange={(e) => setPanelTime(e.target.value)} />
+                    <div style={{ height: 8 }} />
+                    <div className="field-label">Waktu Nyata Lapangan (HH:mm)</div>
+                    <input className="field-input" placeholder="08:58" inputMode="numeric" value={actualTime} onChange={(e) => setActualTime(e.target.value)} />
+                    <div className="actions" style={{ marginTop: 10 }}>
+                      <button className="cancel" onClick={() => setCorrectionOpen(false)}>Batal</button>
+                      <button
+                        className="confirm"
+                        disabled={parseJam(panelTime) === null || parseJam(actualTime) === null}
+                        onClick={() => {
+                          const panel = parseJam(panelTime);
+                          const actual = parseJam(actualTime);
+                          if (panel !== null && actual !== null) {
+                            const value = selisihKoreksiD408(actual, panel);
+                            setKoreksiInput(value >= 0 ? `+${value}` : String(value));
+                            setCorrectionOpen(false);
+                          }
+                        }}
+                      >Terapkan</button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
             <button
               className="btn primary full"
               style={{ marginTop: 20 }}

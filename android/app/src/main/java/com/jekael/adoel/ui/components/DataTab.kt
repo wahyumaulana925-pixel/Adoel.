@@ -140,7 +140,7 @@ internal fun DataTab(
                 shape = RoundedCornerShape(Dimens.RadiusControl),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
                 border = BorderStroke(1.dp, colors.border),
-            ) { Text("Bantuan") }
+            ) { Text("Panduan Penggunaan") }
             OutlinedButton(
                 onClick = { aboutOpen = true },
                 modifier = Modifier.weight(1f).height(52.dp),
