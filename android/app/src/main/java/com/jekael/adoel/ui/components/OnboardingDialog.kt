@@ -58,17 +58,17 @@ import com.jekael.adoel.ui.theme.Zinc500
                 verticalArrangement = Arrangement.spacedBy(Dimens.Space12),
             ) {
                 if (tab == 0) {
-                    GuideRow(Icons.Outlined.Schedule, Cyan600, "ESTIMASI", "Pilih tipe mesin, isi corak dan target yard. D405 meminta speed, sedangkan D408 meminta koreksi dan menyediakan kalkulator.")
+                    GuideRow(Icons.Outlined.Schedule, Cyan600, "ESTIMASI", "Ketik nomor mesin di konsol bawah, lalu tap ikon jam. Isi corak dan target yard; D405 memakai speed, sedangkan D408 memakai koreksi dan kalkulator.")
                     WovenDivider()
-                    GuideRow(Icons.Outlined.ContentCut, Emerald500, "DOFFING", "Geser kartu ke kanan untuk potong normal atau ke kiri untuk potong matching.")
+                    GuideRow(Icons.Outlined.ContentCut, Emerald500, "DOFFING", "Geser kartu ke kanan untuk Potong Normal atau ke kiri untuk Potong Matching. Bila perlu keterangan, gunakan opsi doffing dari konsol.")
                     WovenDivider()
-                    GuideRow(Icons.Outlined.Pause, Amber500, "JEDA", "Kartu yang dijeda menampilkan nomor Mc, corak, yard, dan sisa waktu yang dibekukan saat Jeda ditekan.")
+                    GuideRow(Icons.Outlined.Pause, Amber500, "JEDA & HAPUS", "Tahan kartu untuk membuka panel Jeda/Hapus, lalu pilih tindakan yang sesuai agar status mesin tetap akurat.")
                     WovenDivider()
-                    GuideRow(Icons.Outlined.Add, Zinc500, "KALKULATOR", "Gunakan tombol - dan + di samping Koreksi untuk mengurangi atau menambah satu menit.")
+                    GuideRow(Icons.Outlined.Add, Zinc500, "KALKULATOR", "Gunakan tombol - dan + di samping Koreksi untuk mengurangi atau menambah satu menit pada mesin D408.")
                     WovenDivider()
-                    GuideRow(Icons.Outlined.Undo, Amber700, "UNDO", "Koreksi kesalahan secara instan melalui tombol Undo di konsol.")
+                    GuideRow(Icons.Outlined.Undo, Amber700, "UNDO/REDO", "Gunakan tombol kiri di konsol untuk membatalkan atau mengulang perubahan terakhir jika ada kesalahan input.")
                     WovenDivider()
-                    GuideRow(Icons.Outlined.Forward, Amber400, "OPERAN", "Estimasi setelah batas 8 jam dipisahkan sebagai operan shift berikutnya.")
+                    GuideRow(Icons.Outlined.Forward, Amber400, "OPERAN", "Estimasi yang melewati batas 8 jam akan otomatis dipisahkan sebagai operan shift berikutnya.")
                 } else {
                     GestureLegend()
                 }
@@ -114,9 +114,11 @@ private fun GestureLegend() {
         }
     }
     Spacer(Modifier.height(Dimens.Space8))
+    GestureLegendRow("Geser kanan", "Potong Normal", Emerald500)
+    GestureLegendRow("Geser kiri", "Potong Matching", Amber400)
     GestureLegendRow("Tap kiri", "Edit mesin", Amber400)
     GestureLegendRow("Tap kanan", "Edit waktu", Cyan600)
-    GestureLegendRow("Swipe", "Doffing", Emerald500)
+    GestureLegendRow("Tahan lama", "Jeda / Hapus", Zinc500)
 }
 
 @Composable

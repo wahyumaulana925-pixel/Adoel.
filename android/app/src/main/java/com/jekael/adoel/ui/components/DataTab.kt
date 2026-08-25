@@ -28,6 +28,8 @@ internal fun DataTab(
     onSetThemeMode: (ThemeMode) -> Unit,
     onExportJson: () -> String,
     onImport: (String) -> Unit,
+    onOpenHelp: () -> Unit,
+    onOpenAbout: () -> Unit,
     showToast: (String) -> Unit,
     showConfirm: (String, () -> Unit) -> Unit,
 ) {
@@ -131,29 +133,21 @@ internal fun DataTab(
         WovenDivider()
         Spacer(Modifier.height(Dimens.Space4))
 
-        var aboutOpen by remember { mutableStateOf(false) }
-        var helpOpen by remember { mutableStateOf(false) }
         Row(horizontalArrangement = Arrangement.spacedBy(Dimens.Space8)) {
             OutlinedButton(
-                onClick = { helpOpen = true },
+                onClick = onOpenHelp,
                 modifier = Modifier.weight(1f).height(52.dp),
                 shape = RoundedCornerShape(Dimens.RadiusControl),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
                 border = BorderStroke(1.dp, colors.border),
             ) { Text("Panduan Penggunaan") }
             OutlinedButton(
-                onClick = { aboutOpen = true },
+                onClick = onOpenAbout,
                 modifier = Modifier.weight(1f).height(52.dp),
                 shape = RoundedCornerShape(Dimens.RadiusControl),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
                 border = BorderStroke(1.dp, colors.border),
             ) { Text("Tentang") }
-        }
-        if (aboutOpen) {
-            AboutDialog(onClose = { aboutOpen = false })
-        }
-        if (helpOpen) {
-            OnboardingDialog(onClose = { helpOpen = false })
         }
 
         Spacer(Modifier.height(Dimens.Space8))

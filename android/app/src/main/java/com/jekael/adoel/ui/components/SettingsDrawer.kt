@@ -44,6 +44,8 @@ internal fun SettingsDrawer(
     showConfirm: (String, () -> Unit) -> Unit,
 ) {
     var tab by remember { mutableStateOf(SettingsTab.MESIN) }
+    var helpOpen by remember { mutableStateOf(false) }
+    var aboutOpen by remember { mutableStateOf(false) }
     val colors = LocalAppColors.current
     val scope = rememberCoroutineScope()
 
@@ -109,8 +111,15 @@ internal fun SettingsDrawer(
             ) { t ->
                 when (t) {
                     SettingsTab.MESIN -> MesinTab(state, headerHeight, onSetMesin, onResetMesin, showToast, showConfirm)
-                    SettingsTab.DATA -> DataTab(state, headerHeight, onResetDb, onSetThemeMode, onExportJson, onImport, showToast, showConfirm)
+                    SettingsTab.DATA -> DataTab(state, headerHeight, onResetDb, onSetThemeMode, onExportJson, onImport, { helpOpen = true }, { aboutOpen = true }, showToast, showConfirm)
                 }
+            }
+
+            if (aboutOpen) {
+                AboutDialog(onClose = { aboutOpen = false })
+            }
+            if (helpOpen) {
+                OnboardingDialog(onClose = { helpOpen = false })
             }
 
             // Header + tab switcher — floating overlay, matching the header/console bar's look
