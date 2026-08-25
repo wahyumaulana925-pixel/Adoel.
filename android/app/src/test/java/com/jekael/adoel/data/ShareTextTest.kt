@@ -47,7 +47,7 @@ class ShareTextTest {
             "*Selesai (2 doff)*\n" +
             "1. Mc29 · 34758 · 303y · 10.00\n" +
             "2. Mc61 · 60357 · 120y · 11.00(HB)\n\n" +
-            "*Sedang Berjalan (1)*\n" +
+            "*Operan Shift Berikutnya (1)*\n" +
             "• Mc76 · 21242 · 165y · est. 16.20\n\n" +
             "Total: 2 selesai + 1 berjalan = 3 mc"
         assertEquals(expected, text)
