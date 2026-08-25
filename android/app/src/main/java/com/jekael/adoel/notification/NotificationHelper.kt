@@ -92,6 +92,9 @@ object NotificationHelper {
     }
 
     fun scheduleNotif(context: Context, mcNo: String, estAbsMin: Long) {
+        // Replace any old reminder/ready alarms before applying the new future-time policy.
+        // Otherwise editing an estimate into the past leaves the old PendingIntent armed.
+        cancelNotif(context, mcNo)
         val now = System.currentTimeMillis() / 60000L
         val reminderAt = estAbsMin - REMINDER_LEAD_MIN
         if (reminderAt > now) {
@@ -118,10 +121,14 @@ object NotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         val am = context.getSystemService(AlarmManager::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !am.canScheduleExactAlarms()) {
-            am.set(AlarmManager.RTC_WAKEUP, alarmTime, pi)
-        } else {
-            am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, alarmTime, pi)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !am.canScheduleExactAlarms()) {
+                am.set(AlarmManager.RTC_WAKEUP, alarmTime, pi)
+            } else {
+                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, alarmTime, pi)
+            }
+        } catch (e: SecurityException) {
+            runCatching { am.set(AlarmManager.RTC_WAKEUP, alarmTime, pi) }
         }
     }
 
@@ -149,7 +156,9 @@ object NotificationHelper {
      * device reboot) and MainScreen's backup-import flow, which both need to reschedule a whole
      * batch of estimasi at once from a freshly-loaded/restored [DoffState]. */
     fun rescheduleAll(context: Context, estimasi: Collection<Estimasi>, now: Long = nowAbsMin()) {
-        estimasi.filter { it.estAbsMin > now }.forEach { scheduleNotif(context, it.mcNo, it.estAbsMin) }
+        estimasi
+            .filter { it.pausedAtAbsMin == null && it.estAbsMin > now }
+            .forEach { scheduleNotif(context, it.mcNo, it.estAbsMin) }
     }
 
     fun showNotification(context: Context, mcNo: String, isReminder: Boolean) {

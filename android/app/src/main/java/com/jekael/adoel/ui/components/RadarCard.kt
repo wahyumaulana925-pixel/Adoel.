@@ -32,6 +32,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -58,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jekael.adoel.data.*
 import com.jekael.adoel.ui.theme.*
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -230,28 +232,24 @@ fun RadarCard(
     // anywhere on the card's actual content silently skipped the "kartu tenggelam" feedback and
     // only played it in the edge strip outside both zones.
     val handlePressCharge: suspend PressGestureScope.(Offset) -> Unit = {
-        val chargeJob = scope.launch { pressCharge.animateTo(1f, tween(450, easing = LinearEasing)) }
-        val vibrationJob = if (clr.pulse) {
-            scope.launch {
-                while (true) {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    delay(200)
+        coroutineScope {
+            val chargeJob = launch { pressCharge.animateTo(1f, tween(450, easing = LinearEasing)) }
+            val vibrationJob = if (clr.pulse) {
+                launch {
+                    while (true) {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        delay(200)
+                    }
                 }
+            } else null
+            // try/finally ensures interrupted gestures cancel both animation and haptic work.
+            try {
+                tryAwaitRelease()
+            } finally {
+                chargeJob.cancel()
+                vibrationJob?.cancel()
+                scope.launch { pressCharge.animateTo(0f, tween(150)) }
             }
-        } else null
-        // try/finally, not plain sequential cleanup after tryAwaitRelease() — a successful
-        // long-press flips the card (face changes), which restarts this pointerInput block
-        // (face is one of its keys) and cancels whatever coroutine is still suspended in
-        // tryAwaitRelease() at that moment. Without finally, that cancellation skipped the
-        // cleanup lines entirely, leaving vibrationJob's while(true) haptic loop running
-        // forever — it was launched on the composable's own long-lived scope, not the
-        // gesture's, so nothing else would ever stop it short of the card leaving composition.
-        try {
-            tryAwaitRelease()
-        } finally {
-            chargeJob.cancel()
-            vibrationJob?.cancel()
-            scope.launch { pressCharge.animateTo(0f, tween(150)) }
         }
     }
     val handleLongPressFlip: (Offset) -> Unit = {
@@ -608,7 +606,12 @@ fun RadarCard(
                         onHapus = onHapus,
                         onDismiss = { showActionsFace = false },
                     )
-                    CardFace.PAUSED -> CardPausedFace(mcNo = est.mcNo, onLanjutkan = onLanjutkan)
+                    CardFace.PAUSED -> CardPausedFace(
+                        mcNo = est.mcNo,
+                        mesin = mesin,
+                        frozenRemaining = remaining,
+                        onLanjutkan = onLanjutkan,
+                    )
                     CardFace.FRONT -> Unit // unreachable — flipRotation only passes 90° once face != FRONT
                 }
             }
@@ -704,17 +707,33 @@ private fun CardActionsFace(
  * shifts the estimate forward by however long it sat paused (DoffViewModel.resumeEstimasi) and
  * flips the card back to its normal front. */
 @Composable
-private fun CardPausedFace(mcNo: String, onLanjutkan: () -> Unit) {
+private fun CardPausedFace(
+    mcNo: String,
+    mesin: MesinData?,
+    frozenRemaining: Long,
+    onLanjutkan: () -> Unit,
+) {
     val colors = LocalAppColors.current
     Column(
-        modifier = Modifier.fillMaxSize().padding(horizontal = Dimens.Space16),
+        modifier = Modifier
+            .fillMaxSize()
+            .drawBehind {
+                val stripe = colors.textFaint.copy(alpha = 0.08f)
+                for (x in -size.height.toInt()..size.width.toInt() step 18) {
+                    drawLine(stripe, Offset(x.toFloat(), 0f), Offset(x + size.height, size.height), strokeWidth = 2f)
+                }
+            }
+            .padding(horizontal = Dimens.Space16),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(Dimens.Space12),
     ) {
         Text(
             text = "Mc $mcNo sedang dijeda",
-            style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary),
+            style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = colors.textMuted),
         )
+        val yard = mesin?.targetYard?.let { " · ${formatYard(it)}y" } ?: ""
+        Text("${mesin?.corak ?: "—"}$yard", style = AppType.Caption.copy(color = colors.textFaint))
+        Text("Sisa ${formatDeltaMin(frozenRemaining)}", style = AppType.LabelBold.copy(color = colors.textMuted))
         CardFaceButton(icon = Icons.Outlined.PlayArrow, label = "Lanjutkan", accent = Emerald500, onClick = onLanjutkan)
     }
 }

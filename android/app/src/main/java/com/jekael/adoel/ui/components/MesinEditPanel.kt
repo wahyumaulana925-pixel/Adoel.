@@ -10,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -40,7 +41,7 @@ internal fun MesinEditPanel(
     // "Hitung Koreksi" helper (D408 only, see below) — waktuAktualText defaults to the current
     // wall-clock time so the operator usually only has to type the counter reading, but stays
     // editable in case they're reading it off a different clock than the phone's.
-    var waktuAktualText by remember(mcNo) { mutableStateOf(absMinToTimeStr(nowAbsMin())) }
+    var waktuAktualText by remember(mcNo) { mutableStateOf(nowTimeStr()) }
     var bacaanCounterText by remember(mcNo) { mutableStateOf("") }
 
     FloatingEditDialog(onDismissRequest = onClose) {
@@ -112,20 +113,32 @@ internal fun MesinEditPanel(
         if (f.tipe == MesinTipe.D408) {
             Spacer(Modifier.height(Dimens.Space16))
             FieldLabel("Koreksi (menit)")
-            OutlinedTextField(
-                value = koreksiText,
-                onValueChange = {
-                    koreksiText = it
-                    onFormChange(f.copy(koreksi = it.replace(',', '.').toDoubleOrNull()))
-                },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("cth: 18", color = colors.textFaint) },
-                colors = outlinedFieldColors(),
-                shape = RoundedCornerShape(Dimens.RadiusControl),
-                textStyle = AppType.FieldText.copy(color = colors.textPrimary),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                singleLine = true,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                OutlinedButton(onClick = {
+                    val value = (koreksiText.replace(',', '.').toDoubleOrNull() ?: 0.0) - 1.0
+                    koreksiText = formatYard(value)
+                    onFormChange(f.copy(koreksi = value))
+                }, modifier = Modifier.size(48.dp), contentPadding = PaddingValues(0.dp)) { Text("-") }
+                OutlinedTextField(
+                    value = koreksiText,
+                    onValueChange = {
+                        koreksiText = it
+                        onFormChange(f.copy(koreksi = it.replace(',', '.').toDoubleOrNull()))
+                    },
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text("cth: 18", color = colors.textFaint) },
+                    colors = outlinedFieldColors(),
+                    shape = RoundedCornerShape(Dimens.RadiusControl),
+                    textStyle = AppType.FieldText.copy(color = colors.textPrimary),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                )
+                OutlinedButton(onClick = {
+                    val value = (koreksiText.replace(',', '.').toDoubleOrNull() ?: 0.0) + 1.0
+                    koreksiText = formatYard(value)
+                    onFormChange(f.copy(koreksi = value))
+                }, modifier = Modifier.size(48.dp), contentPadding = PaddingValues(0.dp)) { Text("+") }
+            }
 
             Spacer(Modifier.height(Dimens.Space12))
             FieldLabel("Hitung Koreksi dari Selisih")

@@ -72,6 +72,7 @@ import com.jekael.adoel.data.formatShiftDate
 import com.jekael.adoel.data.formatShiftShortDate
 import com.jekael.adoel.data.formatShiftTime
 import com.jekael.adoel.data.formatYard
+import com.jekael.adoel.data.getRepresentativeEpochMin
 import com.jekael.adoel.data.shareIntent
 import com.jekael.adoel.data.shiftNumberForEpochMin
 import com.jekael.adoel.data.sortAktualChronological
@@ -481,7 +482,8 @@ private fun ShiftRow(
 ) {
     val colors = LocalAppColors.current
     val context = LocalContext.current
-    val shiftNo = remember(shift.startedAtEpochMin) { shiftNumberForEpochMin(shift.startedAtEpochMin) }
+    val representativeTime = remember(shift) { getRepresentativeEpochMin(shift) }
+    val shiftNo = remember(representativeTime) { shiftNumberForEpochMin(representativeTime) }
     val dateStr = remember(shift.startedAtEpochMin) { formatShiftDate(shift.startedAtEpochMin) }
     val timeRange = remember(shift.startedAtEpochMin, shift.endedAtEpochMin) {
         "${formatShiftTime(shift.startedAtEpochMin)}–${formatShiftTime(shift.endedAtEpochMin)}"
@@ -561,7 +563,7 @@ private fun ShiftRow(
 
             if (expanded) {
                 Spacer(Modifier.height(10.dp))
-                chronological.forEach { entry ->
+                chronological.forEachIndexed { index, entry ->
                     val corak = entry.corakOverride ?: db[entry.mcNo]?.corak ?: "—"
                     // Yard sudah terlihat di layar Doffing sebelum "Selesai Shift" mengarsipkannya ke
                     // sini — datanya tetap tersimpan di AktualEntry, jadi riwayat semestinya tetap
@@ -602,6 +604,10 @@ private fun ShiftRow(
                                     modifier = Modifier.size(12.dp),
                                 )
                             }
+                            Text(
+                                text = "${index + 1}.",
+                                style = AppType.Caption.copy(color = colors.textSecondary, fontWeight = FontWeight.Bold),
+                            )
                             Text("Mc ${entry.mcNo} · $line", style = AppType.Caption.copy(color = colors.textSecondary))
                         }
                         Text(entry.jam, style = AppType.Caption.copy(color = colors.textFaint))

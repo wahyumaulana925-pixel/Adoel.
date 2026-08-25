@@ -39,20 +39,29 @@ fun buildShareHistoryText(
     // Doff selesai saja tidak cukup buat rekan yang baca pesan ini di lantai produksi — mereka
     // juga perlu tahu mesin mana yang masih ditimer sekarang dan kapan harus di-doff, jadi bagian
     // ini ikut disertakan alih-alih cuma riwayat yang sudah selesai.
-    val berjalan = sortedByNearest(state.estimasi).map { est ->
+    val currentShiftStart = currentShiftStartAbsMin(nowMillis / 60000L, zone)
+    val currentShiftEnd = currentShiftStart + 480L
+    val (estimasiBerjalan, estimasiOperan) = state.estimasi.values
+        .filter { it.estAbsMin >= currentShiftStart }
+        .partition { it.estAbsMin < currentShiftEnd }
+    fun formatEstimasi(est: Estimasi): String {
         val mesin = state.db[est.mcNo]
         val corak = est.corakOverride ?: mesin?.corak ?: "—"
         val yard = est.yardOverride ?: mesin?.targetYard
         val suffix = if (yard != null) " · ${formatYard(yard)}y" else ""
         "• Mc${est.mcNo} · $corak$suffix · est. ${absMinToTimeStr(est.estAbsMin, zone)}"
     }
+    val berjalan = sortedByNearest(estimasiBerjalan.associateBy { it.mcNo }).map(::formatEstimasi)
+    val operan = estimasiOperan.sortedBy { it.estAbsMin }.map(::formatEstimasi)
     val selesaiCount = state.aktual.size
     val berjalanCount = berjalan.size
+    val operanCount = operan.size
     // Spelling the sum out explicitly (bukan cuma "Total: N doff") — tanpa ini, rekan yang baca
     // sering salah jumlah sendiri antara yang sudah selesai vs. yang masih berjalan (lihat contoh
     // nyata: seseorang nanya "jadi total 23 mc?" padahal "Total" di pesan cuma menghitung selesai).
-    val totalLine = if (berjalanCount > 0) {
-        "Total: $selesaiCount selesai + $berjalanCount berjalan = ${selesaiCount + berjalanCount} mc"
+    val totalEstimasiCount = berjalanCount + operanCount
+    val totalLine = if (totalEstimasiCount > 0) {
+        "Total: $selesaiCount selesai + $totalEstimasiCount berjalan = ${selesaiCount + totalEstimasiCount} mc"
     } else {
         "Total: $selesaiCount doff"
     }
@@ -61,7 +70,12 @@ fun buildShareHistoryText(
     } else {
         ""
     }
-    return "Bravo!!!\n$dateStr\n\n*Selesai ($selesaiCount doff)*\n${lines.joinToString("\n")}$berjalanBlock\n\n$totalLine"
+    val operanBlock = if (operan.isNotEmpty()) {
+        "\n\n*Operan Shift Berikutnya ($operanCount)*\n${operan.joinToString("\n")}"
+    } else {
+        ""
+    }
+    return "Bravo!!!\n$dateStr\n\n*Selesai ($selesaiCount doff)*\n${lines.joinToString("\n")}$berjalanBlock$operanBlock\n\n$totalLine"
 }
 
 /** Re-share a single archived shift — mirrors [buildShareHistoryText]'s format/tone exactly (same

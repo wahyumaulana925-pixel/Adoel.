@@ -185,7 +185,7 @@ fun MainScreen(
     // Derived (not a plain remember(nowAbs, ...)) — partitioning only needs to actually re-propagate
     // to whatever reads segeraList/menungguList when a card crosses the Segera/Menunggu boundary,
     // not on every 5-second nowAbs tick that leaves the partition unchanged.
-    val (segeraList, menungguList) = remember(filteredRadarList, nowAbs) {
+    val (segeraList, menungguList) = remember(filteredRadarList) {
         derivedStateOf { partitionSegeraMenunggu(filteredRadarList, nowAbs) }
     }.value
     // Flags doff entries left over from a shift the operator forgot to close via "Selesai Shift"
@@ -236,8 +236,7 @@ fun MainScreen(
             // (it's just measured from leadingGapAnchor instead of from that machine's estimate).
             // Only valid when nothing is overdue (Segera empty) — an operator with something
             // already due doesn't have free time to call out yet.
-            val activeMenunggu = menungguList.filter { it.pausedAtAbsMin == null }
-            val first = activeMenunggu.firstOrNull()
+            val first = menungguList.firstOrNull()
             if (noSegera && first != null) {
                 val gap = first.estAbsMin - leadingGapAnchor
                 if (gap >= BREAK_GAP_THRESHOLD_MIN) {
@@ -246,9 +245,8 @@ fun MainScreen(
             }
             menungguList.forEachIndexed { index, est ->
                 add(MenungguRow.CardRow(est))
-                val activeIndex = activeMenunggu.indexOfFirst { it.mcNo == est.mcNo }
-                val next = if (activeIndex >= 0) activeMenunggu.getOrNull(activeIndex + 1) else null
-                if (next != null && est.pausedAtAbsMin == null) {
+                val next = menungguList.getOrNull(index + 1)
+                if (next != null) {
                     val gap = next.estAbsMin - est.estAbsMin
                     if (gap >= BREAK_GAP_THRESHOLD_MIN) {
                         add(MenungguRow.GapRow(afterMcNo = est.mcNo, nextMcNo = next.mcNo, gapMin = gap, nextAbsMin = next.estAbsMin))
@@ -259,8 +257,13 @@ fun MainScreen(
     }
 
     val doffCount = state.aktual.size
-    val totalMc = remember(state.estimasi, state.aktual) {
-        (state.estimasi.keys + state.aktual.map { it.mcNo }).toSet().size
+    val totalMc = remember(state.estimasi, state.aktual, nowAbs) {
+        val shiftStart = currentShiftStartAbsMin(nowAbs)
+        val shiftEnd = shiftStart + 480L
+        val activeEstimasi = state.estimasi.values
+            .filter { it.estAbsMin in shiftStart until shiftEnd }
+            .map { it.mcNo }
+        (activeEstimasi + state.aktual.map { it.mcNo }).toSet().size
     }
     val aktualReversed = remember(state.aktual) { sortAktualChronological(state.aktual, nowAbsMin()) }
 
@@ -580,10 +583,11 @@ fun MainScreen(
                     activeOverlay = ActiveOverlay.None
                 }
             },
-            onQuickUpdate = { corak, targetYard, tipe, koreksi ->
+            onQuickUpdate = { corak, targetYard, tipe, koreksi, speed ->
                 val mesin = state.db[guidedEstimasiMcNo] ?: MesinData()
-                doffVm.setMesin(guidedEstimasiMcNo, mesin.copy(corak = corak, targetYard = targetYard, tipe = tipe, koreksi = koreksi))
+                doffVm.setMesin(guidedEstimasiMcNo, mesin.copy(corak = corak, targetYard = targetYard, tipe = tipe, koreksi = koreksi, speed = speed))
             },
+            showToast = { uiVm.showToast(it) },
         )
     }
 
@@ -599,10 +603,11 @@ fun MainScreen(
                     activeOverlay = ActiveOverlay.None
                 }
             },
-            onQuickUpdate = { corak, targetYard ->
+            onQuickUpdate = { corak, targetYard, tipe, koreksi, speed ->
                 val mesin = state.db[guidedDoffingMcNo] ?: MesinData()
-                doffVm.setMesin(guidedDoffingMcNo, mesin.copy(corak = corak, targetYard = targetYard))
+                doffVm.setMesin(guidedDoffingMcNo, mesin.copy(corak = corak, targetYard = targetYard, tipe = tipe, koreksi = koreksi, speed = speed))
             },
+            showToast = { uiVm.showToast(it) },
         )
     }
 

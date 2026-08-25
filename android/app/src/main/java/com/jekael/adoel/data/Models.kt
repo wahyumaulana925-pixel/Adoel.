@@ -64,6 +64,15 @@ data class DoffState(
     val onboardingSeen: Boolean = true,
 )
 
+fun getRepresentativeEpochMin(shift: ShiftRecord): Long {
+    val timestamps = shift.aktual.mapNotNull { it.tsEpochMin }
+    return if (timestamps.isNotEmpty()) {
+        timestamps.average().toLong()
+    } else {
+        (shift.startedAtEpochMin + shift.endedAtEpochMin) / 2
+    }
+}
+
 sealed class ProsesResult {
     data class Ok(
         val msg: String,

@@ -48,12 +48,14 @@ fun GuidedDoffingSheet(
     estimasi: Estimasi?,
     onDismiss: () -> Unit,
     onSubmitDoffing: (value: String) -> Unit,
-    onQuickUpdate: (corak: String, targetYard: Double?) -> Unit,
+    onQuickUpdate: (corak: String, targetYard: Double?, tipe: MesinTipe, koreksi: Double?, speed: Double?) -> Unit,
+    showToast: (String) -> Unit = {},
 ) {
     val colors = LocalAppColors.current
+    var activeMesin by remember(mcNo) { mutableStateOf(mesin) }
     val needsSetup = mesin == null || mesin.corak.isBlank() || mesin.corak.trim() == "-"
     var step by remember(mcNo) { mutableStateOf(if (needsSetup) GuidedDoffingStep.SETUP else GuidedDoffingStep.CHOOSE) }
-    val standardYard = estimasi?.yardOverride ?: mesin?.targetYard
+    val standardYard = estimasi?.yardOverride ?: activeMesin?.targetYard
 
     FloatingEditDialog(onDismissRequest = onDismiss) {
         Text(
@@ -64,11 +66,14 @@ fun GuidedDoffingSheet(
 
         when (step) {
             GuidedDoffingStep.SETUP -> SetupStep(
-                onSave = { corak, targetYard ->
-                    onQuickUpdate(corak, targetYard)
+                initial = activeMesin ?: MesinData(),
+                onSave = { corak, targetYard, tipe, koreksi, speed ->
+                    activeMesin = MesinData(tipe, corak, targetYard, speed, koreksi)
+                    onQuickUpdate(corak, targetYard, tipe, koreksi, speed)
                     step = GuidedDoffingStep.CHOOSE
                 },
                 onCancel = onDismiss,
+                showToast = showToast,
             )
             GuidedDoffingStep.CHOOSE -> ChooseStep(
                 onPickNormal = { step = GuidedDoffingStep.NORMAL },
@@ -91,60 +96,13 @@ fun GuidedDoffingSheet(
 }
 
 @Composable
-private fun SetupStep(onSave: (corak: String, targetYard: Double?) -> Unit, onCancel: () -> Unit) {
-    val colors = LocalAppColors.current
-    var corakInput by remember { mutableStateOf("") }
-    var targetYardInput by remember { mutableStateOf("") }
-
-    FieldLabel("Masukkan Corak Baru")
-    OutlinedTextField(
-        value = corakInput,
-        onValueChange = { corakInput = it.uppercase() },
-        modifier = Modifier.fillMaxWidth(),
-        placeholder = { Text("cth: 34758", color = colors.textFaint) },
-        colors = outlinedFieldColors(),
-        shape = RoundedCornerShape(Dimens.RadiusControl),
-        textStyle = AppType.FieldText.copy(color = colors.textPrimary),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-        singleLine = true,
-    )
-
-    Spacer(Modifier.height(Dimens.Space12))
-    FieldLabel("Target Yard (Opsional)")
-    OutlinedTextField(
-        value = targetYardInput,
-        onValueChange = { targetYardInput = it },
-        modifier = Modifier.fillMaxWidth(),
-        placeholder = { Text("cth: 303", color = colors.textFaint) },
-        colors = outlinedFieldColors(),
-        shape = RoundedCornerShape(Dimens.RadiusControl),
-        textStyle = AppType.FieldText.copy(color = colors.textPrimary),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-        singleLine = true,
-    )
-
-    Spacer(Modifier.height(Dimens.Space20))
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        OutlinedButton(
-            onClick = onCancel,
-            modifier = Modifier.weight(1f).height(48.dp),
-            shape = RoundedCornerShape(Dimens.RadiusControl),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
-            border = BorderStroke(1.dp, colors.border),
-        ) { Text("Batal") }
-        Button(
-            onClick = {
-                if (corakInput.isNotBlank()) {
-                    val yard = targetYardInput.trim().replace(',', '.').toDoubleOrNull()
-                    onSave(corakInput.trim(), yard)
-                }
-            },
-            enabled = corakInput.isNotBlank(),
-            modifier = Modifier.weight(1f).height(48.dp),
-            shape = RoundedCornerShape(Dimens.RadiusControl),
-            colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
-        ) { Text("Simpan & Lanjut", fontWeight = FontWeight.SemiBold) }
-    }
+private fun SetupStep(
+    initial: MesinData,
+    onSave: (corak: String, targetYard: Double?, tipe: MesinTipe, koreksi: Double?, speed: Double?) -> Unit,
+    onCancel: () -> Unit,
+    showToast: (String) -> Unit,
+) {
+    MachineSetupForm(initial = initial, onSave = onSave, onCancel = onCancel, showToast = showToast)
 }
 
 @Composable

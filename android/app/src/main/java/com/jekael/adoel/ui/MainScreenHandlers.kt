@@ -217,6 +217,12 @@ internal class MainScreenHandlers(
     }
 
     private fun rescheduleEstimasi(est: Estimasi?) {
-        est?.let { NotificationHelper.scheduleNotif(context, it.mcNo, it.estAbsMin) }
+        est?.let {
+            if (it.pausedAtAbsMin == null) {
+                NotificationHelper.scheduleNotif(context, it.mcNo, it.estAbsMin)
+            } else {
+                NotificationHelper.cancelNotif(context, it.mcNo)
+            }
+        }
     }
 }

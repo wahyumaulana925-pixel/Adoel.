@@ -109,8 +109,14 @@ class DoffRepository private constructor(private val context: Context) : DoffSta
 
     private val gson: Gson = GsonBuilder().create()
 
-    private fun parseState(prefs: Preferences): DoffState =
-        prefs[STATE_KEY]?.let { parseJson(it) } ?: DoffState(db = buildDefaultDb(), onboardingSeen = false)
+    private fun parseState(prefs: Preferences): DoffState {
+        val persisted = prefs[STATE_KEY]
+        if (persisted == null) return DoffState(db = buildDefaultDb(), onboardingSeen = false)
+        return parseJson(persisted) ?: run {
+            Log.e("DoffRepository", "State DataStore rusak — memakai fallback tanpa menimpa data tersimpan")
+            DoffState(db = buildDefaultDb(), onboardingSeen = true)
+        }
+    }
 
     /** Parse a persisted or backup JSON snapshot into a [DoffState], or null if it is not a valid
      * Adoel backup (malformed JSON, wrong shape, or missing the machine database). */
