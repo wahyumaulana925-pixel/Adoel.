@@ -20,7 +20,6 @@ import androidx.glance.layout.Row
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.padding
-import androidx.glance.layout.defaultWeight
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
@@ -93,9 +92,8 @@ class AdoelWidget : GlanceAppWidget() {
                             text = ".",
                             style = TextStyle(color = ColorProvider(Amber500), fontSize = 15.sp, fontWeight = FontWeight.Bold),
                         )
-                        Box(modifier = GlanceModifier.defaultWeight()) {}
                         Text(
-                            text = shiftLabel,
+                            text = " $shiftLabel",
                             style = TextStyle(color = ColorProvider(textColor), fontSize = 12.sp, fontWeight = FontWeight.Medium),
                         )
                     }

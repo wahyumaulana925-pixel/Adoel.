@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.sp
 import com.jekael.adoel.data.Estimasi
 import com.jekael.adoel.data.KETERANGAN_CODES
 import com.jekael.adoel.data.MesinData
+import com.jekael.adoel.data.MesinTipe
 import com.jekael.adoel.data.formatYard
 import com.jekael.adoel.ui.theme.AppType
 import com.jekael.adoel.ui.theme.Cyan600

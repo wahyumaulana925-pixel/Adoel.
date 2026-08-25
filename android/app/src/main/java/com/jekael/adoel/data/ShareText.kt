@@ -49,7 +49,7 @@ fun buildShareHistoryText(
         val corak = est.corakOverride ?: mesin?.corak ?: "—"
         val yard = est.yardOverride ?: mesin?.targetYard
         val suffix = if (yard != null) " · ${formatYard(yard)}y" else ""
-        "• Mc${est.mcNo} · $corak$suffix · est. ${absMinToTimeStr(est.estAbsMin, zone)}"
+        return "• Mc${est.mcNo} · $corak$suffix · est. ${absMinToTimeStr(est.estAbsMin, zone)}"
     }
     val berjalan = sortedByNearest(estimasiBerjalan.associateBy { it.mcNo }).map(::formatEstimasi)
     val operan = estimasiOperan.sortedBy { it.estAbsMin }.map(::formatEstimasi)
