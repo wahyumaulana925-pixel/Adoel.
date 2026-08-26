@@ -87,9 +87,9 @@ private data class SerialShiftRecord(
 data class SyncEnvelope(val type: String?, val payload: String?)
 
 private data class SyncPayload(
-    val db: Map<String, SerialMesin>?,
-    val estimasi: Map<String, SerialEstimasi>?,
-    val aktual: List<SerialAktual>?,
+    val db: Map<String, SerialMesin>? = null,
+    val estimasi: Map<String, SerialEstimasi>? = null,
+    val aktual: List<SerialAktual>? = null,
 )
 
 /**
@@ -160,7 +160,7 @@ class DoffRepository private constructor(private val context: Context) : DoffSta
                     val estAbsMin = v.estAbsMin ?: return@mapNotNull null
                     val startAbsMin = v.startAbsMin ?: return@mapNotNull null
                     safeMcNo to Estimasi(safeMcNo, estAbsMin, startAbsMin, v.corakOverride, v.yardOverride, v.pausedAtAbsMin)
-                },
+                }.toMap(),
                 aktual = dedupeIds(serial.aktual),
                 nextId = maxOf(serial.nextId ?: 1, (serial.aktual?.maxOfOrNull { it.id ?: 0 } ?: 0) + 1),
                 themeMode = serial.themeMode ?: "SYSTEM",
