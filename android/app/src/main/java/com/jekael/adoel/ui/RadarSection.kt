@@ -115,8 +115,14 @@ internal fun LazyListScope.estimasiSection(
         itemsIndexed(menungguRows, key = { _, row -> rowKey(row) }) { index, row ->
             val entranceDelayMs = (index * Motion.LIST_STAGGER_STEP_MS).coerceAtMost(Motion.LIST_STAGGER_MAX_MS)
             when (row) {
-                is MenungguRow.CardRow -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    if (row.est.estAbsMin > currentShiftStartAbsMin(nowAbs) + 480 && (index == 0 || (menungguRows[index - 1] as? MenungguRow.CardRow)?.est?.estAbsMin?.let { it <= currentShiftStartAbsMin(nowAbs) + 480 } == true)) {
+                is MenungguRow.CardRow -> {
+                    val shiftBoundary = currentShiftStartAbsMin(nowAbs) + 480
+                    val previousCard = menungguRows
+                        .subList(0, index)
+                        .asReversed()
+                        .firstOrNull { it is MenungguRow.CardRow } as? MenungguRow.CardRow
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (row.est.estAbsMin > shiftBoundary && (previousCard == null || previousCard.est.estAbsMin <= shiftBoundary)) {
                         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             HorizontalDivider(modifier = Modifier.weight(1f), color = Amber400.copy(alpha = 0.45f))
                             Text("⏭️ OPERAN SHIFT", style = AppType.Caption.copy(color = Amber400, fontWeight = FontWeight.Bold), modifier = Modifier.padding(horizontal = 8.dp))
@@ -138,6 +144,7 @@ internal fun LazyListScope.estimasiSection(
                         modifier = Modifier.animateItem(),
                         entranceDelayMs = entranceDelayMs,
                     )
+                }
                 }
                 is MenungguRow.GapRow -> BreakGapCard(
                     gapMin = row.gapMin,
