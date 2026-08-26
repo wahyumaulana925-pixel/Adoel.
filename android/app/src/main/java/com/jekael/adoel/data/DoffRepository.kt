@@ -104,7 +104,6 @@ interface DoffStateStore {
     suspend fun importJson(json: String): DoffState?
 }
 
-                    if (v == null) return@mapNotNull null
 class DoffRepository private constructor(private val context: Context) : DoffStateStore {
 
     companion object {

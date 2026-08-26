@@ -63,7 +63,7 @@ class DoffViewModel @JvmOverloads constructor(
     }
 
     fun resetDb() = updateState {
-        DoffState(db = buildDefaultDb())
+        DoffState(db = buildDefaultDb(), onboardingSeen = false)
     }
 
     fun prosesBarisKondisiMesin(ln: String, nowAbsMin: Long): ProsesResult {

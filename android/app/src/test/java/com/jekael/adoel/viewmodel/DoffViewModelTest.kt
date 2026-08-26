@@ -163,4 +163,17 @@ class DoffViewModelTest {
         assertEquals(1, store.persisted.value.history.size)
         assertEquals(store.persisted.value, viewModel.state.value)
     }
+
+    @Test
+    fun resetDbShowsOnboardingAgain() {
+        store.persisted.value = DoffState(db = buildDefaultDb(), onboardingSeen = true)
+
+        viewModel.resetDb()
+
+        assertTrue(!viewModel.state.value.onboardingSeen)
+        dispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(!store.persisted.value.onboardingSeen)
+        assertEquals(store.persisted.value, viewModel.state.value)
+    }
 }
