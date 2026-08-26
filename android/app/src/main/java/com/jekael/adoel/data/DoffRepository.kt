@@ -104,6 +104,7 @@ interface DoffStateStore {
     suspend fun importJson(json: String): DoffState?
 }
 
+                    if (v == null) return@mapNotNull null
 class DoffRepository private constructor(private val context: Context) : DoffStateStore {
 
     companion object {
@@ -162,7 +163,7 @@ class DoffRepository private constructor(private val context: Context) : DoffSta
                     safeMcNo to Estimasi(safeMcNo, estAbsMin, startAbsMin, v.corakOverride, v.yardOverride, v.pausedAtAbsMin)
                 }.toMap(),
                 aktual = dedupeIds(serial.aktual),
-                nextId = maxOf(serial.nextId ?: 1, (serial.aktual?.maxOfOrNull { it.id ?: 0 } ?: 0) + 1),
+                nextId = maxOf(serial.nextId ?: 1, ((serial.aktual?.filterNotNull()?.maxOfOrNull { it.id ?: 0 }) ?: 0) + 1),
                 themeMode = serial.themeMode ?: "SYSTEM",
                 history = (serial.history ?: emptyList()).filterNotNull().map { r ->
                     ShiftRecord(
@@ -197,9 +198,11 @@ class DoffRepository private constructor(private val context: Context) : DoffSta
      * duplicate ids from a race; LazyColumn crashes on duplicate keys, so reassign collisions. */
     private fun dedupeIds(raw: List<SerialAktual>?): List<AktualEntry> {
         if (raw.isNullOrEmpty()) return emptyList()
-        var nextFree = (raw.maxOfOrNull { it.id ?: 0 } ?: 0) + 1
+        val entries = raw.filterNotNull()
+        if (entries.isEmpty()) return emptyList()
+        var nextFree = (entries.maxOfOrNull { it.id ?: 0 } ?: 0) + 1
         val used = HashSet<Int>()
-        return raw.map { a ->
+        return entries.map { a ->
             var id = a.id ?: nextFree++
             if (!used.add(id)) {
                 id = nextFree++
