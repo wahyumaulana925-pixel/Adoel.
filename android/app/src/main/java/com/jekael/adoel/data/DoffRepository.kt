@@ -37,10 +37,10 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore("a
 private val STATE_KEY = stringPreferencesKey("state_v2")
 
 private data class SerialState(
-    val db: Map<String, SerialMesin>,
-    val estimasi: Map<String, SerialEstimasi>,
-    val aktual: List<SerialAktual>,
-    val nextId: Int,
+    val db: Map<String, SerialMesin>?,
+    val estimasi: Map<String, SerialEstimasi>?,
+    val aktual: List<SerialAktual>?,
+    val nextId: Int?,
     val themeMode: String?,
     val history: List<SerialShiftRecord>?,
     val nextShiftId: Int?,
@@ -48,17 +48,17 @@ private data class SerialState(
 )
 
 private data class SerialMesin(
-    val tipe: String,
-    val corak: String,
+    val tipe: String?,
+    val corak: String?,
     val targetYard: Double?,
     val speed: Double?,
     val koreksi: Double?,
 )
 
 private data class SerialEstimasi(
-    val mcNo: String,
-    val estAbsMin: Long,
-    val startAbsMin: Long,
+    val mcNo: String?,
+    val estAbsMin: Long?,
+    val startAbsMin: Long?,
     val corakOverride: String?,
     val yardOverride: Double?,
     // Null on data written before Jeda existed (Gson leaves it null on old data) — same "never
@@ -67,29 +67,29 @@ private data class SerialEstimasi(
 )
 
 private data class SerialAktual(
-    val id: Int,
-    val mcNo: String,
-    val jam: String,
-    val ket: String,
+    val id: Int?,
+    val mcNo: String?,
+    val jam: String?,
+    val ket: String?,
     val corakOverride: String?,
     val customYard: Double?,
     val tsEpochMin: Long?,
 )
 
 private data class SerialShiftRecord(
-    val id: Int,
-    val startedAtEpochMin: Long,
-    val endedAtEpochMin: Long,
-    val aktual: List<SerialAktual>,
-    val estimasiRemaining: Map<String, SerialEstimasi>,
+    val id: Int?,
+    val startedAtEpochMin: Long?,
+    val endedAtEpochMin: Long?,
+    val aktual: List<SerialAktual>?,
+    val estimasiRemaining: Map<String, SerialEstimasi>?,
 )
 
-data class SyncEnvelope(val type: String, val payload: String)
+data class SyncEnvelope(val type: String?, val payload: String?)
 
 private data class SyncPayload(
-    val db: Map<String, SerialMesin> = emptyMap(),
-    val estimasi: Map<String, SerialEstimasi> = emptyMap(),
-    val aktual: List<SerialAktual> = emptyList(),
+    val db: Map<String, SerialMesin>?,
+    val estimasi: Map<String, SerialEstimasi>?,
+    val aktual: List<SerialAktual>?,
 )
 
 /**
@@ -137,37 +137,46 @@ class DoffRepository private constructor(private val context: Context) : DoffSta
     fun parseJson(json: String): DoffState? {
         return try {
             val serial = gson.fromJson(json, SerialState::class.java) ?: return null
-            if (serial.db.isEmpty()) return null
+            val serialDb = serial.db ?: return null
+            if (serialDb.isEmpty()) return null
             DoffState(
-                db = serial.db.mapValues { (mcNo, v) ->
+                db = serialDb.mapNotNull { (mcNo, v) ->
+                    if (v == null) return@mapNotNull null
                     MesinData(
-                        tipe = runCatching { MesinTipe.valueOf(v.tipe) }.getOrElse {
+                        tipe = runCatching { MesinTipe.valueOf(v.tipe ?: "") }.getOrElse {
                             // Silently coercing would hide data corruption AND silently switch the
                             // machine to TAPPET's estimation formula — at least leave a trace.
                             Log.w("DoffRepository", "Tipe mesin tak dikenal '${v.tipe}' di Mc $mcNo, fallback TAPPET")
                             MesinTipe.TAPPET
                         },
-                        corak = v.corak,
+                        corak = v.corak ?: "-",
                         targetYard = v.targetYard,
                         speed = v.speed,
                         koreksi = v.koreksi,
-                    )
-                },
-                estimasi = serial.estimasi.mapValues { (_, v) ->
-                    Estimasi(v.mcNo, v.estAbsMin, v.startAbsMin, v.corakOverride, v.yardOverride, v.pausedAtAbsMin)
+                    ).let { mcNo to it }
+                }.toMap(),
+                estimasi = (serial.estimasi ?: emptyMap()).mapNotNull { (mcNo, v) ->
+                    val safeMcNo = v.mcNo ?: mcNo
+                    val estAbsMin = v.estAbsMin ?: return@mapNotNull null
+                    val startAbsMin = v.startAbsMin ?: return@mapNotNull null
+                    safeMcNo to Estimasi(safeMcNo, estAbsMin, startAbsMin, v.corakOverride, v.yardOverride, v.pausedAtAbsMin)
                 },
                 aktual = dedupeIds(serial.aktual),
-                nextId = maxOf(serial.nextId, (serial.aktual.maxOfOrNull { it.id } ?: 0) + 1),
+                nextId = maxOf(serial.nextId ?: 1, (serial.aktual?.maxOfOrNull { it.id ?: 0 } ?: 0) + 1),
                 themeMode = serial.themeMode ?: "SYSTEM",
-                history = (serial.history ?: emptyList()).map { r ->
+                history = (serial.history ?: emptyList()).filterNotNull().map { r ->
                     ShiftRecord(
-                        id = r.id,
-                        startedAtEpochMin = r.startedAtEpochMin,
-                        endedAtEpochMin = r.endedAtEpochMin,
-                        aktual = r.aktual.map { toAktualEntry(it) },
-                        estimasiRemaining = r.estimasiRemaining.mapValues { (_, v) ->
-                            Estimasi(v.mcNo, v.estAbsMin, v.startAbsMin, v.corakOverride, v.yardOverride, v.pausedAtAbsMin)
-                        },
+                        id = r.id ?: 0,
+                        startedAtEpochMin = r.startedAtEpochMin ?: 0,
+                        endedAtEpochMin = r.endedAtEpochMin ?: 0,
+                        aktual = dedupeIds(r.aktual),
+                        estimasiRemaining = (r.estimasiRemaining ?: emptyMap()).mapNotNull { (mcNo, v) ->
+                            if (v == null) return@mapNotNull null
+                            val safeMcNo = v.mcNo ?: mcNo
+                            val estAbsMin = v.estAbsMin ?: return@mapNotNull null
+                            val startAbsMin = v.startAbsMin ?: return@mapNotNull null
+                            safeMcNo to Estimasi(safeMcNo, estAbsMin, startAbsMin, v.corakOverride, v.yardOverride, v.pausedAtAbsMin)
+                        }.toMap(),
                     )
                 },
                 nextShiftId = serial.nextShiftId ?: 1,
@@ -182,15 +191,16 @@ class DoffRepository private constructor(private val context: Context) : DoffSta
     }
 
     private fun toAktualEntry(a: SerialAktual): AktualEntry =
-        AktualEntry(a.id, a.mcNo, a.jam, a.ket, a.corakOverride, a.customYard, a.tsEpochMin)
+        AktualEntry(a.id ?: 0, a.mcNo ?: "", a.jam ?: "", a.ket ?: "", a.corakOverride, a.customYard, a.tsEpochMin)
 
     /** Guarantees unique entry ids. Data written before writes became atomic could contain
      * duplicate ids from a race; LazyColumn crashes on duplicate keys, so reassign collisions. */
-    private fun dedupeIds(raw: List<SerialAktual>): List<AktualEntry> {
-        var nextFree = (raw.maxOfOrNull { it.id } ?: 0) + 1
+    private fun dedupeIds(raw: List<SerialAktual>?): List<AktualEntry> {
+        if (raw.isNullOrEmpty()) return emptyList()
+        var nextFree = (raw.maxOfOrNull { it.id ?: 0 } ?: 0) + 1
         val used = HashSet<Int>()
         return raw.map { a ->
-            var id = a.id
+            var id = a.id ?: nextFree++
             if (!used.add(id)) {
                 id = nextFree++
                 used.add(id)
@@ -365,18 +375,26 @@ class DoffRepository private constructor(private val context: Context) : DoffSta
 
     /** Decompresses and merges a scanned QR payload, then restores every active notification. */
     suspend fun processScannedQr(data: String, context: Context): DoffState? {
-        val envelope = runCatching { gson.fromJson(data, SyncEnvelope::class.java) }.getOrNull() ?: return null
-        if (envelope.type != "HANDOVER" && envelope.type != "MASTER_DB") return null
-        val payload = runCatching { gson.fromJson(decodeSyncPayload(envelope.payload), SyncPayload::class.java) }.getOrNull() ?: return null
-        val nextState = update { current ->
-            when (envelope.type) {
-                "HANDOVER" -> mergeHandover(current, payload)
-                "MASTER_DB" -> current.copy(db = payload.db.toMesinData())
-                else -> error("unreachable sync type")
+        return try {
+            val envelope = gson.fromJson(data, SyncEnvelope::class.java) ?: return null
+            val type = envelope.type ?: return null
+            if (type != "HANDOVER" && type != "MASTER_DB") return null
+            val encodedPayload = envelope.payload ?: return null
+            val payload = gson.fromJson(decodeSyncPayload(encodedPayload), SyncPayload::class.java)
+                ?: return null
+            val nextState = update { current ->
+                when (type) {
+                    "HANDOVER" -> mergeHandover(current, payload)
+                    "MASTER_DB" -> current.copy(db = payload.db.toMesinData())
+                    else -> current
+                }
             }
+            NotificationHelper.rescheduleAll(context, nextState.estimasi.values)
+            nextState
+        } catch (e: Exception) {
+            Log.w("DoffRepository", "processScannedQr gagal — QR tidak valid", e)
+            null
         }
-        NotificationHelper.rescheduleAll(context, nextState.estimasi.values)
-        return nextState
     }
 
     private fun encodeSyncEnvelope(type: String, payload: SyncPayload): String {
@@ -394,30 +412,35 @@ class DoffRepository private constructor(private val context: Context) : DoffSta
     }
 
     private fun mergeHandover(current: DoffState, payload: SyncPayload): DoffState {
-        val incomingAktual = payload.aktual.map(::toAktualEntry)
+        val incomingAktual = (payload.aktual ?: emptyList()).filterNotNull().map(::toAktualEntry)
         val mergedAktual = (current.aktual + incomingAktual).distinctBy {
             listOf(it.id, it.mcNo, it.jam, it.ket, it.corakOverride, it.customYard, it.tsEpochMin)
         }
         val dedupedAktual = dedupeIds(mergedAktual.map(::toSerialAktual))
         return current.copy(
             db = current.db + payload.db.toMesinData(),
-            estimasi = current.estimasi + payload.estimasi.mapValues { (_, v) ->
-                Estimasi(v.mcNo, v.estAbsMin, v.startAbsMin, v.corakOverride, v.yardOverride, v.pausedAtAbsMin)
-            },
+            estimasi = current.estimasi + (payload.estimasi ?: emptyMap()).mapNotNull { (mcNo, v) ->
+                if (v == null) return@mapNotNull null
+                val safeMcNo = v.mcNo ?: mcNo
+                val estAbsMin = v.estAbsMin ?: return@mapNotNull null
+                val startAbsMin = v.startAbsMin ?: return@mapNotNull null
+                safeMcNo to Estimasi(safeMcNo, estAbsMin, startAbsMin, v.corakOverride, v.yardOverride, v.pausedAtAbsMin)
+            }.toMap(),
             aktual = dedupedAktual,
             nextId = maxOf(current.nextId, (dedupedAktual.maxOfOrNull { it.id } ?: 0) + 1),
         )
     }
 
-    private fun Map<String, SerialMesin>.toMesinData(): Map<String, MesinData> = mapValues { (_, v) ->
+    private fun Map<String, SerialMesin>?.toMesinData(): Map<String, MesinData> = this.orEmpty().mapNotNull { (mcNo, v) ->
+        if (v == null) return@mapNotNull null
         MesinData(
-            tipe = runCatching { MesinTipe.valueOf(v.tipe) }.getOrDefault(MesinTipe.TAPPET),
-            corak = v.corak,
+            tipe = runCatching { MesinTipe.valueOf(v.tipe ?: "") }.getOrDefault(MesinTipe.TAPPET),
+            corak = v.corak ?: "-",
             targetYard = v.targetYard,
             speed = v.speed,
             koreksi = v.koreksi,
-        )
-    }
+        ).let { mcNo to it }
+    }.toMap()
 
     /** Restore state from a backup produced by [exportJson]. Returns the imported state, or null
      * if the JSON is not a valid Adoel backup. Writes atomically like any other mutation. */

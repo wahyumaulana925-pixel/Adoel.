@@ -117,10 +117,7 @@ internal fun LazyListScope.estimasiSection(
             when (row) {
                 is MenungguRow.CardRow -> {
                     val shiftBoundary = currentShiftStartAbsMin(nowAbs) + 480
-                    val previousCard = menungguRows
-                        .subList(0, index)
-                        .asReversed()
-                        .firstOrNull { it is MenungguRow.CardRow } as? MenungguRow.CardRow
+                    val previousCard = menungguRows.getOrNull(index - 1) as? MenungguRow.CardRow
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     if (row.est.estAbsMin > shiftBoundary && (previousCard == null || previousCard.est.estAbsMin <= shiftBoundary)) {
                         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

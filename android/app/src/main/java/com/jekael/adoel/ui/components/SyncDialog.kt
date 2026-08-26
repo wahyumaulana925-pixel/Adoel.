@@ -41,7 +41,9 @@ import com.jekael.adoel.ui.theme.AppType
 import com.jekael.adoel.ui.theme.Cyan600
 import com.jekael.adoel.ui.theme.Dimens
 import com.jekael.adoel.ui.theme.LocalAppColors
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun SyncDialog(onClose: () -> Unit) {
@@ -55,7 +57,9 @@ fun SyncDialog(onClose: () -> Unit) {
     val scanLauncher = rememberLauncherForActivityResult(ScanContract()) { result ->
         val contents = result.contents ?: return@rememberLauncherForActivityResult
         scope.launch {
-            val imported = runCatching { repository.processScannedQr(contents, context) }.getOrNull()
+            val imported = runCatching {
+                withContext(Dispatchers.IO) { repository.processScannedQr(contents, context) }
+            }.getOrNull()
             Toast.makeText(
                 context,
                 if (imported != null) "Sinkronisasi berhasil" else "QR Sync tidak valid",
@@ -88,12 +92,16 @@ fun SyncDialog(onClose: () -> Unit) {
                 Text("Pilih data yang ingin dikirim", style = AppType.BodySmall.copy(color = colors.textSecondary))
                 SyncButton("Bagikan Operan") {
                     scope.launch {
-                        qrBitmap = createQrBitmap(repository.prepareHandoverData())
+                        qrBitmap = runCatching {
+                            withContext(Dispatchers.IO) { createQrBitmap(repository.prepareHandoverData()) }
+                        }.getOrNull()
                     }
                 }
                 SyncButton("Bagikan Daftar Mesin") {
                     scope.launch {
-                        qrBitmap = createQrBitmap(repository.prepareMasterDbData())
+                        qrBitmap = runCatching {
+                            withContext(Dispatchers.IO) { createQrBitmap(repository.prepareMasterDbData()) }
+                        }.getOrNull()
                     }
                 }
                 qrBitmap?.let { bitmap ->
