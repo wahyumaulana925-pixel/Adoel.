@@ -70,8 +70,10 @@ fun GuidedEstimasiSheet(
     val focusRequester = remember { FocusRequester() }
 
     LaunchedEffect(mcNo, needQuickCorakSetup) {
-        delay(100)
-        focusRequester.requestFocus()
+        if (!needQuickCorakSetup) {
+            delay(100)
+            focusRequester.requestFocus()
+        }
     }
 
     FloatingEditDialog(onDismissRequest = onDismiss) {

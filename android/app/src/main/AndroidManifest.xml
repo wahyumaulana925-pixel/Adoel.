@@ -26,6 +26,11 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".BarcodeScanActivity"
+            android:screenOrientation="portrait"
+            android:exported="false" />
+
         <receiver
             android:name=".notification.AlarmReceiver"
             android:exported="false" />

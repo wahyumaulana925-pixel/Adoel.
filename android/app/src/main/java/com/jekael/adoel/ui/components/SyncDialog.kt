@@ -34,6 +34,7 @@ import com.google.zxing.BarcodeFormat
 import com.journeyapps.barcodescanner.BarcodeEncoder
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
+import com.jekael.adoel.BarcodeScanActivity
 import com.jekael.adoel.data.DoffRepository
 import com.jekael.adoel.ui.theme.AppType
 import com.jekael.adoel.ui.theme.Cyan600
@@ -116,6 +117,7 @@ fun SyncDialog(onClose: () -> Unit) {
                 SyncButton("Mulai Scan") {
                     scanLauncher.launch(
                         ScanOptions().apply {
+                            setCaptureActivity(BarcodeScanActivity::class.java)
                             setDesiredBarcodeFormats(ScanOptions.QR_CODE)
                             setPrompt("Scan QR Sync")
                             setBeepEnabled(false)

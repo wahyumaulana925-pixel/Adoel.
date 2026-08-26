@@ -1,7 +1,6 @@
 package com.jekael.adoel.ui
 
 import android.content.Context
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
@@ -10,14 +9,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.Flag
-import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Texture
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
@@ -33,10 +29,8 @@ import com.jekael.adoel.ui.components.MesinTipeIcon
 import com.jekael.adoel.ui.components.mesinTipeColor
 import com.jekael.adoel.ui.theme.*
 
-/** RIWAYAT page's list content: empty state, or the recorded-doff rows (newest first). Bagikan
- * WA / Selesai Shift render as two permanent, high-contrast buttons directly above the list
- * (Master Blueprint §4E) instead of behind a header chevron — shift-closing actions belong right
- * where the operator is already looking once the history page is the thing on screen. */
+/** RIWAYAT page's list content: empty state or the recorded-doff rows (newest first). Shift-wide
+ * actions live in the main header menu so this list stays focused on the recorded entries. */
 fun LazyListScope.doffingSection(
     state: DoffState,
     aktualReversed: List<AktualEntry>,
@@ -44,38 +38,7 @@ fun LazyListScope.doffingSection(
     onDoffFilterChange: (String) -> Unit,
     onEntryClick: (Int) -> Unit,
     onHapusEntry: (Int) -> Unit,
-    onShare: () -> Unit,
-    onFinish: () -> Unit,
 ) {
-    item(key = "doff_shift_actions") {
-        val colors = LocalAppColors.current
-        Row(
-            modifier = Modifier.fillMaxWidth().animateItem(),
-            horizontalArrangement = Arrangement.spacedBy(Dimens.Space8),
-        ) {
-            OutlinedButton(
-                onClick = onShare,
-                modifier = Modifier.weight(1f).height(48.dp),
-                shape = RoundedCornerShape(Dimens.RadiusControl),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
-                border = BorderStroke(1.dp, colors.border),
-            ) {
-                Icon(imageVector = Icons.Outlined.Share, contentDescription = null, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("Bagikan", style = AppType.TabLabel)
-            }
-            Button(
-                onClick = onFinish,
-                modifier = Modifier.weight(1f).height(48.dp),
-                shape = RoundedCornerShape(Dimens.RadiusControl),
-                colors = ButtonDefaults.buttonColors(containerColor = Red500),
-            ) {
-                Icon(imageVector = Icons.Outlined.Flag, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
-                Spacer(Modifier.width(6.dp))
-                Text("Selesai Shift", style = AppType.TabLabel.copy(color = Color.White))
-            }
-        }
-    }
     if (state.aktual.isEmpty()) {
         item(key = "doff_empty") {
             EmptyState(

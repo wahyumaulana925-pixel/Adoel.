@@ -279,8 +279,8 @@ class DoffViewModel @JvmOverloads constructor(
         )
     }
 
-    /** Archives the current shift's doffs/estimasi into [DoffState.history] before clearing them,
-     * so "Selesai Shift" no longer silently discards a shift's data with no way to look back. */
+    /** Archives the current shift's doffs and estimates before clearing the console for the next
+     * operator. The next operator receives handover data through QR Sync instead of carry-over. */
     fun finishShift() = updateState { s ->
         if (s.aktual.isEmpty() && s.estimasi.isEmpty()) return@updateState s
         val now = nowAbsMin()

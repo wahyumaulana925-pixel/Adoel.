@@ -101,11 +101,6 @@ fun MainScreen(
         errorFlash.active = false
     }
 
-    // "Nanti" on the stale-shift banner only snoozes it for this composition/app session — it's
-    // not persisted, so if the shift genuinely never gets closed out, the reminder is back next
-    // time the app is opened fresh.
-    var staleShiftDismissed by remember { mutableStateOf(false) }
-
     // "Selesai Shift" closes out a full work shift — worth a beat more than a toast that's gone
     // in 3.5s, so this pops a big checkmark over a dimmed backdrop before fading on its own.
     val shiftFinished = remember { ShiftFinishedState() }
@@ -189,20 +184,10 @@ fun MainScreen(
     val (segeraList, menungguList) = remember(filteredRadarList) {
         derivedStateOf { partitionSegeraMenunggu(filteredRadarList, nowAbs) }
     }.value
-    // Flags doff entries left over from a shift the operator forgot to close via "Selesai Shift"
-    // before the next 06.00/14.00/22.00 boundary — otherwise they'd silently get archived together
-    // with the new shift's entries the next time Selesai Shift is pressed. Derived so this only
-    // re-propagates when the stale count itself changes, not on every 5-second tick.
-    val staleDoffCount by remember(state.aktual) {
-        derivedStateOf {
-            val shiftStart = currentShiftStartAbsMin(nowAbs)
-            state.aktual.count { val ts = it.tsEpochMin; ts != null && ts < shiftStart }
-        }
-    }
-    // Un-snooze once the stale batch is actually resolved (e.g. via Selesai Shift), so a *later*
-    // forgotten shift isn't silently suppressed by a "Nanti" tap from a previous, unrelated one.
-    LaunchedEffect(staleDoffCount == 0) {
-        if (staleDoffCount == 0) staleShiftDismissed = false
+    val hasPreviousShiftData = remember(state.aktual, state.estimasi, nowAbs) {
+        val shiftStart = currentShiftStartAbsMin(nowAbs)
+        state.aktual.any { it.tsEpochMin?.let { ts -> ts < shiftStart } == true } ||
+            state.estimasi.values.any { it.startAbsMin < shiftStart }
     }
     // Menunggu bucket spans CALM through IMMINENT (Segera already claims OVERDUE) — tint the
     // band header by its most urgent member so it doesn't read "calm" while cards inside are
@@ -350,12 +335,6 @@ fun MainScreen(
                         },
                     )
 
-                    staleShiftBanner(
-                        staleCount = if (staleShiftDismissed) 0 else staleDoffCount,
-                        onFinishClick = { handlers.handleFinishShift() },
-                        onDismiss = { staleShiftDismissed = true },
-                    )
-
                     when (p) {
                         Page.RADAR -> {
                             estimasiSection(
@@ -388,8 +367,6 @@ fun MainScreen(
                                 onDoffFilterChange = { doffFilter = it },
                                 onEntryClick = { id -> activeOverlay = ActiveOverlay.EditAkt(id) },
                                 onHapusEntry = { id -> handlers.handleHapusAktual(id) { activeOverlay = ActiveOverlay.None } },
-                                onShare = { shareHistory(context, state) },
-                                onFinish = { handlers.handleFinishShift() },
                             )
                         }
                     }
@@ -411,6 +388,9 @@ fun MainScreen(
             onToggleShowRemaining = { showRemaining = !showRemaining },
             onGearClick = { activeOverlay = ActiveOverlay.Settings },
             onSyncClick = { syncOpen = true },
+            onShare = { shareHistory(context, state) },
+            onFinishShift = { handlers.handleFinishShift() },
+            showFinishShift = hasPreviousShiftData,
             onStatistik = { activeOverlay = ActiveOverlay.Statistik },
             page = page,
             onPageSelect = { page = it },

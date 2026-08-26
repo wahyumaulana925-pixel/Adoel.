@@ -208,7 +208,7 @@ internal class MainScreenHandlers(
             uiVm.showToast("Tidak ada yang perlu diarsipkan")
             return
         }
-        uiVm.showConfirm("Akhiri shift? ${state.aktual.size} doff & ${state.estimasi.size} estimasi akan diarsipkan ke Riwayat, lalu konsol dikosongkan untuk shift baru.") {
+        uiVm.showConfirm("Akhiri shift? ${state.aktual.size} doff dan ${state.estimasi.size} estimasi akan diarsipkan ke Riwayat, lalu aplikasi disiapkan untuk shift berikutnya.") {
             NotificationHelper.cancelAll(context, state.estimasi.keys.toList())
             doffVm.finishShift()
             haptic.performHapticFeedback(HapticFeedbackType.LongPress)

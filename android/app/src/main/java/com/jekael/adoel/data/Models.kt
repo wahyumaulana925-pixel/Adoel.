@@ -146,7 +146,7 @@ fun shiftNumberForEpochMin(epochMin: Long, zone: TimeZone = TimeZone.getDefault(
 
 /** Epoch-minute the *current* shift period began (the most recent 06.00/14.00/22.00 boundary at
  * or before [epochMin]) — used to tell whether an already-recorded entry belongs to a shift that
- * hasn't been archived yet via "Selesai Shift" (see MainScreen's staleShiftBanner). */
+ * hasn't been archived yet; MainScreen archives such data automatically at the next boundary. */
 fun currentShiftStartAbsMin(epochMin: Long, zone: TimeZone = TimeZone.getDefault()): Long {
     val cal = Calendar.getInstance(zone).apply { timeInMillis = epochMin * 60000L }
     val hour = cal.get(Calendar.HOUR_OF_DAY)

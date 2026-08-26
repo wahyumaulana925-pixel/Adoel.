@@ -4,6 +4,9 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -11,9 +14,14 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.Flag
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.QrCodeScanner
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -54,6 +62,9 @@ internal fun MainScreenHeader(
     onToggleShowRemaining: () -> Unit,
     onGearClick: () -> Unit,
     onSyncClick: () -> Unit,
+    onShare: () -> Unit,
+    onFinishShift: () -> Unit,
+    showFinishShift: Boolean,
     onStatistik: () -> Unit,
     page: Page,
     onPageSelect: (Page) -> Unit,
@@ -190,24 +201,67 @@ internal fun MainScreenHeader(
                 }
             }
 
-            // Statistik + Pengaturan — permanently side by side (Master Blueprint §4E), not
-            // hidden behind an expand chevron anymore.
-            IconButton(onClick = onStatistik) {
-                Icon(
-                    imageVector = Icons.Outlined.BarChart,
-                    contentDescription = "Statistik",
-                    tint = colors.textMuted,
+            var actionsExpanded by remember { mutableStateOf(false) }
+            if (showFinishShift) {
+                val attention = rememberInfiniteTransition(label = "finishShiftAttention")
+                val finishScale by attention.animateFloat(
+                    initialValue = 1f,
+                    targetValue = 1.08f,
+                    animationSpec = infiniteRepeatable(tween(700), RepeatMode.Reverse),
+                    label = "finishShiftScale",
                 )
+                IconButton(
+                    onClick = onFinishShift,
+                    modifier = Modifier.graphicsLayer {
+                        scaleX = finishScale
+                        scaleY = finishScale
+                    },
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Flag,
+                        contentDescription = "Selesai Shift",
+                        tint = Red500,
+                    )
+                }
             }
-            IconButton(onClick = onGearClick) {
-                GearIcon()
-            }
-            IconButton(onClick = onSyncClick) {
-                Icon(
-                    imageVector = Icons.Outlined.QrCodeScanner,
-                    contentDescription = "QR Sync",
-                    tint = colors.textMuted,
-                )
+            Box {
+                IconButton(onClick = { actionsExpanded = true }) {
+                    Icon(
+                        imageVector = Icons.Outlined.MoreVert,
+                        contentDescription = "Aksi lainnya",
+                        tint = colors.textMuted,
+                    )
+                }
+                DropdownMenu(
+                    expanded = actionsExpanded,
+                    onDismissRequest = { actionsExpanded = false },
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Statistik") },
+                        leadingIcon = { Icon(Icons.Outlined.BarChart, contentDescription = null) },
+                        onClick = { actionsExpanded = false; onStatistik() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Pengaturan") },
+                        leadingIcon = { GearIcon() },
+                        onClick = { actionsExpanded = false; onGearClick() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("QR Sync") },
+                        leadingIcon = { Icon(Icons.Outlined.QrCodeScanner, contentDescription = null) },
+                        onClick = { actionsExpanded = false; onSyncClick() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Bagikan") },
+                        leadingIcon = { Icon(Icons.Outlined.Share, contentDescription = null) },
+                        onClick = { actionsExpanded = false; onShare() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Selesai Shift") },
+                        leadingIcon = { Icon(Icons.Outlined.Flag, contentDescription = null) },
+                        onClick = { actionsExpanded = false; onFinishShift() },
+                    )
+                }
             }
         }
 
