@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -52,6 +53,7 @@ internal fun MainScreenHeader(
     showRemaining: Boolean,
     onToggleShowRemaining: () -> Unit,
     onGearClick: () -> Unit,
+    onSyncClick: () -> Unit,
     onStatistik: () -> Unit,
     page: Page,
     onPageSelect: (Page) -> Unit,
@@ -199,6 +201,13 @@ internal fun MainScreenHeader(
             }
             IconButton(onClick = onGearClick) {
                 GearIcon()
+            }
+            IconButton(onClick = onSyncClick) {
+                Icon(
+                    imageVector = Icons.Outlined.QrCodeScanner,
+                    contentDescription = "QR Sync",
+                    tint = colors.textMuted,
+                )
             }
         }
 

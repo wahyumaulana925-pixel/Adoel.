@@ -125,6 +125,7 @@ fun MainScreen(
     val permission = remember { PermissionState() }
 
     var activeOverlay by rememberSaveable(stateSaver = ActiveOverlaySaver) { mutableStateOf<ActiveOverlay>(ActiveOverlay.None) }
+    var syncOpen by rememberSaveable { mutableStateOf(false) }
     var showRemaining by rememberSaveable { mutableStateOf(false) }
 
     var consoleBarHeight by remember { mutableStateOf(0.dp) }
@@ -409,6 +410,7 @@ fun MainScreen(
             showRemaining = showRemaining,
             onToggleShowRemaining = { showRemaining = !showRemaining },
             onGearClick = { activeOverlay = ActiveOverlay.Settings },
+            onSyncClick = { syncOpen = true },
             onStatistik = { activeOverlay = ActiveOverlay.Statistik },
             page = page,
             onPageSelect = { page = it },
@@ -613,6 +615,10 @@ fun MainScreen(
 
     if (!state.onboardingSeen) {
         OnboardingDialog(onClose = { doffVm.setOnboardingSeen() })
+    }
+
+    if (syncOpen) {
+        SyncDialog(onClose = { syncOpen = false })
     }
 
     ConfirmDialog(

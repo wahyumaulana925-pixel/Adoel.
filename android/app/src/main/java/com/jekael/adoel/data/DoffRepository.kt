@@ -1,6 +1,7 @@
 package com.jekael.adoel.data
 
 import android.content.Context
+import android.util.Base64
 import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -11,6 +12,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import androidx.glance.appwidget.updateAll
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import com.jekael.adoel.notification.NotificationHelper
 import com.jekael.adoel.widget.AdoelWidget
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -25,6 +27,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.IOException
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.util.zip.GZIPInputStream
+import java.util.zip.GZIPOutputStream
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore("adoel_v5")
 
@@ -76,6 +82,14 @@ private data class SerialShiftRecord(
     val endedAtEpochMin: Long,
     val aktual: List<SerialAktual>,
     val estimasiRemaining: Map<String, SerialEstimasi>,
+)
+
+data class SyncEnvelope(val type: String, val payload: String)
+
+private data class SyncPayload(
+    val db: Map<String, SerialMesin> = emptyMap(),
+    val estimasi: Map<String, SerialEstimasi> = emptyMap(),
+    val aktual: List<SerialAktual> = emptyList(),
 )
 
 /**
@@ -321,6 +335,89 @@ class DoffRepository private constructor(private val context: Context) : DoffSta
 
     /** Full-state backup as a JSON string (machine db + estimasi + doff history + theme). */
     override fun exportJson(state: DoffState): String = serialize(state)
+
+    /** QR payload for handing the active shift to another device. History is deliberately absent. */
+    suspend fun prepareHandoverData(): String {
+        val state = load()
+        val machineNos = state.estimasi.keys + state.aktual.map { it.mcNo }
+        val payload = SyncPayload(
+            db = state.db.filterKeys { it in machineNos }.mapValues { (_, v) ->
+                SerialMesin(v.tipe.name, v.corak, v.targetYard, v.speed, v.koreksi)
+            },
+            estimasi = state.estimasi.mapValues { (_, v) ->
+                SerialEstimasi(v.mcNo, v.estAbsMin, v.startAbsMin, v.corakOverride, v.yardOverride, v.pausedAtAbsMin)
+            },
+            aktual = state.aktual.map(::toSerialAktual),
+        )
+        return encodeSyncEnvelope("HANDOVER", payload)
+    }
+
+    /** QR payload containing the complete machine master database, without active shift data. */
+    suspend fun prepareMasterDbData(): String {
+        val state = load()
+        val payload = SyncPayload(
+            db = state.db.mapValues { (_, v) ->
+                SerialMesin(v.tipe.name, v.corak, v.targetYard, v.speed, v.koreksi)
+            },
+        )
+        return encodeSyncEnvelope("MASTER_DB", payload)
+    }
+
+    /** Decompresses and merges a scanned QR payload, then restores every active notification. */
+    suspend fun processScannedQr(data: String, context: Context): DoffState? {
+        val envelope = runCatching { gson.fromJson(data, SyncEnvelope::class.java) }.getOrNull() ?: return null
+        if (envelope.type != "HANDOVER" && envelope.type != "MASTER_DB") return null
+        val payload = runCatching { gson.fromJson(decodeSyncPayload(envelope.payload), SyncPayload::class.java) }.getOrNull() ?: return null
+        val nextState = update { current ->
+            when (envelope.type) {
+                "HANDOVER" -> mergeHandover(current, payload)
+                "MASTER_DB" -> current.copy(db = payload.db.toMesinData())
+                else -> error("unreachable sync type")
+            }
+        }
+        NotificationHelper.rescheduleAll(context, nextState.estimasi.values)
+        return nextState
+    }
+
+    private fun encodeSyncEnvelope(type: String, payload: SyncPayload): String {
+        val raw = gson.toJson(payload).toByteArray(Charsets.UTF_8)
+        val compressed = ByteArrayOutputStream().use { output ->
+            GZIPOutputStream(output).use { it.write(raw) }
+            output.toByteArray()
+        }
+        return gson.toJson(SyncEnvelope(type, Base64.encodeToString(compressed, Base64.NO_WRAP)))
+    }
+
+    private fun decodeSyncPayload(encoded: String): String {
+        val compressed = Base64.decode(encoded, Base64.NO_WRAP)
+        return GZIPInputStream(ByteArrayInputStream(compressed)).bufferedReader(Charsets.UTF_8).use { it.readText() }
+    }
+
+    private fun mergeHandover(current: DoffState, payload: SyncPayload): DoffState {
+        val incomingAktual = payload.aktual.map(::toAktualEntry)
+        val mergedAktual = (current.aktual + incomingAktual).distinctBy {
+            listOf(it.id, it.mcNo, it.jam, it.ket, it.corakOverride, it.customYard, it.tsEpochMin)
+        }
+        val dedupedAktual = dedupeIds(mergedAktual.map(::toSerialAktual))
+        return current.copy(
+            db = current.db + payload.db.toMesinData(),
+            estimasi = current.estimasi + payload.estimasi.mapValues { (_, v) ->
+                Estimasi(v.mcNo, v.estAbsMin, v.startAbsMin, v.corakOverride, v.yardOverride, v.pausedAtAbsMin)
+            },
+            aktual = dedupedAktual,
+            nextId = maxOf(current.nextId, (dedupedAktual.maxOfOrNull { it.id } ?: 0) + 1),
+        )
+    }
+
+    private fun Map<String, SerialMesin>.toMesinData(): Map<String, MesinData> = mapValues { (_, v) ->
+        MesinData(
+            tipe = runCatching { MesinTipe.valueOf(v.tipe) }.getOrDefault(MesinTipe.TAPPET),
+            corak = v.corak,
+            targetYard = v.targetYard,
+            speed = v.speed,
+            koreksi = v.koreksi,
+        )
+    }
 
     /** Restore state from a backup produced by [exportJson]. Returns the imported state, or null
      * if the JSON is not a valid Adoel backup. Writes atomically like any other mutation. */
