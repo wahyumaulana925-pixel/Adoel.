@@ -2,9 +2,7 @@ package com.jekael.adoel.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ArrowBack
@@ -46,7 +44,7 @@ fun OnboardingDialog(onClose: () -> Unit) {
     var tab by remember { mutableIntStateOf(0) }
     FloatingEditDialog(onDismissRequest = onClose) {
         Column(
-            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+            modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(Dimens.Space12),
         ) {
             Text("Cara Pakai Adoel", style = AppType.DialogTitle.copy(color = colors.textPrimary))
