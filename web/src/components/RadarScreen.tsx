@@ -40,6 +40,7 @@ export function RadarScreen({ onEditWaktu }: { onEditWaktu: (mcNo: string) => vo
   }, [all, filter]);
   const [segera, menunggu] = useMemo(() => partitionSegeraMenunggu(filtered, nowAbs), [filtered, nowAbs]);
   const shiftEndAbs = currentShiftStartAbsMin(nowAbs) + 8 * 60;
+  const shiftDividerIndex = menunggu.findIndex((est) => est.estAbsMin > shiftEndAbs);
   const activeMenunggu = menunggu.filter((est) => est.pausedAtAbsMin == null);
 
   if (all.length === 0) {
@@ -110,7 +111,7 @@ export function RadarScreen({ onEditWaktu }: { onEditWaktu: (mcNo: string) => vo
             const gap = next ? next.estAbsMin - est.estAbsMin : 0;
             return (
               <div key={est.mcNo}>
-                {est.estAbsMin > shiftEndAbs && (i === 0 || menunggu[i - 1].estAbsMin <= shiftEndAbs) && (
+                {i === shiftDividerIndex && (
                   <div className="shift-divider"><span>🏁 BATAS AKHIR SHIFT {new Date(shiftEndAbs * 60000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span></div>
                 )}
                 <RadarCard
