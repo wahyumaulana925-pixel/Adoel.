@@ -81,3 +81,12 @@ export function jamKeShiftAbs(jamMin: number): number {
 export function minOfDayToTimeStr(min: number): string {
   return `${pad2(Math.floor(min / 60))}.${pad2(min % 60)}`;
 }
+
+export function getRepresentativeEpochMin(shift: { startedAtEpochMin: number; endedAtEpochMin: number; aktual: Array<{ tsEpochMin?: number | null }> }): number {
+  const timestamps = shift.aktual.map((a) => a.tsEpochMin).filter((t): t is number => t != null && t > 0);
+  if (timestamps.length > 0) {
+    return Math.round(timestamps.reduce((a, b) => a + b, 0) / timestamps.length);
+  }
+  return Math.round((shift.startedAtEpochMin + shift.endedAtEpochMin) / 2);
+}
+

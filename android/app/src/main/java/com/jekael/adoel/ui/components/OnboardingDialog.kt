@@ -2,143 +2,410 @@ package com.jekael.adoel.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.ArrowForward
-import androidx.compose.material.icons.outlined.ContentCut
-import androidx.compose.material.icons.outlined.Forward
-import androidx.compose.material.icons.outlined.Pause
-import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material.icons.outlined.TouchApp
-import androidx.compose.material.icons.outlined.Undo
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.jekael.adoel.ui.theme.AppType
-import com.jekael.adoel.ui.theme.Amber400
-import com.jekael.adoel.ui.theme.Amber500
-import com.jekael.adoel.ui.theme.Amber700
-import com.jekael.adoel.ui.theme.Cyan600
-import com.jekael.adoel.ui.theme.Dimens
-import com.jekael.adoel.ui.theme.Emerald500
-import com.jekael.adoel.ui.theme.LocalAppColors
-import com.jekael.adoel.ui.theme.WovenDivider
-import com.jekael.adoel.ui.theme.Zinc500
+import com.jekael.adoel.ui.theme.*
 
 /**
- * Light first-run explainer — also reachable anytime via Pengaturan > Data > Bantuan, so the
- * same content is written once and shared between the auto-shown and on-demand entry points.
+ * Onboarding and Operational Guide Dialog for Adoel.
+ * Provides two comprehensive sections: Operational Workflow and Radar Gestures.
  */
 @Composable
 fun OnboardingDialog(onClose: () -> Unit) {
     val colors = LocalAppColors.current
     var tab by remember { mutableIntStateOf(0) }
+    val scrollState = rememberScrollState()
+
     FloatingEditDialog(onDismissRequest = onClose) {
         Column(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = Dimens.Space8),
             verticalArrangement = Arrangement.spacedBy(Dimens.Space12),
         ) {
-            Text("Cara Pakai Adoel", style = AppType.DialogTitle.copy(color = colors.textPrimary))
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Cyan600.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.MenuBook,
+                            contentDescription = null,
+                            tint = Cyan400,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                    Column {
+                        Text(
+                            "Panduan Penggunaan",
+                            style = AppType.DialogTitle.copy(color = colors.textPrimary, fontSize = 16.sp),
+                        )
+                        Text(
+                            "Pelajari cara operasional & gestur cepat Adoel",
+                            style = AppType.Caption.copy(color = colors.textFaint, fontSize = 11.sp),
+                        )
+                    }
+                }
+                IconButton(
+                    onClick = onClose,
+                    modifier = Modifier.size(32.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Tutup Panduan",
+                        tint = colors.textMuted,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+
+            // Tab Switcher
             SlidingToggle(
-                labelLeft = "Instruksi", labelRight = "Simulasi", selectedIndex = tab,
-                onSelect = { tab = it }, containerColor = colors.bgElevated2,
-                activeColorLeft = Cyan600, activeColorRight = Emerald500,
-                activeTextColorLeft = Color.White, activeTextColorRight = Color.White,
-                inactiveTextColor = colors.textMuted, modifier = Modifier.fillMaxWidth(),
-                accessibilityLabel = "Mode panduan Adoel",
+                labelLeft = "Alur Operasional",
+                labelRight = "Gestur Radar",
+                selectedIndex = tab,
+                onSelect = { tab = it },
+                containerColor = colors.bgElevated2,
+                activeColorLeft = Cyan600,
+                activeColorRight = Cyan600,
+                activeTextColorLeft = Color.White,
+                activeTextColorRight = Color.White,
+                inactiveTextColor = colors.textMuted,
+                modifier = Modifier.fillMaxWidth(),
+                accessibilityLabel = "Pilihan tab panduan Adoel",
             )
-            if (tab == 0) Instructions() else GestureLegend()
+
+            // Body Content (Scrollable)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 420.dp)
+                    .verticalScroll(scrollState),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                if (tab == 0) {
+                    OperationalFlowGuide()
+                } else {
+                    RadarGestureGuide()
+                }
+            }
+
+            Spacer(Modifier.height(Dimens.Space4))
+
+            // Footer Action Button
             Button(
-                onClick = onClose, modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(Dimens.RadiusControl),
+                onClick = onClose,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
-            ) { Text("Mengerti", fontWeight = FontWeight.SemiBold) }
-        }
-    }
-}
-
-@Composable
-private fun Instructions() {
-    GuideRow(Icons.Outlined.Schedule, Cyan600, "ESTIMASI", "Input sisa waktu, yard berjalan, atau jam counter. Kini kamu bisa Full Setup (Tipe/Speed/Koreksi) langsung di sini.")
-    WovenDivider()
-    GuideRow(Icons.Outlined.ContentCut, Emerald500, "POTONG / DOFFING", "Geser kartu ke kanan (Normal) atau kiri (Matching) untuk mencatat. Bisa juga klik ikon gunting di konsol.")
-    WovenDivider()
-    GuideRow(Icons.Outlined.Pause, Amber500, "JEDA MESIN", "Tekan lama kartu untuk Jeda. Sisi belakang kartu sekarang tetap menampilkan info Corak & Yard yang dibekukan.")
-    WovenDivider()
-    GuideRow(Icons.Outlined.Add, Zinc500, "KALKULATOR", "Gunakan tombol [+] dan [-] untuk koreksi menit D408 secara instan tanpa mengetik ulang.")
-    WovenDivider()
-    GuideRow(Icons.Outlined.Undo, Amber700, "URUNGKAN (UNDO)", "Salah tekan? Gunakan tombol Undo/Redo di kiri konsol untuk membatalkan aksi terakhir.")
-    WovenDivider()
-    GuideRow(Icons.Outlined.Forward, Amber400, "OPERAN SHIFT", "Mesin yang doff lebih dari 8 jam ke depan otomatis ditandai sebagai Operan agar progres bar tetap akurat.")
-}
-
-@Composable
-private fun GuideRow(icon: ImageVector, tint: Color, title: String, description: String) {
-    val colors = LocalAppColors.current
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Dimens.Space12), verticalAlignment = Alignment.Top) {
-        Box(modifier = Modifier.size(32.dp).clip(RoundedCornerShape(50)).background(tint), contentAlignment = Alignment.Center) {
-            Icon(icon, contentDescription = title, tint = Color.White, modifier = Modifier.size(18.dp))
-        }
-        Column(verticalArrangement = Arrangement.spacedBy(Dimens.Space4)) {
-            Text(title, style = AppType.LabelBold.copy(color = tint))
-            Text(description, style = AppType.BodySmall.copy(color = colors.textSecondary, lineHeight = 18.sp))
-        }
-    }
-}
-
-@Composable
-private fun GestureLegend() {
-    val colors = LocalAppColors.current
-    Text("Practice Area", style = AppType.LabelBold.copy(color = colors.textPrimary))
-    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-        val cardWidth = (maxWidth * 0.48f).coerceAtLeast(150.dp)
-        Column(verticalArrangement = Arrangement.spacedBy(Dimens.Space8)) {
-            Box(modifier = Modifier.fillMaxWidth()) { GestureCallout(Icons.Outlined.ArrowBack, "Ketuk: Edit Mesin", Amber400, Alignment.Start) }
-            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { MiniRadarCard(Modifier.width(cardWidth)) }
-            Box(modifier = Modifier.fillMaxWidth()) { GestureCallout(Icons.Outlined.ArrowForward, "Ketuk: Edit Waktu", Cyan600, Alignment.End) }
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                GestureCallout(Icons.Outlined.ArrowBack, "Geser: Potong Kain", Emerald500, Alignment.Start, Modifier.weight(1f))
-                GestureCallout(Icons.Outlined.TouchApp, "Tekan Lama: Jeda / Hapus", Zinc500, Alignment.End, Modifier.weight(1f))
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "Mengerti & Tutup Panduan",
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp,
+                )
             }
         }
     }
 }
 
 @Composable
-private fun GestureCallout(icon: ImageVector, label: String, tint: Color, alignment: Alignment.Horizontal, modifier: Modifier = Modifier) {
+private fun OperationalFlowGuide() {
     val colors = LocalAppColors.current
-    Row(modifier = modifier, horizontalArrangement = if (alignment == Alignment.End) Arrangement.End else Arrangement.Start, verticalAlignment = Alignment.CenterVertically) {
-        if (alignment == Alignment.End) Text(label, style = AppType.BodySmall.copy(color = colors.textSecondary))
-        Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.padding(horizontal = 4.dp).size(20.dp))
-        if (alignment == Alignment.Start) Text(label, style = AppType.BodySmall.copy(color = colors.textSecondary))
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        GuideRow(
+            icon = Icons.Outlined.Schedule,
+            tint = Cyan500,
+            stepNumber = "1. Estimasi Waktu Doff",
+            description = "Ketik nomor mesin di konsol bawah lalu ketuk tombol ⏱ Estimasi. Isi sisa menit (Tappet/Cam), yard berjalan (D405), atau jam counter (D408).",
+        )
+        WovenDivider()
+        GuideRow(
+            icon = Icons.Outlined.ContentCut,
+            tint = Emerald500,
+            stepNumber = "2. Potong Kain (Doffing)",
+            description = "Ketik nomor mesin lalu tekan tombol ✂ Doffing. Atau gunakan cara kilat dengan menggeser kartu mesin di layar Radar.",
+        )
+        WovenDivider()
+        GuideRow(
+            icon = Icons.Outlined.Pause,
+            tint = Amber500,
+            stepNumber = "3. Jeda Mesin & Macet",
+            description = "Jika mesin berhenti atau ada kendala putus lusi, tekan lama kartu mesin lalu pilih Jeda. Perhitungan waktu istirahat tetap akurat dan data rol kain dibekukan.",
+        )
+        WovenDivider()
+        GuideRow(
+            icon = Icons.Outlined.Undo,
+            tint = Amber700,
+            stepNumber = "4. Urungkan (Undo / Redo)",
+            description = "Salah mencatat atau salah hapus? Tekan tombol panah ↩ Urungkan atau ↪ Ulangi di sisi kiri konsol bawah untuk mengembalikan data seketika.",
+        )
+        WovenDivider()
+        GuideRow(
+            icon = Icons.Outlined.Forward,
+            tint = Sky500,
+            stepNumber = "5. Operan Antar-Shift",
+            description = "Mesin yang jadwal doffing-nya melebihi jam kerja shift saat ini (>8 jam) secara otomatis ditandai sebagai Operan agar grafik progres kerja tetap rapi.",
+        )
     }
 }
 
 @Composable
-private fun MiniRadarCard(modifier: Modifier = Modifier) {
+private fun GuideRow(
+    icon: ImageVector,
+    tint: Color,
+    stepNumber: String,
+    description: String,
+) {
     val colors = LocalAppColors.current
-    Column(modifier = modifier.background(colors.bgElevated2, RoundedCornerShape(Dimens.RadiusControl)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("MC 12", style = AppType.LabelBold.copy(color = colors.textPrimary))
-            Icon(Icons.Outlined.Schedule, contentDescription = "Sisa waktu", tint = Cyan600, modifier = Modifier.size(18.dp))
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .clip(CircleShape)
+                .background(tint.copy(alpha = 0.2f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, contentDescription = stepNumber, tint = tint, modifier = Modifier.size(17.dp))
         }
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("D408", style = AppType.BodySmall.copy(color = colors.textSecondary))
-            Text("02j 40m", style = AppType.LabelBold.copy(color = Amber500))
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                stepNumber,
+                style = AppType.LabelBold.copy(color = tint, fontSize = 13.sp),
+            )
+            Text(
+                description,
+                style = AppType.BodySmall.copy(color = colors.textSecondary, fontSize = 12.sp, lineHeight = 17.sp),
+            )
         }
-        LinearProgressIndicator(progress = { 0.62f }, modifier = Modifier.fillMaxWidth(), color = Cyan600, trackColor = colors.border)
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("Corak A", style = AppType.Caption.copy(color = colors.textMuted))
-            Icon(Icons.Outlined.ContentCut, contentDescription = "Potong kain", tint = Emerald500, modifier = Modifier.size(18.dp))
+    }
+}
+
+@Composable
+private fun RadarGestureGuide() {
+    val colors = LocalAppColors.current
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        // Anatomy Preview Card
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(Dimens.RadiusControl))
+                .background(colors.bgElevated2)
+                .padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                "CONTOH ANATOMI KARTU RADAR",
+                style = AppType.Caption.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = Cyan400,
+                    fontSize = 10.sp,
+                    letterSpacing = 0.5.sp,
+                ),
+            )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(colors.bgElevated1)
+                    .padding(10.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("MC 12", style = AppType.LabelBold.copy(color = colors.textPrimary, fontSize = 14.sp))
+                    Text("⏱ 02j 40m", style = AppType.LabelBold.copy(color = Amber400, fontSize = 12.sp))
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(colors.border),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.65f)
+                            .fillMaxHeight()
+                            .background(Cyan500),
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("D408 • Corak 4500", style = AppType.Caption.copy(color = colors.textFaint, fontSize = 11.sp))
+                    Text("300y", style = AppType.Caption.copy(color = colors.textFaint, fontSize = 11.sp))
+                }
+            }
+            Text(
+                "Sentuh, geser, atau tahan kartu untuk aksi instan:",
+                style = AppType.Caption.copy(color = colors.textMuted, fontSize = 11.sp),
+            )
         }
+
+        // Gesture 1: Geser ke Kanan
+        GestureItem(
+            icon = Icons.Outlined.ArrowForward,
+            iconTint = Emerald400,
+            actionLabel = "Geser ke Kanan",
+            badgeText = "Doffing Normal",
+            badgeColor = Emerald400,
+            description = "Usap kartu ke kanan untuk mencatat Doffing Normal saat kain selesai sesuai target yard standar.",
+        )
+
+        // Gesture 2: Geser ke Kiri
+        GestureItem(
+            icon = Icons.Outlined.ArrowBack,
+            iconTint = Sky400,
+            actionLabel = "Geser ke Kiri",
+            badgeText = "Doffing Matching",
+            badgeColor = Sky400,
+            description = "Usap kartu ke kiri untuk mencatat Doffing Matching (doffing awal pada beam lusi baru untuk potong sampel & cek kualitas kain).",
+        )
+
+        // Gesture 3: Ketuk Angka Jam
+        GestureItem(
+            icon = Icons.Outlined.Schedule,
+            iconTint = Cyan400,
+            actionLabel = "Ketuk Angka Jam",
+            badgeText = "Edit Estimasi",
+            badgeColor = Cyan400,
+            description = "Ketuk langsung pada angka jam/sisa waktu untuk memperbarui estimasi doffing.",
+        )
+
+        // Gesture 4: Ketuk Nomor / Corak
+        GestureItem(
+            icon = Icons.Outlined.Texture,
+            iconTint = Purple400,
+            actionLabel = "Ketuk Nomor / Corak",
+            badgeText = "Edit Data Mesin",
+            badgeColor = Purple400,
+            description = "Ketuk nomor mesin atau nama corak untuk mengedit spesifikasi, yard, atau tipe mesin.",
+        )
+
+        // Gesture 5: Tekan Lama
+        GestureItem(
+            icon = Icons.Outlined.TouchApp,
+            iconTint = Amber400,
+            actionLabel = "Tekan Lama (Long-Press)",
+            badgeText = "Menu Jeda / Hapus",
+            badgeColor = Amber400,
+            description = "Tahan sentuhan pada kartu untuk membuka menu cepat Jeda Mesin atau Hapus. Kartu yang dijeda akan dipisahkan ke baris khusus 'Dijeda' dan dapat dilanjutkan seketika melalui tombol '▶ Lanjutkan'.",
+        )
+    }
+}
+
+@Composable
+private fun GestureItem(
+    icon: ImageVector,
+    iconTint: Color,
+    actionLabel: String,
+    badgeText: String,
+    badgeColor: Color,
+    description: String,
+) {
+    val colors = LocalAppColors.current
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(Dimens.RadiusControl))
+            .background(colors.bgElevated1)
+            .padding(10.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(16.dp),
+                )
+                Text(
+                    actionLabel,
+                    style = AppType.LabelBold.copy(color = colors.textPrimary, fontSize = 13.sp),
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(badgeColor.copy(alpha = 0.15f))
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
+            ) {
+                Text(
+                    badgeText,
+                    style = AppType.Caption.copy(
+                        color = badgeColor,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 10.sp,
+                    ),
+                )
+            }
+        }
+        Text(
+            description,
+            style = AppType.BodySmall.copy(color = colors.textSecondary, fontSize = 12.sp, lineHeight = 16.sp),
+        )
     }
 }

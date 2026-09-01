@@ -1,59 +1,81 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useDoffStore } from "../store/DoffStore";
 import { useUiStore } from "../store/UiStore";
-import { formatDeltaMin, shiftNumberForEpochMin } from "../domain/format";
+import { formatDeltaMin, formatYard, getRepresentativeEpochMin, shiftNumberForEpochMin } from "../domain/format";
 import { sortAktualChronological } from "../domain/aktualOrder";
 import { shareOrCopy, shareShiftText } from "../domain/share";
 import { TIPE_COLOR } from "../domain/mesinVisual";
-import type { MesinTipe, ShiftRecord } from "../domain/types";
-import { CloseIcon, DeleteIcon, ShareIcon } from "./Icons";
+import type { AktualEntry, MesinData, MesinTipe, ShiftRecord } from "../domain/types";
+import { AddIcon, CircleIcon, CloseIcon, DeleteIcon, MesinTipeIcon, ShareIcon } from "./Icons";
 import { WaveProgressBar } from "./WaveProgressBar";
-import { WovenDivider } from "./WovenDivider";
+import { EditAktualDialog } from "./EditAktualDialog";
+import { TambahAktualDialog } from "./TambahAktualDialog";
 
 function formatShiftDate(epochMin: number): string {
   const d = new Date(epochMin * 60000);
   return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
+
+function formatShiftShortDate(epochMin: number): string {
+  const d = new Date(epochMin * 60000);
+  return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}`;
+}
+
 function formatShiftTime(epochMin: number): string {
   const d = new Date(epochMin * 60000);
   return `${pad2(d.getHours())}.${pad2(d.getMinutes())}`;
 }
+
 function pad2(n: number): string {
   return n.toString().padStart(2, "0");
 }
 
+function formatCleanKeterangan(ket: string, jam: string): string {
+  if (ket.startsWith(jam)) {
+    const rest = ket.slice(jam.length).trim();
+    if (rest.startsWith("(") && rest.endsWith(")")) {
+      return rest.slice(1, -1);
+    }
+    return rest;
+  }
+  return ket;
+}
+
+/** Port 1:1 dari StatistikScreen.kt (aplikasi Android Adoel) — panel layar penuh yang
+ * menampilkan arsip shift yang sudah diselesaikan, lengkap dengan kartu agregat
+ * produktivitas, diagram batang 10 shift terakhir bertekstur benang, dan rincian tiap shift. */
 export function StatistikScreen({ onClose }: { onClose: () => void }) {
-  const { state, hapusShift } = useDoffStore();
+  const { state, hapusShift, updateHistoryEntry, deleteHistoryEntry, addHistoryEntry } = useDoffStore();
   const { showConfirm, showToast } = useUiStore();
-  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [expandedShiftId, setExpandedShiftId] = useState<number | null>(null);
+  const [editingEntry, setEditingEntry] = useState<{ shiftId: number; entry: AktualEntry } | null>(null);
+  const [addingToShiftId, setAddingToShiftId] = useState<number | null>(null);
+
+  const shiftCardRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
   const totalDoff = useMemo(() => state.history.reduce((sum, h) => sum + h.aktual.length, 0), [state.history]);
   const avgPerShift = state.history.length > 0 ? totalDoff / state.history.length : 0;
   const maxDoffCount = useMemo(() => Math.max(1, ...state.history.map((h) => h.aktual.length)), [state.history]);
 
-  // Breakdown jumlah doff per tipe mesin, urutan tetap TAPPET→CAM→D405→D408; hanya tipe dengan
-  // count > 0 yang ditampilkan — port dari TipeBreakdownBar di StatistikScreen.kt.
-  const tipeCounts = useMemo(() => {
-    const order: MesinTipe[] = ["TAPPET", "CAM", "D405", "D408"];
-    const byTipe: Partial<Record<MesinTipe, number>> = {};
-    for (const h of state.history) {
-      for (const a of h.aktual) {
-        const tipe = state.db[a.mcNo]?.tipe;
-        if (tipe) byTipe[tipe] = (byTipe[tipe] ?? 0) + 1;
-      }
+  function jumpToShift(shift: ShiftRecord) {
+    setExpandedShiftId(shift.id);
+    const el = shiftCardRefs.current[shift.id];
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
-    return order.filter((t) => (byTipe[t] ?? 0) > 0).map((t) => ({ tipe: t, count: byTipe[t]! }));
-  }, [state.history, state.db]);
+  }
 
-  function handleDelete(shift: ShiftRecord) {
-    const shiftNo = shiftNumberForEpochMin(shift.startedAtEpochMin);
+  function handleDeleteShift(shift: ShiftRecord) {
+    const representativeTime = getRepresentativeEpochMin(shift);
+    const shiftNo = shiftNumberForEpochMin(representativeTime);
     const dateStr = formatShiftDate(shift.startedAtEpochMin);
     showConfirm(`Hapus arsip Shift ${shiftNo} · ${dateStr}? Data ini tidak bisa dikembalikan.`, () => {
       hapusShift(shift.id);
+      showToast("Arsip shift dihapus");
     });
   }
 
-  async function handleShare(shift: ShiftRecord) {
+  async function handleShareShift(shift: ShiftRecord) {
     if (shift.aktual.length === 0) return;
     const outcome = await shareOrCopy(shareShiftText(shift, state.db), "Riwayat Shift");
     if (outcome === "copied") showToast("Teks disalin ke clipboard ✓");
@@ -67,92 +89,270 @@ export function StatistikScreen({ onClose }: { onClose: () => void }) {
           <CloseIcon />
         </button>
       </div>
+
       <div className="overlay-body">
-        <div className="card" style={{ display: "flex", justifyContent: "space-around", textAlign: "center" }}>
-          <div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: "var(--cyan-400)" }}>{totalDoff}</div>
-            <div style={{ fontSize: 11, color: "var(--text-faint)" }}>Total Doff</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: "var(--cyan-400)" }}>{avgPerShift.toFixed(1)}</div>
-            <div style={{ fontSize: 11, color: "var(--text-faint)" }}>Rata-rata/Shift</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: "var(--cyan-400)" }}>{state.history.length}</div>
-            <div style={{ fontSize: 11, color: "var(--text-faint)" }}>Shift Diarsipkan</div>
-          </div>
-        </div>
-
-        {tipeCounts.length > 0 && (
-          <div className="card">
-            <div style={{ display: "flex", height: 6, borderRadius: 3, overflow: "hidden" }}>
-              {tipeCounts.map(({ tipe, count }) => (
-                <div key={tipe} style={{ flexGrow: count, minWidth: 2, background: TIPE_COLOR[tipe] }} />
-              ))}
-            </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 8 }}>
-              {tipeCounts.map(({ tipe, count }) => (
-                <div key={tipe} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: TIPE_COLOR[tipe], display: "inline-block" }} />
-                  <span style={{ fontSize: 12, color: "var(--text-faint)" }}>
-                    {tipe} {count}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <WovenDivider />
-
         {state.history.length === 0 ? (
-          <div className="empty-state">Belum ada shift yang diarsipkan. Tekan "Selesai Shift" untuk mengarsipkan.</div>
+          <div className="empty-state-card" style={{ marginTop: 24 }}>
+            <div className="empty-state-title">Belum ada riwayat shift</div>
+            <div className="empty-state-subtitle">
+              Riwayat akan tersimpan otomatis setiap kali kamu tekan Selesai Shift
+            </div>
+          </div>
         ) : (
-          state.history.map((shift) => (
-            <ShiftCard
-              key={shift.id}
-              shift={shift}
-              maxDoffCount={maxDoffCount}
-              expanded={expandedId === shift.id}
-              onToggle={() => setExpandedId(expandedId === shift.id ? null : shift.id)}
-              onDelete={() => handleDelete(shift)}
-              onShare={() => handleShare(shift)}
+          <>
+            <AggregateStatsCard
+              history={state.history}
               db={state.db}
+              totalDoff={totalDoff}
+              avgPerShift={avgPerShift}
+              selectedShiftId={expandedShiftId}
+              onBarClick={jumpToShift}
             />
-          ))
+
+            {state.history.map((shift) => (
+              <div
+                key={shift.id}
+                ref={(el) => {
+                  shiftCardRefs.current[shift.id] = el;
+                }}
+              >
+                <ShiftRow
+                  shift={shift}
+                  db={state.db}
+                  maxDoffCount={maxDoffCount}
+                  expanded={expandedShiftId === shift.id}
+                  onToggle={() => setExpandedShiftId((prev) => (prev === shift.id ? null : shift.id))}
+                  onDeleteShift={() => handleDeleteShift(shift)}
+                  onShareShift={() => handleShareShift(shift)}
+                  onEditEntry={(entry) => setEditingEntry({ shiftId: shift.id, entry })}
+                  onAddEntry={() => setAddingToShiftId(shift.id)}
+                />
+              </div>
+            ))}
+          </>
         )}
+      </div>
+
+      {editingEntry && (
+        <EditAktualDialog
+          entry={editingEntry.entry}
+          onClose={() => setEditingEntry(null)}
+          onDelete={(id) => {
+            deleteHistoryEntry(editingEntry.shiftId, id);
+            showToast("Entri riwayat dihapus");
+            setEditingEntry(null);
+          }}
+          onSaveCustom={(jam, ket, corakOverride, customYard) => {
+            updateHistoryEntry(editingEntry.shiftId, editingEntry.entry.id, jam, ket, corakOverride, customYard);
+            showToast("Riwayat shift diperbarui ✓");
+            setEditingEntry(null);
+          }}
+        />
+      )}
+
+      {addingToShiftId != null && (
+        <TambahAktualDialog
+          onClose={() => setAddingToShiftId(null)}
+          onSave={(mcNo, jam, ket, corakOverride, customYard) => {
+            addHistoryEntry(addingToShiftId, mcNo, jam, ket, corakOverride, customYard);
+            showToast("Potongan ditambahkan ke riwayat shift ✓");
+            setAddingToShiftId(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+/** Kartu ringkasan agregat — mencakup 3 petak angka metrik dan grafik balok 10 shift terakhir. */
+function AggregateStatsCard({
+  history,
+  db,
+  totalDoff,
+  avgPerShift,
+  selectedShiftId,
+  onBarClick,
+}: {
+  history: ShiftRecord[];
+  db: Record<string, MesinData>;
+  totalDoff: number;
+  avgPerShift: number;
+  selectedShiftId: number | null;
+  onBarClick: (shift: ShiftRecord) => void;
+}) {
+  return (
+    <div className="stat-summary-card">
+      <div className="stat-grid-3">
+        <div className="stat-tile">
+          <div className="val highlight">{totalDoff}</div>
+          <div className="lbl">Total Doff</div>
+        </div>
+        <div className="stat-tile">
+          <div className="val">{history.length}</div>
+          <div className="lbl">Total Shift</div>
+        </div>
+        <div className="stat-tile">
+          <div className="val">{avgPerShift.toFixed(1)}</div>
+          <div className="lbl">Rata-rata/Shift</div>
+        </div>
+      </div>
+
+      <DoffCountChart history={history} selectedShiftId={selectedShiftId} onBarClick={onBarClick} />
+
+      <TipeBreakdownBar history={history} db={db} />
+    </div>
+  );
+}
+
+/** Diagram batang jumlah doff 10 shift terbaru dengan tampilan balok web yang bersih. */
+function DoffCountChart({
+  history,
+  selectedShiftId,
+  onBarClick,
+}: {
+  history: ShiftRecord[];
+  selectedShiftId: number | null;
+  onBarClick: (shift: ShiftRecord) => void;
+}) {
+  const recent = useMemo(() => history.slice(0, 10).reverse(), [history]);
+  if (recent.length === 0) return null;
+  const maxCount = Math.max(1, ...recent.map((s) => s.aktual.length));
+
+  return (
+    <div className="stat-chart-container">
+      <div className="stat-chart-header">
+        <span>Tren 10 Shift Terakhir</span>
+        <span style={{ fontSize: 11, fontWeight: 500, color: "var(--text-faint)" }}>
+          Klik balok untuk lihat shift
+        </span>
+      </div>
+
+      <div className="stat-chart-bars">
+        {recent.map((shift) => {
+          const selected = shift.id === selectedShiftId;
+          const pct = Math.max(8, Math.round((shift.aktual.length / maxCount) * 100));
+          return (
+            <div
+              key={shift.id}
+              onClick={() => onBarClick(shift)}
+              title={`Shift · ${shift.aktual.length} doff (${formatShiftDate(shift.startedAtEpochMin)})`}
+              className={`stat-chart-col${selected ? " selected" : ""}`}
+            >
+              <span className="stat-chart-val">{shift.aktual.length}</span>
+              <div className="stat-chart-bar" style={{ height: `${pct}%` }} />
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="stat-chart-labels">
+        {recent.map((shift) => {
+          const selected = shift.id === selectedShiftId;
+          return (
+            <div
+              key={shift.id}
+              onClick={() => onBarClick(shift)}
+              className={`stat-chart-lbl${selected ? " selected" : ""}`}
+            >
+              {formatShiftShortDate(shift.startedAtEpochMin)}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 }
 
-function ShiftCard({
+/** Bar distribusi proporsi tipe mesin (TAPPET, CAM, D405, D408). */
+function TipeBreakdownBar({
+  history,
+  db,
+}: {
+  history: ShiftRecord[];
+  db: Record<string, MesinData>;
+}) {
+  const counts = useMemo(() => {
+    const order: MesinTipe[] = ["TAPPET", "CAM", "D405", "D408"];
+    const byTipe: Partial<Record<MesinTipe, number>> = {};
+    for (const h of history) {
+      for (const a of h.aktual) {
+        const tipe = db[a.mcNo]?.tipe;
+        if (tipe) byTipe[tipe] = (byTipe[tipe] ?? 0) + 1;
+      }
+    }
+    return order.filter((t) => (byTipe[t] ?? 0) > 0).map((t) => ({ tipe: t, count: byTipe[t]! }));
+  }, [history, db]);
+
+  const total = useMemo(() => counts.reduce((acc, c) => acc + c.count, 0), [counts]);
+  if (total === 0) return null;
+
+  return (
+    <div className="stat-tipe-breakdown">
+      <div className="stat-tipe-bar">
+        {counts.map(({ tipe, count }) => (
+          <div
+            key={tipe}
+            style={{
+              flexGrow: count,
+              minWidth: 2,
+              background: TIPE_COLOR[tipe],
+              height: "100%",
+            }}
+          />
+        ))}
+      </div>
+      <div className="stat-tipe-legend">
+        {counts.map(({ tipe, count }) => (
+          <div key={tipe} className="stat-tipe-item">
+            <span
+              className="stat-tipe-dot"
+              style={{ background: TIPE_COLOR[tipe] }}
+            />
+            <span>
+              {tipe} <strong style={{ color: "var(--text-primary)" }}>{count}</strong>
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Baris kartu arsip shift — port 1:1 dari ShiftRow di Android. */
+function ShiftRow({
   shift,
+  db,
   maxDoffCount,
   expanded,
   onToggle,
-  onDelete,
-  onShare,
-  db,
+  onDeleteShift,
+  onShareShift,
+  onEditEntry,
+  onAddEntry,
 }: {
   shift: ShiftRecord;
+  db: Record<string, MesinData>;
   maxDoffCount: number;
   expanded: boolean;
   onToggle: () => void;
-  onDelete: () => void;
-  onShare: () => void;
-  db: ReturnType<typeof useDoffStore>["state"]["db"];
+  onDeleteShift: () => void;
+  onShareShift: () => void;
+  onEditEntry: (entry: AktualEntry) => void;
+  onAddEntry: () => void;
 }) {
-  const shiftNo = shiftNumberForEpochMin(shift.startedAtEpochMin);
-  const dateStr = formatShiftDate(shift.startedAtEpochMin);
-  const timeRange = `${formatShiftTime(shift.startedAtEpochMin)}–${formatShiftTime(shift.endedAtEpochMin)}`;
-  // +240 (4 jam setelah mulai) dipakai sebagai titik tengah yang aman dari pembungkusan
-  // tanggal untuk shift 8 jam manapun — shift ini sudah diarsipkan, bisa dibuka
-  // berhari-hari kemudian, jadi "sekarang" bukan acuan yang masuk akal.
+  const representativeTime = useMemo(() => getRepresentativeEpochMin(shift), [shift]);
+  const shiftNo = useMemo(() => shiftNumberForEpochMin(representativeTime), [representativeTime]);
+  const dateStr = useMemo(() => formatShiftDate(shift.startedAtEpochMin), [shift.startedAtEpochMin]);
+  const timeRange = useMemo(
+    () => `${formatShiftTime(shift.startedAtEpochMin)}–${formatShiftTime(shift.endedAtEpochMin)}`,
+    [shift.startedAtEpochMin, shift.endedAtEpochMin],
+  );
+
   const chronological = useMemo(
     () => sortAktualChronological(shift.aktual, shift.startedAtEpochMin + 240),
     [shift.aktual, shift.startedAtEpochMin],
   );
+
   const avgGapMin = useMemo(() => {
     const stamped = chronological.map((a) => a.tsEpochMin).filter((t): t is number => t !== null);
     if (stamped.length < 2) return null;
@@ -162,7 +362,7 @@ function ShiftCard({
   }, [chronological]);
 
   return (
-    <div className="shift-card">
+    <div className={`shift-card${expanded ? " expanded" : ""}`} style={{ marginBottom: 12 }}>
       <div className="top" onClick={onToggle} role="button">
         <div>
           <div className="title">
@@ -183,30 +383,68 @@ function ShiftCard({
           {avgGapMin != null && <div className="gap">±{formatDeltaMin(Math.round(avgGapMin))}/doff</div>}
         </div>
       </div>
+
       <div className="btn-row" style={{ marginTop: 10 }}>
-        <button className="btn" onClick={onShare} disabled={shift.aktual.length === 0}>
+        <button className="btn" onClick={onShareShift} disabled={shift.aktual.length === 0}>
           <ShareIcon size={14} /> Bagikan
         </button>
-        <button className="btn danger" onClick={onDelete}>
+        <button className="btn danger" onClick={onDeleteShift}>
           <DeleteIcon size={14} /> Hapus
         </button>
       </div>
+
       {expanded && (
-        <div className="shift-detail">
-          {chronological.map((entry) => {
-            const mesin = db[entry.mcNo];
-            const corak = entry.corakOverride ?? mesin?.corak ?? "—";
-            const yard = entry.customYard ?? mesin?.targetYard;
-            const corakLine = yard != null ? `${corak} · ${yard}y` : corak;
-            return (
-              <div className="row" key={entry.id}>
-                <span>
-                  Mc {entry.mcNo} · {corakLine} · {entry.ket}
-                </span>
-                <span className="jam">{entry.jam}</span>
-              </div>
-            );
-          })}
+        <div className="shift-detail" style={{ marginTop: 12 }}>
+          {chronological.length === 0 ? (
+            <div style={{ fontSize: 12, color: "var(--text-faint)", textAlign: "center", padding: "12px 0" }}>
+              Tidak ada potongan dalam shift ini
+            </div>
+          ) : (
+            chronological.map((entry, index) => {
+              const mesin = db[entry.mcNo];
+              const tipe = mesin?.tipe;
+              const corak = entry.corakOverride ?? mesin?.corak ?? "—";
+              const yard = entry.customYard ?? mesin?.targetYard;
+              const corakLine = yard != null ? `${corak} · ${formatYard(yard)}y` : corak;
+              const ketCode = formatCleanKeterangan(entry.ket, entry.jam);
+              const line = ketCode.length > 0 ? `${corakLine} · ${ketCode}` : corakLine;
+
+              return (
+                <div
+                  className="row"
+                  key={entry.id}
+                  onClick={() => onEditEntry(entry)}
+                  role="button"
+                  title={`Edit riwayat Mc ${entry.mcNo}`}
+                  style={{ cursor: "pointer" }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    {tipe ? (
+                      <span style={{ color: TIPE_COLOR[tipe], display: "inline-flex", alignItems: "center" }}>
+                        <MesinTipeIcon tipe={tipe} size={12} />
+                      </span>
+                    ) : (
+                      <span style={{ color: "var(--text-faint)", display: "inline-flex", alignItems: "center" }}>
+                        <CircleIcon size={12} />
+                      </span>
+                    )}
+                    <span style={{ fontWeight: 700, color: "var(--text-secondary)" }}>
+                      {index + 1}.
+                    </span>
+                    <span style={{ color: "var(--text-secondary)" }}>
+                      Mc {entry.mcNo} · {line}
+                    </span>
+                  </div>
+                  <span className="jam">{entry.jam}</span>
+                </div>
+              );
+            })
+          )}
+
+          <button className="add-entry-btn" onClick={onAddEntry}>
+            <AddIcon size={16} />
+            <span>Tambah Potongan</span>
+          </button>
         </div>
       )}
     </div>

@@ -6,6 +6,7 @@ export interface MesinData {
   targetYard: number | null;
   speed: number | null;
   koreksi: number | null;
+  isActive?: boolean;
 }
 
 export function defaultMesinData(): MesinData {
@@ -41,6 +42,9 @@ export interface ShiftRecord {
 
 export type ThemeMode = "SYSTEM" | "LIGHT" | "DARK";
 
+export const DEFAULT_KETERANGAN_SHORTCUTS: string[] = [];
+export const DEFAULT_CORAK_SHORTCUTS: string[] = [];
+
 export interface DoffState {
   db: Record<string, MesinData>;
   estimasi: Record<string, Estimasi>;
@@ -50,6 +54,8 @@ export interface DoffState {
   history: ShiftRecord[];
   nextShiftId: number;
   onboardingSeen: boolean;
+  keteranganShortcuts?: string[];
+  corakShortcuts?: string[];
 }
 
 export type ProsesResult =

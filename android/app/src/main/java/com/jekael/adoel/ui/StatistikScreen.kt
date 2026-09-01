@@ -27,6 +27,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Circle
@@ -35,6 +36,7 @@ import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -88,6 +90,7 @@ import com.jekael.adoel.ui.components.mesinTipeColor
 import com.jekael.adoel.ui.theme.AppType
 import com.jekael.adoel.ui.theme.Cyan400
 import com.jekael.adoel.ui.theme.Cyan500
+import com.jekael.adoel.ui.theme.Red500
 import com.jekael.adoel.ui.theme.Dimens
 import com.jekael.adoel.ui.theme.LocalAppColors
 import com.jekael.adoel.ui.theme.Motion
@@ -114,6 +117,10 @@ fun StatistikScreen(
     onEditEntrySave: (shiftId: Int, id: Int, jam: String, ket: String, corakOverride: String?, customYard: Double?) -> Unit,
     onDeleteEntry: (shiftId: Int, id: Int) -> Unit,
     onAddEntry: (shiftId: Int, mcNo: String, jam: String, ket: String, corakOverride: String?, customYard: Double?) -> Unit,
+    corakShortcuts: List<String>? = null,
+    keteranganShortcuts: List<String>? = null,
+    onAddCorakShortcut: (String) -> Unit = {},
+    onAddKeteranganShortcut: (String) -> Unit = {},
 ) {
     val colors = LocalAppColors.current
     var expandedShiftId by remember { mutableStateOf<Int?>(null) }
@@ -235,6 +242,11 @@ fun StatistikScreen(
                     onDeleteEntry(editingRecord.id, editingAktual.id)
                     editingEntry = null
                 },
+                corakShortcuts = corakShortcuts,
+                keteranganShortcuts = keteranganShortcuts,
+                onAddCorakShortcut = onAddCorakShortcut,
+                onAddKeteranganShortcut = onAddKeteranganShortcut,
+                showToast = showToast,
             )
         }
 
@@ -251,6 +263,11 @@ fun StatistikScreen(
                 onInvalidMcNo = { showToast("Nomor mesin tidak ditemukan") },
                 onInvalidYard = { showToast("Yard tidak valid") },
                 onInvalidJam = { showToast("Jam tidak valid — format 14.30") },
+                corakShortcuts = corakShortcuts,
+                keteranganShortcuts = keteranganShortcuts,
+                onAddCorakShortcut = onAddCorakShortcut,
+                onAddKeteranganShortcut = onAddKeteranganShortcut,
+                showToast = showToast,
             )
         }
     }
@@ -284,22 +301,74 @@ private fun AggregateStatsCard(
             .fillMaxWidth()
             .elevatedListCard(backgroundColor = colors.bgElevated)
             .padding(Dimens.Space16),
+        verticalArrangement = Arrangement.spacedBy(Dimens.Space16),
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(Dimens.Space24)) {
-            StatFigure(label = "Total doff", value = "$animatedTotal")
-            StatFigure(label = "Shift", value = "$animatedShifts")
-            StatFigure(label = "Rata-rata/shift", value = "%.1f".format(avgPerShift))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            StatTile(
+                modifier = Modifier.weight(1f),
+                label = "Total Doff",
+                value = "$animatedTotal",
+                highlight = true,
+            )
+            StatTile(
+                modifier = Modifier.weight(1f),
+                label = "Total Shift",
+                value = "$animatedShifts",
+                highlight = false,
+            )
+            StatTile(
+                modifier = Modifier.weight(1f),
+                label = "Rata-rata/Shift",
+                value = "%.1f".format(avgPerShift),
+                highlight = false,
+            )
         }
-        Spacer(Modifier.height(Dimens.Space12))
+
         DoffCountChart(history = history, selectedShiftId = selectedShiftId, onBarClick = onBarClick)
-        Spacer(Modifier.height(14.dp))
+
         TipeBreakdownBar(history = history, db = db)
     }
 }
 
-/** Small per-[MesinTipe] breakdown of doffs across all archived history — same color language as
- * RadarCard's type icon/dot (Batch 1) and DoffingSection's row dot, so "which color means which
- * machine type" never has to be relearned between screens. */
+@Composable
+private fun StatTile(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    highlight: Boolean = false,
+) {
+    val colors = LocalAppColors.current
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(colors.bgElevated2)
+            .padding(horizontal = 10.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text(
+            text = value,
+            style = AppType.NumberLarge.copy(
+                fontSize = 20.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = if (highlight) Cyan400 else colors.textPrimary,
+            ),
+            maxLines = 1,
+        )
+        Spacer(Modifier.height(2.dp))
+        Text(
+            text = label,
+            style = AppType.Caption.copy(
+                fontSize = 11.sp,
+                color = colors.textFaint,
+                fontWeight = FontWeight.SemiBold,
+            ),
+            maxLines = 1,
+        )
+    }
+}
 @Composable
 private fun TipeBreakdownBar(history: List<ShiftRecord>, db: Map<String, MesinData>) {
     val colors = LocalAppColors.current
@@ -376,6 +445,21 @@ private fun DoffCountChart(history: List<ShiftRecord>, selectedShiftId: Int?, on
     val maxCount = (recent.maxOfOrNull { it.aktual.size } ?: 1).coerceAtLeast(1)
 
     Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "Tren 10 Shift Terakhir",
+                style = AppType.CaptionBold.copy(color = colors.textSecondary),
+            )
+            Text(
+                text = "Ketuk balok untuk lihat shift",
+                style = TextStyle(fontSize = 11.sp, color = colors.textFaint),
+            )
+        }
+        Spacer(Modifier.height(10.dp))
         Row(
             modifier = Modifier.fillMaxWidth().height(60.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -558,6 +642,39 @@ private fun ShiftRow(
                             style = TextStyle(fontSize = 12.sp, color = colors.textFaint),
                         )
                     }
+                }
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OutlinedButton(
+                    onClick = { requestShare() },
+                    enabled = shift.aktual.isNotEmpty(),
+                    modifier = Modifier.weight(1f).height(38.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textSecondary),
+                    border = BorderStroke(1.dp, colors.border),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                ) {
+                    Icon(imageVector = Icons.Outlined.Share, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Bagikan", style = AppType.CaptionBold)
+                }
+                OutlinedButton(
+                    onClick = { requestDelete() },
+                    modifier = Modifier.weight(1f).height(38.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Red500),
+                    border = BorderStroke(1.dp, Red500.copy(alpha = 0.4f)),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                ) {
+                    Icon(imageVector = Icons.Outlined.Delete, contentDescription = null, modifier = Modifier.size(14.dp), tint = Red500)
+                    Spacer(Modifier.width(6.dp))
+                    Text("Hapus", style = AppType.CaptionBold.copy(color = Red500))
                 }
             }
 

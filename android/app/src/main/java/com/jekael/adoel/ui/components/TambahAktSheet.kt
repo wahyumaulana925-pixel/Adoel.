@@ -40,6 +40,11 @@ fun TambahAktSheet(
     onInvalidMcNo: () -> Unit = {},
     onInvalidYard: () -> Unit = {},
     onInvalidJam: () -> Unit = {},
+    corakShortcuts: List<String>? = null,
+    keteranganShortcuts: List<String>? = null,
+    onAddCorakShortcut: (String) -> Unit = {},
+    onAddKeteranganShortcut: (String) -> Unit = {},
+    showToast: ((String) -> Unit)? = null,
 ) {
     val colors = LocalAppColors.current
     var mcNoInput by remember { mutableStateOf("") }
@@ -146,6 +151,13 @@ fun TambahAktSheet(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
             singleLine = true,
         )
+        CorakShortcutPicker(
+            value = corakInput,
+            onSelect = { corakInput = it },
+            shortcuts = corakShortcuts,
+            onAddShortcut = onAddCorakShortcut,
+            showToast = showToast,
+        )
 
         Spacer(Modifier.height(Dimens.Space16))
 
@@ -180,6 +192,13 @@ fun TambahAktSheet(
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { doSave() }),
             singleLine = true,
+        )
+        KeteranganShortcutPicker(
+            value = ketInput,
+            onSelect = { ketInput = it },
+            shortcuts = keteranganShortcuts,
+            onAddShortcut = onAddKeteranganShortcut,
+            showToast = showToast,
         )
 
         Spacer(Modifier.height(Dimens.Space20))

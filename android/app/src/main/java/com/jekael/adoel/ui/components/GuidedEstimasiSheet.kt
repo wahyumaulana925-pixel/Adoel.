@@ -58,6 +58,8 @@ fun GuidedEstimasiSheet(
     onSubmit: (value: String) -> Unit,
     onQuickUpdate: (corak: String, targetYard: Double?, tipe: MesinTipe, koreksi: Double?, speed: Double?) -> Unit,
     showToast: (String) -> Unit = {},
+    corakShortcuts: List<String>? = null,
+    onAddCorakShortcut: (String) -> Unit = {},
 ) {
     val colors = LocalAppColors.current
     var activeMesin by remember(mcNo) { mutableStateOf(mesin) }
@@ -94,6 +96,8 @@ fun GuidedEstimasiSheet(
                 },
                 onCancel = onDismiss,
                 showToast = showToast,
+                corakShortcuts = corakShortcuts,
+                onAddCorakShortcut = onAddCorakShortcut,
             )
         } else {
             val hint = estimasiFieldHint(tipe)

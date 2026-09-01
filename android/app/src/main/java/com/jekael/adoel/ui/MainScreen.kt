@@ -465,6 +465,12 @@ fun MainScreen(
                 },
                 onSetThemeMode = { mode -> doffVm.setThemeMode(mode.name) },
                 onExportJson = { doffVm.exportJson() },
+                onAddKeteranganShortcut = { sc -> doffVm.addKeteranganShortcut(sc) },
+                onRemoveKeteranganShortcut = { sc -> doffVm.removeKeteranganShortcut(sc) },
+                onResetKeteranganShortcuts = { doffVm.resetKeteranganShortcuts() },
+                onAddCorakShortcut = { sc -> doffVm.addCorakShortcut(sc) },
+                onRemoveCorakShortcut = { sc -> doffVm.removeCorakShortcut(sc) },
+                onResetCorakShortcuts = { doffVm.resetCorakShortcuts() },
                 onImport = { json ->
                     uiVm.showConfirm("Pulihkan data dari file ini? Semua data saat ini akan diganti.") {
                         val oldKeys = state.estimasi.keys.toList()
@@ -499,6 +505,10 @@ fun MainScreen(
                 onAddEntry = { shiftId, mcNo, jam, ket, corakOverride, customYard ->
                     doffVm.tambahAktualKeShift(shiftId, mcNo, jam, ket, corakOverride, customYard)
                 },
+                corakShortcuts = state.corakShortcuts,
+                keteranganShortcuts = state.keteranganShortcuts,
+                onAddCorakShortcut = { doffVm.addCorakShortcut(it) },
+                onAddKeteranganShortcut = { doffVm.addKeteranganShortcut(it) },
             )
         }
 
@@ -534,6 +544,11 @@ fun MainScreen(
             onInvalidYard = { uiVm.showToast("Yard tidak valid") },
             onInvalidJam = { uiVm.showToast("Jam tidak valid — format 14.30") },
             onDelete = { handlers.handleHapusAktual(editAktId) { activeOverlay = ActiveOverlay.None } },
+            corakShortcuts = state.corakShortcuts,
+            keteranganShortcuts = state.keteranganShortcuts,
+            onAddCorakShortcut = { doffVm.addCorakShortcut(it) },
+            onAddKeteranganShortcut = { doffVm.addKeteranganShortcut(it) },
+            showToast = { uiVm.showToast(it) },
         )
     }
 
@@ -551,6 +566,9 @@ fun MainScreen(
                 uiVm.showToast("Mc $quickEditMcNo disimpan ✓")
                 activeOverlay = ActiveOverlay.None
             },
+            corakShortcuts = state.corakShortcuts,
+            onAddCorakShortcut = { doffVm.addCorakShortcut(it) },
+            showToast = { uiVm.showToast(it) },
         )
     }
 
@@ -570,6 +588,8 @@ fun MainScreen(
                 doffVm.setMesin(guidedEstimasiMcNo, mesin.copy(corak = corak, targetYard = targetYard, tipe = tipe, koreksi = koreksi, speed = speed))
             },
             showToast = { uiVm.showToast(it) },
+            corakShortcuts = state.corakShortcuts,
+            onAddCorakShortcut = { doffVm.addCorakShortcut(it) },
         )
     }
 
@@ -590,6 +610,10 @@ fun MainScreen(
                 doffVm.setMesin(guidedDoffingMcNo, mesin.copy(corak = corak, targetYard = targetYard, tipe = tipe, koreksi = koreksi, speed = speed))
             },
             showToast = { uiVm.showToast(it) },
+            corakShortcuts = state.corakShortcuts,
+            keteranganShortcuts = state.keteranganShortcuts,
+            onAddCorakShortcut = { doffVm.addCorakShortcut(it) },
+            onAddKeteranganShortcut = { doffVm.addKeteranganShortcut(it) },
         )
     }
 

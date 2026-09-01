@@ -136,19 +136,27 @@ export function useConsoleHandlers() {
     });
   }
 
-  function handleFinishShift() {
-    if (state.aktual.length === 0 && Object.keys(state.estimasi).length === 0) {
-      showToast("Tidak ada yang perlu diarsipkan");
+  function handleFinishShift(onFinished?: () => void) {
+    const doffCount = state.aktual.length;
+    const estCount = Object.keys(state.estimasi).length;
+    if (doffCount === 0 && estCount === 0) {
+      showToast("Tidak ada data untuk diarsipkan");
       return;
     }
-    showConfirm(
-      `Akhiri shift? ${state.aktual.length} doff & ${Object.keys(state.estimasi).length} estimasi akan diarsipkan ke Riwayat, lalu konsol dikosongkan untuk shift baru.`,
-      () => {
-        finishShift();
-        vibrate(20);
-        showToast("Shift selesai ✓");
-      },
-    );
+
+    const confirmMsg =
+      doffCount > 0
+        ? estCount > 0
+          ? `Akhiri shift? ${doffCount} riwayat doffing akan diarsipkan ke Statistik, dan ${estCount} estimasi aktif akan dihapus.`
+          : `Akhiri shift? ${doffCount} riwayat doffing akan diarsipkan ke Statistik.`
+        : `Akhiri shift? Tidak ada riwayat doffing untuk diarsipkan, ${estCount} estimasi aktif akan dihapus.`;
+
+    showConfirm(confirmMsg, () => {
+      finishShift();
+      vibrate(20);
+      onFinished?.();
+      showToast("Shift selesai ✓");
+    });
   }
 
   return {

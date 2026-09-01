@@ -1,0 +1,6 @@
+{
+  "name": "Adoel",
+  "description": "Pencatat jadwal doffing mesin Water Jet Loom",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,7 +1,7 @@
 package com.jekael.adoel.ui
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListScope
@@ -11,13 +11,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.HourglassEmpty
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -61,6 +64,19 @@ internal fun LazyListScope.estimasiSection(
         }
         return
     }
+
+    // Live Monitoring Status Header (Radar Aktif & Mesin Terdekat)
+    item(key = "radar_status_bar") {
+        val activeEstimasi = remember(radarList) { radarList.filter { it.pausedAtAbsMin == null } }
+        val nearestActive = remember(activeEstimasi) { activeEstimasi.minByOrNull { it.estAbsMin } }
+        RadarStatusBar(
+            totalActive = radarList.size,
+            nearestActive = nearestActive,
+            nowAbs = nowAbs,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = Dimens.Space4, vertical = Dimens.Space4).animateItem(),
+        )
+    }
+
     // Only worth showing once there's more than a handful to scan through — for a couple of
     // machines a filter field is just clutter above the very thing it's meant to help find.
     if (radarList.size > 4) {
@@ -83,6 +99,7 @@ internal fun LazyListScope.estimasiSection(
         }
         return
     }
+    val shiftBoundary = currentShiftStartAbsMin(nowAbs) + 480
     if (segeraList.isNotEmpty()) {
         item(key = "segera_head") {
             UrgencyBandHeader(label = "Segera", count = segeraList.size, color = Red400, modifier = Modifier.animateItem())
@@ -93,6 +110,7 @@ internal fun LazyListScope.estimasiSection(
                 mesin = db[est.mcNo],
                 nowAbs = nowAbs,
                 clashingMcNos = findClashingMachines(est.mcNo, radarList),
+                shiftHandover = est.estAbsMin > shiftBoundary,
                 onDoff = { onDoff(est.mcNo) },
                 onDoffMatching = { onDoffMatching(est.mcNo) },
                 onHapus = { onHapus(est.mcNo) },
@@ -116,7 +134,6 @@ internal fun LazyListScope.estimasiSection(
             val entranceDelayMs = (index * Motion.LIST_STAGGER_STEP_MS).coerceAtMost(Motion.LIST_STAGGER_MAX_MS)
             when (row) {
                 is MenungguRow.CardRow -> {
-                    val shiftBoundary = currentShiftStartAbsMin(nowAbs) + 480
                     val previousCard = menungguRows.getOrNull(index - 1) as? MenungguRow.CardRow
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     if (row.est.estAbsMin > shiftBoundary && (previousCard == null || previousCard.est.estAbsMin <= shiftBoundary)) {
@@ -131,6 +148,7 @@ internal fun LazyListScope.estimasiSection(
                         mesin = db[row.est.mcNo],
                         nowAbs = nowAbs,
                         clashingMcNos = findClashingMachines(row.est.mcNo, radarList),
+                        shiftHandover = row.est.estAbsMin > shiftBoundary,
                         onDoff = { onDoff(row.est.mcNo) },
                         onDoffMatching = { onDoffMatching(row.est.mcNo) },
                         onHapus = { onHapus(row.est.mcNo) },
@@ -285,3 +303,105 @@ internal fun ListFilterField(value: String, onValueChange: (String) -> Unit, pla
         singleLine = true,
     )
 }
+
+@Composable
+private fun RadarStatusBar(
+    totalActive: Int,
+    nearestActive: Estimasi?,
+    nowAbs: Long,
+    modifier: Modifier = Modifier,
+) {
+    val colors = LocalAppColors.current
+    val infiniteTransition = rememberInfiniteTransition(label = "radar_blip")
+    val blipScale by infiniteTransition.animateFloat(
+        initialValue = 0.8f,
+        targetValue = 1.65f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = EaseOutQuad),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "blip_scale",
+    )
+    val blipAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.75f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = EaseOutQuad),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "blip_alpha",
+    )
+
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(colors.bgElevated)
+            .padding(horizontal = Dimens.Space12, vertical = 7.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Box(
+                modifier = Modifier.size(14.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(14.dp)
+                        .graphicsLayer {
+                            scaleX = blipScale
+                            scaleY = blipScale
+                            alpha = blipAlpha
+                        }
+                        .clip(CircleShape)
+                        .background(Emerald500),
+                )
+                Box(
+                    modifier = Modifier
+                        .size(7.dp)
+                        .clip(CircleShape)
+                        .background(Emerald500),
+                )
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = "Radar Aktif:",
+                    style = AppType.Caption.copy(color = colors.textSecondary),
+                )
+                Text(
+                    text = "$totalActive Mesin",
+                    style = AppType.CaptionBold.copy(color = colors.textPrimary),
+                )
+            }
+        }
+
+        if (nearestActive != null) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(colors.bgElevated2)
+                    .padding(horizontal = 8.dp, vertical = 3.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Schedule,
+                    contentDescription = null,
+                    tint = Cyan400,
+                    modifier = Modifier.size(12.dp),
+                )
+                Text(
+                    text = "Terdekat: Mc ${nearestActive.mcNo} (${formatDeltaMin(nearestActive.estAbsMin - nowAbs)})",
+                    style = AppType.CaptionBold.copy(color = Cyan400, fontSize = 11.5.sp),
+                )
+            }
+        }
+    }
+}
+

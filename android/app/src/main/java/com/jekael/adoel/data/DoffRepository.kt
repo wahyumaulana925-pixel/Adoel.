@@ -45,6 +45,8 @@ private data class SerialState(
     val history: List<SerialShiftRecord>?,
     val nextShiftId: Int?,
     val onboardingSeen: Boolean?,
+    val keteranganShortcuts: List<String>? = null,
+    val corakShortcuts: List<String>? = null,
 )
 
 private data class SerialMesin(
@@ -53,6 +55,7 @@ private data class SerialMesin(
     val targetYard: Double?,
     val speed: Double?,
     val koreksi: Double?,
+    val isActive: Boolean? = true,
 )
 
 private data class SerialEstimasi(
@@ -84,9 +87,15 @@ private data class SerialShiftRecord(
     val estimasiRemaining: Map<String, SerialEstimasi>?,
 )
 
-data class SyncEnvelope(val type: String?, val payload: String?)
+data class SyncEnvelope(
+    val type: String?,
+    val payload: String?,
+    val part: Int? = null,
+    val total: Int? = null,
+)
 
-private data class SyncPayload(
+data class SyncPayload(
+    val cDb: List<List<Any?>>? = null,
     val db: Map<String, SerialMesin>? = null,
     val estimasi: Map<String, SerialEstimasi>? = null,
     val aktual: List<SerialAktual>? = null,
@@ -153,6 +162,7 @@ class DoffRepository private constructor(private val context: Context) : DoffSta
                         targetYard = v.targetYard,
                         speed = v.speed,
                         koreksi = v.koreksi,
+                        isActive = v.isActive ?: true,
                     ).let { mcNo to it }
                 }.toMap(),
                 estimasi = (serial.estimasi ?: emptyMap()).mapNotNull { (mcNo, v) ->
@@ -181,6 +191,8 @@ class DoffRepository private constructor(private val context: Context) : DoffSta
                 },
                 nextShiftId = serial.nextShiftId ?: 1,
                 onboardingSeen = serial.onboardingSeen ?: true,
+                keteranganShortcuts = serial.keteranganShortcuts,
+                corakShortcuts = serial.corakShortcuts,
             )
         } catch (e: Exception) {
             // Null is the correct contract for the caller (invalid backup / corrupt blob), but a
@@ -243,7 +255,7 @@ class DoffRepository private constructor(private val context: Context) : DoffSta
     private fun serialize(state: DoffState): String {
         val serial = SerialState(
             db = state.db.mapValues { (_, v) ->
-                SerialMesin(v.tipe.name, v.corak, v.targetYard, v.speed, v.koreksi)
+                SerialMesin(v.tipe.name, v.corak, v.targetYard, v.speed, v.koreksi, v.isActive)
             },
             estimasi = state.estimasi.mapValues { (_, v) ->
                 SerialEstimasi(v.mcNo, v.estAbsMin, v.startAbsMin, v.corakOverride, v.yardOverride, v.pausedAtAbsMin)
@@ -264,6 +276,8 @@ class DoffRepository private constructor(private val context: Context) : DoffSta
             },
             nextShiftId = state.nextShiftId,
             onboardingSeen = state.onboardingSeen,
+            keteranganShortcuts = state.keteranganShortcuts,
+            corakShortcuts = state.corakShortcuts,
         )
         return gson.toJson(serial)
     }
@@ -351,61 +365,124 @@ class DoffRepository private constructor(private val context: Context) : DoffSta
     /** QR payload for handing the active shift to another device. History is deliberately absent. */
     suspend fun prepareHandoverData(): String {
         val state = load()
-        val machineNos = state.estimasi.keys + state.aktual.map { it.mcNo }
+        val nowAbs = nowAbsMin()
+        val shiftEndAbs = currentShiftStartAbsMin(nowAbs) + 480L
+        val nextShiftEst = state.estimasi.filter { it.value.estAbsMin > shiftEndAbs }
+        val targetEst = if (nextShiftEst.isNotEmpty()) nextShiftEst else state.estimasi
+        val machineNos = targetEst.keys
+
+        val cDbList = machineNos.mapNotNull { mcNo ->
+            val m = state.db[mcNo] ?: return@mapNotNull null
+            listOf<Any?>(mcNo, m.tipe.name, m.corak, m.targetYard, m.speed, m.koreksi, m.isActive)
+        }
         val payload = SyncPayload(
-            db = state.db.filterKeys { it in machineNos }.mapValues { (_, v) ->
-                SerialMesin(v.tipe.name, v.corak, v.targetYard, v.speed, v.koreksi)
-            },
-            estimasi = state.estimasi.mapValues { (_, v) ->
+            cDb = cDbList,
+            estimasi = targetEst.mapValues { (_, v) ->
                 SerialEstimasi(v.mcNo, v.estAbsMin, v.startAbsMin, v.corakOverride, v.yardOverride, v.pausedAtAbsMin)
             },
-            aktual = state.aktual.map(::toSerialAktual),
+            aktual = emptyList(),
         )
         return encodeSyncEnvelope("HANDOVER", payload)
     }
 
-    /** QR payload containing the complete machine master database, without active shift data. */
-    suspend fun prepareMasterDbData(): String {
+    /** QR payload containing machine master database with scoping options. */
+    suspend fun prepareMasterDbData(scope: String = "CUSTOMIZED_ONLY"): String {
         val state = load()
-        val payload = SyncPayload(
-            db = state.db.mapValues { (_, v) ->
-                SerialMesin(v.tipe.name, v.corak, v.targetYard, v.speed, v.koreksi)
-            },
-        )
-        return encodeSyncEnvelope("MASTER_DB", payload)
+        val cDbList = mutableListOf<List<Any?>>()
+        for ((mcNo, m) in state.db) {
+            val num = mcNo.toIntOrNull()
+            if (scope == "RANGE_1_30" && (num == null || num !in 1..30)) continue
+            if (scope == "RANGE_31_60" && (num == null || num !in 31..60)) continue
+
+            val isCustomized = (m.corak.trim().isNotEmpty() && m.corak != "-") ||
+                    m.targetYard != null || m.speed != null || (m.koreksi != null && m.koreksi != 0.0)
+
+            if (scope == "CUSTOMIZED_ONLY" && !isCustomized) continue
+
+            cDbList.add(listOf<Any?>(mcNo, m.tipe.name, m.corak, m.targetYard, m.speed, m.koreksi, m.isActive))
+        }
+
+        if (cDbList.isEmpty() && scope == "CUSTOMIZED_ONLY") {
+            for ((mcNo, m) in state.db.entries.take(30)) {
+                cDbList.add(listOf<Any?>(mcNo, m.tipe.name, m.corak, m.targetYard, m.speed, m.koreksi, m.isActive))
+            }
+        }
+
+        val part = when (scope) {
+            "RANGE_1_30" -> 1
+            "RANGE_31_60" -> 2
+            else -> null
+        }
+        val total = if (part != null) 2 else null
+
+        val payload = SyncPayload(cDb = cDbList)
+        return encodeSyncEnvelope("MASTER_DB", payload, part, total)
     }
 
     /** Decompresses and merges a scanned QR payload, then restores every active notification. */
-    suspend fun processScannedQr(data: String, context: Context): DoffState? {
+    suspend fun processScannedQr(data: String, context: Context): Pair<DoffState?, String> {
         return try {
-            val envelope = gson.fromJson(data, SyncEnvelope::class.java) ?: return null
-            val type = envelope.type ?: return null
-            if (type != "HANDOVER" && type != "MASTER_DB") return null
-            val encodedPayload = envelope.payload ?: return null
+            val envelope = gson.fromJson(data, SyncEnvelope::class.java)
+                ?: return Pair(null, "Format QR tidak valid")
+            val type = envelope.type ?: return Pair(null, "Format QR tidak valid")
+            if (type != "HANDOVER" && type != "MASTER_DB") return Pair(null, "Format QR tidak dikenali")
+            val encodedPayload = envelope.payload ?: return Pair(null, "Data QR kosong")
             val payload = gson.fromJson(decodeSyncPayload(encodedPayload), SyncPayload::class.java)
-                ?: return null
+                ?: return Pair(null, "Gagal membaca isi QR")
+
+            var message = "Sinkronisasi berhasil ✓"
             val nextState = update { current ->
                 when (type) {
-                    "HANDOVER" -> mergeHandover(current, payload)
-                    "MASTER_DB" -> current.copy(db = payload.db.toMesinData())
+                    "HANDOVER" -> {
+                        val incomingDb = parseMesinMap(payload)
+                        val incomingAktual = (payload.aktual ?: emptyList()).filterNotNull().map(::toAktualEntry)
+                        val mergedAktual = (current.aktual + incomingAktual).distinctBy {
+                            listOf(it.id, it.mcNo, it.jam, it.ket, it.corakOverride, it.customYard, it.tsEpochMin)
+                        }
+                        val dedupedAktual = dedupeIds(mergedAktual.map(::toSerialAktual))
+                        val incomingEst = (payload.estimasi ?: emptyMap()).mapNotNull { (mcNo, v) ->
+                            if (v == null) return@mapNotNull null
+                            val safeMcNo = v.mcNo ?: mcNo
+                            val estAbsMin = v.estAbsMin ?: return@mapNotNull null
+                            val startAbsMin = v.startAbsMin ?: return@mapNotNull null
+                            safeMcNo to Estimasi(safeMcNo, estAbsMin, startAbsMin, v.corakOverride, v.yardOverride, v.pausedAtAbsMin)
+                        }.toMap()
+
+                        message = "Oper Shift berhasil diimpor (${incomingEst.size} estimasi) ✓"
+                        current.copy(
+                            db = current.db + incomingDb,
+                            estimasi = current.estimasi + incomingEst,
+                            aktual = dedupedAktual,
+                            nextId = maxOf(current.nextId, (dedupedAktual.maxOfOrNull { it.id } ?: 0) + 1),
+                        )
+                    }
+                    "MASTER_DB" -> {
+                        val incomingDb = parseMesinMap(payload)
+                        message = if (envelope.part != null && envelope.total != null) {
+                            "Bagian ${envelope.part}/${envelope.total} (${incomingDb.size} mesin) berhasil diimpor ✓"
+                        } else {
+                            "Berhasil menyinkronkan ${incomingDb.size} data mesin ✓"
+                        }
+                        current.copy(db = current.db + incomingDb)
+                    }
                     else -> current
                 }
             }
             NotificationHelper.rescheduleAll(context, nextState.estimasi.values)
-            nextState
+            Pair(nextState, message)
         } catch (e: Exception) {
             Log.w("DoffRepository", "processScannedQr gagal — QR tidak valid", e)
-            null
+            Pair(null, "⚠ Format QR Sync tidak valid")
         }
     }
 
-    private fun encodeSyncEnvelope(type: String, payload: SyncPayload): String {
+    private fun encodeSyncEnvelope(type: String, payload: SyncPayload, part: Int? = null, total: Int? = null): String {
         val raw = gson.toJson(payload).toByteArray(Charsets.UTF_8)
         val compressed = ByteArrayOutputStream().use { output ->
             GZIPOutputStream(output).use { it.write(raw) }
             output.toByteArray()
         }
-        return gson.toJson(SyncEnvelope(type, Base64.encodeToString(compressed, Base64.NO_WRAP)))
+        return gson.toJson(SyncEnvelope(type, Base64.encodeToString(compressed, Base64.NO_WRAP), part, total))
     }
 
     private fun decodeSyncPayload(encoded: String): String {
@@ -420,7 +497,7 @@ class DoffRepository private constructor(private val context: Context) : DoffSta
         }
         val dedupedAktual = dedupeIds(mergedAktual.map(::toSerialAktual))
         return current.copy(
-            db = current.db + payload.db.toMesinData(),
+            db = current.db + parseMesinMap(payload),
             estimasi = current.estimasi + (payload.estimasi ?: emptyMap()).mapNotNull { (mcNo, v) ->
                 if (v == null) return@mapNotNull null
                 val safeMcNo = v.mcNo ?: mcNo
@@ -433,16 +510,44 @@ class DoffRepository private constructor(private val context: Context) : DoffSta
         )
     }
 
-    private fun Map<String, SerialMesin>?.toMesinData(): Map<String, MesinData> = this.orEmpty().mapNotNull { (mcNo, v) ->
-        if (v == null) return@mapNotNull null
-        MesinData(
-            tipe = runCatching { MesinTipe.valueOf(v.tipe ?: "") }.getOrDefault(MesinTipe.TAPPET),
-            corak = v.corak ?: "-",
-            targetYard = v.targetYard,
-            speed = v.speed,
-            koreksi = v.koreksi,
-        ).let { mcNo to it }
-    }.toMap()
+    private fun parseMesinMap(payload: SyncPayload): Map<String, MesinData> {
+        val result = mutableMapOf<String, MesinData>()
+        if (!payload.cDb.isNullOrEmpty()) {
+            for (item in payload.cDb) {
+                if (item.isEmpty()) continue
+                val mcNo = item.getOrNull(0)?.toString() ?: continue
+                val tipeStr = item.getOrNull(1)?.toString() ?: "TAPPET"
+                val corak = item.getOrNull(2)?.toString() ?: "-"
+                val targetYard = (item.getOrNull(3) as? Number)?.toDouble()
+                val speed = (item.getOrNull(4) as? Number)?.toDouble()
+                val koreksi = (item.getOrNull(5) as? Number)?.toDouble()
+                val isActive = when (val activeVal = item.getOrNull(6)) {
+                    is Boolean -> activeVal
+                    is Number -> activeVal.toInt() != 0
+                    else -> true
+                }
+                val tipe = runCatching { MesinTipe.valueOf(tipeStr) }.getOrDefault(MesinTipe.TAPPET)
+                result[mcNo] = MesinData(tipe, corak, targetYard, speed, koreksi, isActive)
+            }
+            return result
+        }
+
+        if (!payload.db.isNullOrEmpty()) {
+            for ((mcNo, v) in payload.db) {
+                if (v == null) continue
+                val tipe = runCatching { MesinTipe.valueOf(v.tipe ?: "") }.getOrDefault(MesinTipe.TAPPET)
+                result[mcNo] = MesinData(
+                    tipe = tipe,
+                    corak = v.corak ?: "-",
+                    targetYard = v.targetYard,
+                    speed = v.speed,
+                    koreksi = v.koreksi,
+                    isActive = v.isActive ?: true,
+                )
+            }
+        }
+        return result
+    }
 
     /** Restore state from a backup produced by [exportJson]. Returns the imported state, or null
      * if the JSON is not a valid Adoel backup. Writes atomically like any other mutation. */

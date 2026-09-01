@@ -1,6 +1,8 @@
 package com.jekael.adoel.ui
 
 import android.content.Context
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
@@ -9,11 +11,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Texture
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
@@ -49,6 +54,71 @@ fun LazyListScope.doffingSection(
         }
         return
     }
+
+    // Summary Header: Total Doff & Total Yards
+    item(key = "doff_summary") {
+        val totalYards = remember(state.aktual, state.db) {
+            state.aktual.sumOf { entry ->
+                val custom = entry.customYard
+                if (custom != null && !custom.isNaN()) custom
+                else {
+                    val mYard = state.db[entry.mcNo]?.targetYard?.toDouble()
+                    if (mYard != null && !mYard.isNaN()) mYard else 0.0
+                }
+            }
+        }
+        val colors = LocalAppColors.current
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Dimens.Space4, vertical = Dimens.Space4)
+                .animateItem(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(colors.bgElevated)
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.History,
+                    contentDescription = null,
+                    tint = Cyan400,
+                    modifier = Modifier.size(14.dp),
+                )
+                Text(
+                    text = "Total: ${state.aktual.size} Doff",
+                    style = AppType.CaptionBold.copy(color = colors.textPrimary),
+                )
+            }
+            if (totalYards > 0) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(colors.bgElevated)
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Texture,
+                        contentDescription = null,
+                        tint = Amber400,
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Text(
+                        text = "Hasil: ${formatYard(totalYards.toLong())} yds",
+                        style = AppType.CaptionBold.copy(color = colors.textPrimary),
+                    )
+                }
+            }
+        }
+    }
+
     // Only worth showing once there's more than a handful to scan through — mirrors the same
     // threshold used for the radar list's filter.
     if (aktualReversed.size > 4) {
@@ -111,10 +181,8 @@ private fun DoffingRow(
         else -> corak
     }
     val tipeColor = mesin?.tipe?.let(::mesinTipeColor) ?: colors.textFaint
-    // Swipe right = edit, swipe left = hapus — matches RadarCard's swipe model. Tap no longer
-    // duplicates the swipe-right action (it used to, which just meant two gestures did the exact
-    // same thing); TalkBack still reaches both via the customActions below, since it can't
-    // perform the drag gesture at all.
+    // Swipe right = edit, swipe left = hapus — matches RadarCard's swipe model.
+    // Also tap directly opens edit.
     SwipeableCard(
         modifier = modifier.fillMaxWidth(),
         onSwipeRight = onEdit,
@@ -126,6 +194,7 @@ private fun DoffingRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .elevatedListCard(backgroundColor = colors.bgElevated)
+                .clickable(onClick = onEdit)
                 .semantics(mergeDescendants = true) {
                     customActions = listOf(
                         CustomAccessibilityAction("Edit riwayat Mc ${entry.mcNo}") { onEdit(); true },

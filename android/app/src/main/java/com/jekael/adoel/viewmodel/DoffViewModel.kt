@@ -310,6 +310,34 @@ class DoffViewModel @JvmOverloads constructor(
         s.copy(onboardingSeen = true)
     }
 
+    fun addKeteranganShortcut(shortcut: String) = updateState { s ->
+        val list = (s.keteranganShortcuts ?: DEFAULT_KETERANGAN_SHORTCUTS)
+        if (shortcut in list) s else s.copy(keteranganShortcuts = list + shortcut)
+    }
+
+    fun removeKeteranganShortcut(shortcut: String) = updateState { s ->
+        val list = (s.keteranganShortcuts ?: DEFAULT_KETERANGAN_SHORTCUTS)
+        s.copy(keteranganShortcuts = list.filter { it != shortcut })
+    }
+
+    fun resetKeteranganShortcuts() = updateState { s ->
+        s.copy(keteranganShortcuts = emptyList())
+    }
+
+    fun addCorakShortcut(shortcut: String) = updateState { s ->
+        val list = (s.corakShortcuts ?: DEFAULT_CORAK_SHORTCUTS)
+        if (shortcut in list) s else s.copy(corakShortcuts = list + shortcut)
+    }
+
+    fun removeCorakShortcut(shortcut: String) = updateState { s ->
+        val list = (s.corakShortcuts ?: DEFAULT_CORAK_SHORTCUTS)
+        s.copy(corakShortcuts = list.filter { it != shortcut })
+    }
+
+    fun resetCorakShortcuts() = updateState { s ->
+        s.copy(corakShortcuts = emptyList())
+    }
+
     /** Full-state backup JSON of the current state. */
     fun exportJson(): String = repo.exportJson(_state.value)
 

@@ -3,20 +3,25 @@ package com.jekael.adoel.ui.components
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Texture
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
@@ -32,6 +37,14 @@ import androidx.compose.ui.unit.sp
 import com.jekael.adoel.data.*
 import com.jekael.adoel.ui.theme.*
 
+private enum class MesinStatusFilter { ALL, ACTIVE, STOPPED }
+
+private data class CorakSummaryItem(
+    val corak: String,
+    val machines: List<String>,
+    val tipes: Set<MesinTipe>,
+)
+
 @Composable
 internal fun MesinTab(
     state: DoffState,
@@ -40,17 +53,16 @@ internal fun MesinTab(
     onResetMesin: (String) -> Unit,
     showToast: (String) -> Unit,
     showConfirm: (String, () -> Unit) -> Unit,
+    onAddCorakShortcut: (String) -> Unit = {},
 ) {
     val colors = LocalAppColors.current
     val density = LocalDensity.current
     var activeMcNo by remember { mutableStateOf<String?>(null) }
     var form by remember { mutableStateOf<MesinData?>(null) }
-    // Whether this machine already had data configured when the panel was opened — captured
-    // once at open time so it doesn't flicker as the user types into a blank entry. Reset only
-    // makes sense (and is only shown) when there's actually saved data to revert.
     var hadExistingData by remember { mutableStateOf(false) }
     var search by remember { mutableStateOf("") }
-    var showAll by remember { mutableStateOf(false) }
+    var statusFilter by remember { mutableStateOf(MesinStatusFilter.ALL) }
+    var selectedCorak by remember { mutableStateOf<String?>(null) }
     var consoleHeight by remember { mutableStateOf(0.dp) }
 
     fun loadFrom(mcNo: String, mesin: MesinData) {
@@ -59,33 +71,78 @@ internal fun MesinTab(
         hadExistingData = mesin.corak.isNotEmpty() && mesin.corak != "-"
     }
 
-    // Search matches only the mc number (Master Blueprint v9.2 §4) — the bottom console bar
-    // that drives [search] is a numeric-only field anyway, so corak/yard were never reachable
-    // through it in practice.
-    val entries = remember(state.db, search, showAll) {
-        state.db.entries
-            .filter { (k, v) ->
-                if (!showAll && (v.corak.isEmpty() || v.corak == "-")) return@filter false
-                if (search.isNotEmpty() && !k.contains(search)) return@filter false
-                true
-            }
-            .sortedBy { (k, _) -> k.toIntOrNull() ?: 0 }
+    fun toggleMachineActive(mcNo: String, current: MesinData) {
+        val nextActive = !current.isActive
+        onSetMesin(mcNo, current.copy(isActive = nextActive))
+        if (nextActive) {
+            showToast("Mc $mcNo diaktifkan (ON) ✓")
+        } else {
+            showToast("Mc $mcNo stop produksi sementara (OFF) ⏸")
+        }
     }
-    // Grouped per MesinTipe (fixed order, same as the physical floor's layout-by-machine-type
-    // sheet) with a header per group — same icon/color language as RadarCard (Batch 1) so
-    // "what kind of machine is this" reads the same across Radar, Pengaturan, and Statistik.
-    val groupedEntries = remember(entries) {
+
+    // Mesin terkonfigurasi
+    val configuredEntries = remember(state.db) {
+        state.db.entries.filter { (_, v) -> v.corak.isNotEmpty() && v.corak != "-" }
+    }
+
+    val activeProduksiEntries = remember(configuredEntries) {
+        configuredEntries.filter { (_, v) -> v.isActive }
+    }
+
+    val stoppedProduksiEntries = remember(configuredEntries) {
+        configuredEntries.filter { (_, v) -> !v.isActive }
+    }
+
+    // Ringkasan corak aktif
+    val activeCorakSummary = remember(activeProduksiEntries) {
+        val map = mutableMapOf<String, MutableList<String>>()
+        val tipeMap = mutableMapOf<String, MutableSet<MesinTipe>>()
+        for ((mcNo, v) in activeProduksiEntries) {
+            val c = v.corak.trim().uppercase()
+            map.getOrPut(c) { mutableListOf() }.add(mcNo)
+            tipeMap.getOrPut(c) { mutableSetOf() }.add(v.tipe)
+        }
+        map.map { (c, mcList) ->
+            CorakSummaryItem(
+                corak = c,
+                machines = mcList.sortedBy { it.toIntOrNull() ?: 0 },
+                tipes = tipeMap[c] ?: emptySet(),
+            )
+        }.sortedWith(compareByDescending<CorakSummaryItem> { it.machines.size }.thenBy { it.corak })
+    }
+
+    // Filtered entries
+    val filteredEntries = remember(configuredEntries, statusFilter, selectedCorak, search) {
+        val searchTrim = search.trim().uppercase()
+        configuredEntries.filter { (k, v) ->
+            if (statusFilter == MesinStatusFilter.ACTIVE && !v.isActive) return@filter false
+            if (statusFilter == MesinStatusFilter.STOPPED && v.isActive) return@filter false
+            if (selectedCorak != null && v.corak.trim().uppercase() != selectedCorak) return@filter false
+            if (searchTrim.isNotEmpty()) {
+                val mcMatch = k.contains(searchTrim)
+                val corakMatch = v.corak.uppercase().contains(searchTrim)
+                if (!mcMatch && !corakMatch) return@filter false
+            }
+            true
+        }.sortedBy { (k, _) -> k.toIntOrNull() ?: 0 }
+    }
+
+    val groupedEntries = remember(filteredEntries) {
         val order = listOf(MesinTipe.TAPPET, MesinTipe.CAM, MesinTipe.D405, MesinTipe.D408)
-        val byTipe = entries.groupBy { (_, v) -> v.tipe }
+        val byTipe = filteredEntries.groupBy { (_, v) -> v.tipe }
         order.mapNotNull { tipe -> byTipe[tipe]?.let { tipe to it } }
     }
 
-    // A search that's exactly a bare mc number not yet configured (corak masih "-")
-    // gets offered as "configure this new machine" instead of showing up empty-handed.
     val unconfigured = remember(state.db, search) {
         val n = search.trim()
-        if (n.matches(Regex("^\\d{1,3}$"))) {
-            state.db[n]?.let { mesin -> if (mesin.corak.isEmpty() || mesin.corak == "-") n to mesin else null }
+        if (n.matches(Regex("^\\d{1,4}$"))) {
+            val existing = state.db[n]
+            if (existing == null) {
+                n to MesinData()
+            } else if (existing.corak.isEmpty() || existing.corak == "-") {
+                n to existing
+            } else null
         } else null
     }
 
@@ -94,51 +151,235 @@ internal fun MesinTab(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            // Scrolls behind the floating header/tab-switcher card above instead of being pushed
-            // down by it — see the Box-overlay comment on SettingsDrawer's root.
             item(key = "top_spacer") { Spacer(Modifier.height(10.dp + headerHeight + Dimens.Space16)) }
-            item(key = "search_hint") {
-                Column(verticalArrangement = Arrangement.spacedBy(Dimens.Space12)) {
+
+            // 1. Corak Summary Card
+            item(key = "corak_summary") {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .elevatedListCard(backgroundColor = colors.bgElevated2)
+                        .padding(Dimens.Space12),
+                    verticalArrangement = Arrangement.spacedBy(Dimens.Space10),
+                ) {
                     Row(
-                        modifier = Modifier
-                            .clickable { showAll = !showAll }
-                            .padding(vertical = 2.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(Dimens.Space8),
                     ) {
-                        Checkbox(
-                            checked = showAll,
-                            onCheckedChange = { showAll = it },
-                            colors = CheckboxDefaults.colors(checkedColor = Cyan500, uncheckedColor = colors.border),
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(Dimens.Space6),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Texture,
+                                contentDescription = null,
+                                tint = Cyan500,
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Text(
+                                "Corak Sedang Produksi",
+                                style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary),
+                            )
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = Emerald500.copy(alpha = 0.15f),
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                ) {
+                                    Box(Modifier.size(6.dp).clip(CircleShape).background(Emerald500))
+                                    Text(
+                                        "${activeProduksiEntries.size} Aktif (${activeCorakSummary.size} Corak)",
+                                        style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Emerald500),
+                                    )
+                                }
+                            }
+                            if (stoppedProduksiEntries.isNotEmpty()) {
+                                Surface(
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = Amber500.copy(alpha = 0.15f),
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    ) {
+                                        Box(Modifier.size(6.dp).clip(CircleShape).background(Amber500))
+                                        Text(
+                                            "${stoppedProduksiEntries.size} Stop",
+                                            style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Amber500),
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (activeCorakSummary.isEmpty()) {
                         Text(
-                            "Tampilkan semua (termasuk corak \"-\")",
-                            style = AppType.BodySmall.copy(color = colors.textSecondary),
+                            "Tidak ada mesin yang aktif berproduksi saat ini.",
+                            style = AppType.BodySmall.copy(color = colors.textFaint),
+                        )
+                    } else {
+                        // Grid summary corak
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            activeCorakSummary.forEach { item ->
+                                val isSelected = selectedCorak == item.corak
+                                Surface(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            selectedCorak = if (isSelected) null else item.corak
+                                        },
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (isSelected) Cyan600.copy(alpha = 0.16f) else colors.bg,
+                                    border = BorderStroke(1.dp, if (isSelected) Cyan500 else colors.border),
+                                ) {
+                                    Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
+                                            Text(
+                                                item.corak,
+                                                style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (isSelected) Cyan400 else colors.textPrimary),
+                                            )
+                                            Text(
+                                                "${item.machines.size} mc",
+                                                style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = colors.textMuted),
+                                            )
+                                        }
+                                        Row(
+                                            modifier = Modifier.horizontalScroll(rememberScrollState()),
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        ) {
+                                            item.machines.forEach { m ->
+                                                Surface(
+                                                    shape = RoundedCornerShape(4.dp),
+                                                    color = colors.bgElevated,
+                                                ) {
+                                                    Text(
+                                                        m,
+                                                        style = TextStyle(fontSize = 11.sp, fontFamily = FontFamily.Monospace, color = colors.textSecondary),
+                                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp),
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 2. Status Filter Tabs
+            item(key = "status_filter_tabs") {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    FilterChip(
+                        selected = statusFilter == MesinStatusFilter.ALL && selectedCorak == null,
+                        onClick = {
+                            statusFilter = MesinStatusFilter.ALL
+                            selectedCorak = null
+                        },
+                        label = { Text("Semua (${configuredEntries.size})") },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Cyan600,
+                            selectedLabelColor = Color.White,
+                            containerColor = colors.bgElevated2,
+                            labelColor = colors.textSecondary,
+                        ),
+                    )
+                    FilterChip(
+                        selected = statusFilter == MesinStatusFilter.ACTIVE && selectedCorak == null,
+                        onClick = {
+                            statusFilter = MesinStatusFilter.ACTIVE
+                            selectedCorak = null
+                        },
+                        leadingIcon = { Box(Modifier.size(6.dp).clip(CircleShape).background(Emerald500)) },
+                        label = { Text("Aktif (${activeProduksiEntries.size})") },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Cyan600,
+                            selectedLabelColor = Color.White,
+                            containerColor = colors.bgElevated2,
+                            labelColor = colors.textSecondary,
+                        ),
+                    )
+                    if (stoppedProduksiEntries.isNotEmpty()) {
+                        FilterChip(
+                            selected = statusFilter == MesinStatusFilter.STOPPED && selectedCorak == null,
+                            onClick = {
+                                statusFilter = MesinStatusFilter.STOPPED
+                                selectedCorak = null
+                            },
+                            leadingIcon = { Box(Modifier.size(6.dp).clip(CircleShape).background(Amber500)) },
+                            label = { Text("Stop (${stoppedProduksiEntries.size})") },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = Cyan600,
+                                selectedLabelColor = Color.White,
+                                containerColor = colors.bgElevated2,
+                                labelColor = colors.textSecondary,
+                            ),
                         )
                     }
-
-                    if (unconfigured != null) {
-                        val (n, m) = unconfigured
-                        OutlinedButton(
-                            onClick = { loadFrom(n, m) },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(Dimens.RadiusControl),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Cyan500),
-                            border = BorderStroke(1.dp, Cyan500),
-                        ) { Text("Konfigurasi Mc $n (belum diatur)") }
+                    if (selectedCorak != null) {
+                        FilterChip(
+                            selected = true,
+                            onClick = { selectedCorak = null },
+                            trailingIcon = {
+                                Icon(Icons.Outlined.Close, contentDescription = "Clear", modifier = Modifier.size(14.dp))
+                            },
+                            label = { Text("Corak: $selectedCorak") },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = Amber500.copy(alpha = 0.2f),
+                                selectedLabelColor = Amber500,
+                            ),
+                        )
                     }
+                }
+            }
 
-                    WovenDivider()
+            if (unconfigured != null) {
+                item(key = "unconfigured_banner") {
+                    val (n, m) = unconfigured
+                    OutlinedButton(
+                        onClick = { loadFrom(n, m) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(Dimens.RadiusControl),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Cyan500),
+                        border = BorderStroke(1.dp, Cyan500),
+                    ) { Text("Konfigurasi Mc $n (belum diatur)") }
                 }
             }
 
             if (groupedEntries.isEmpty()) {
                 item(key = "empty") {
-                    Box(Modifier.fillMaxWidth().height(80.dp), contentAlignment = Alignment.Center) {
-                        Text("Tidak ditemukan", color = colors.textFaint, style = AppType.FieldText)
+                    Box(Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
+                        Text(
+                            if (search.isNotBlank() || selectedCorak != null || statusFilter != MesinStatusFilter.ALL)
+                                "Tidak ada mesin yang cocok dengan filter"
+                            else "Belum ada mesin terkonfigurasi",
+                            color = colors.textFaint,
+                            style = AppType.FieldText,
+                        )
                     }
                 }
             }
+
+            // 3. Machine Group Rows
             groupedEntries.forEach { (tipe, rows) ->
                 item(key = "head_${tipe.name}") {
                     Row(
@@ -166,51 +407,94 @@ internal fun MesinTab(
                     }
                 }
                 items(rows, key = { (k, _) -> k }) { (k, v) ->
+                    val isRunning = v.isActive
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .elevatedListCard(backgroundColor = colors.bgElevated2)
                             .clickable { loadFrom(k, v) }
-                            .padding(horizontal = Dimens.Space12, vertical = 10.dp),
-                        horizontalArrangement = Arrangement.spacedBy(Dimens.Space12),
+                            .padding(horizontal = Dimens.Space12, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(Dimens.Space10),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(k, style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary), modifier = Modifier.width(32.dp))
-                        // Same kain marker as RadarCard's corak/yard line — this row is Pengaturan >
-                        // Mesin's equivalent of that line (corak + target yard), so it gets the same
-                        // visual anchor instead of reading as unrelated plain text.
+                        Text(
+                            k,
+                            style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary),
+                            modifier = Modifier.width(36.dp),
+                        )
                         Icon(
                             imageVector = Icons.Outlined.Texture,
                             contentDescription = null,
                             tint = colors.textFaint,
-                            modifier = Modifier.size(12.dp),
+                            modifier = Modifier.size(13.dp),
                         )
-                        Text(
-                            v.corak,
-                            style = AppType.FieldText.copy(color = colors.textPrimary),
+                        Row(
                             modifier = Modifier.weight(1f),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        if (v.targetYard != null) Text("${formatYard(v.targetYard)}y", style = TextStyle(fontSize = 12.sp, color = colors.textFaint))
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Text(
+                                v.corak,
+                                style = AppType.FieldText.copy(color = colors.textPrimary),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            if (!isRunning) {
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = Amber500.copy(alpha = 0.18f),
+                                ) {
+                                    Text(
+                                        "STOP",
+                                        style = TextStyle(fontSize = 9.sp, fontWeight = FontWeight.Black, color = Amber500),
+                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                                    )
+                                }
+                            }
+                        }
+
+                        if (v.targetYard != null) {
+                            Text("${formatYard(v.targetYard)}y", style = TextStyle(fontSize = 12.sp, color = colors.textFaint))
+                        }
+
+                        // Toggle ON/OFF button
+                        Surface(
+                            modifier = Modifier.clickable { toggleMachineActive(k, v) },
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isRunning) Emerald500.copy(alpha = 0.15f) else Amber500.copy(alpha = 0.15f),
+                            border = BorderStroke(1.dp, if (isRunning) Emerald500.copy(alpha = 0.4f) else Amber500.copy(alpha = 0.4f)),
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(6.dp)
+                                        .clip(CircleShape)
+                                        .background(if (isRunning) Emerald500 else Amber500),
+                                )
+                                Text(
+                                    if (isRunning) "ON" else "OFF",
+                                    style = TextStyle(
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isRunning) Emerald500 else Amber500,
+                                    ),
+                                )
+                            }
+                        }
                     }
                 }
             }
             item(key = "bottom_spacer") { Spacer(Modifier.height(consoleHeight + Dimens.Space16)) }
         }
 
-        // Top/bottom fade — same soft-edge treatment as MainScreen's list (Master Blueprint
-        // v9.2 §10), so rows ease out under SettingsDrawer's header and this tab's own console
-        // instead of cutting off sharply.
         EdgeFadeScrim(atTop = true, height = 10.dp + headerHeight + 16.dp)
         EdgeFadeScrim(atTop = false, height = consoleHeight + 16.dp)
 
-        // Floating console bar — search-and-jump for one machine at a time (Master Blueprint
-        // v9.2 §8). Deliberately a single numeric field (no comma/space bulk entry like the old
-        // "22 33 44" pattern): typing filters the list live via [search], and the edit icon opens
-        // that exact machine's editor whether it's already configured or brand new. This replaces
-        // the old top search bar entirely — every other DB field still only changes here in
-        // Pengaturan, never through the main screen's console.
+        // Floating console bar for search & quick edit
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -234,9 +518,12 @@ internal fun MesinTab(
             ) {
                 OutlinedTextField(
                     value = search,
-                    onValueChange = { search = it.filter(Char::isDigit).take(3) },
+                    onValueChange = { search = it },
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text("Cari / edit nomor mesin", color = colors.textFaint) },
+                    placeholder = { Text("Cari nomor mesin / corak", color = colors.textFaint) },
+                    leadingIcon = {
+                        Icon(Icons.Outlined.Search, contentDescription = null, tint = colors.textFaint, modifier = Modifier.size(18.dp))
+                    },
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Amber500,
                         unfocusedBorderColor = colors.border,
@@ -247,19 +534,27 @@ internal fun MesinTab(
                     shape = RoundedCornerShape(50.dp),
                     textStyle = TextStyle(
                         color = colors.textPrimary,
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Monospace,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
                     ),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = {
-                        state.db[search]?.let { mesin -> loadFrom(search, mesin) }
+                        val trimmed = search.trim()
+                        state.db[trimmed]?.let { mesin -> loadFrom(trimmed, mesin) }
                     }),
                     singleLine = true,
                 )
+                val directMc = state.db[search.trim()]
                 Button(
-                    onClick = { state.db[search]?.let { mesin -> loadFrom(search, mesin) } },
-                    enabled = search.isNotBlank() && state.db[search] != null,
+                    onClick = {
+                        val trimmed = search.trim()
+                        if (directMc != null) {
+                            loadFrom(trimmed, directMc)
+                        } else if (trimmed.matches(Regex("^\\d{1,4}$"))) {
+                            loadFrom(trimmed, MesinData())
+                        }
+                    },
+                    enabled = search.isNotBlank() && (directMc != null || search.trim().matches(Regex("^\\d{1,4}$"))),
                     modifier = Modifier.size(48.dp),
                     shape = CircleShape,
                     contentPadding = PaddingValues(0.dp),
@@ -271,7 +566,7 @@ internal fun MesinTab(
                     Icon(
                         imageVector = Icons.Outlined.Edit,
                         contentDescription = "Edit Mc $search",
-                        tint = if (search.isNotBlank() && state.db[search] != null) Color.White else colors.textFaint,
+                        tint = if (search.isNotBlank() && (directMc != null || search.trim().matches(Regex("^\\d{1,4}$")))) Color.White else colors.textFaint,
                         modifier = Modifier.size(20.dp),
                     )
                 }
@@ -303,6 +598,8 @@ internal fun MesinTab(
                 showToast("Mc $mcNo disimpan ✓")
                 activeMcNo = null; form = null; search = ""
             },
+            corakShortcuts = state.corakShortcuts,
+            onAddCorakShortcut = onAddCorakShortcut,
         )
     }
 }

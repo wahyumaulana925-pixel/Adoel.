@@ -1,84 +1,71 @@
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useDoffStore } from "../store/DoffStore";
 import { useUiStore } from "../store/UiStore";
-import { TIPE_COLOR } from "../domain/mesinVisual";
-import { formatYard } from "../domain/format";
-import type { MesinData, MesinTipe, ThemeMode } from "../domain/types";
-import { CloseIcon, EditIcon, MesinTipeIcon } from "./Icons";
-import { WovenDivider } from "./WovenDivider";
-
-const TIPE_LIST: MesinTipe[] = ["TAPPET", "CAM", "D405", "D408"];
-
-/** Parse angka field mesin sama seperti `it.replace(',', '.').toDoubleOrNull()` di Android:
- * menerima koma sebagai titik desimal, dan MEMPERTAHANKAN 0 (koreksi D408 0 itu valid — tanpa
- * koreksi). Sengaja BUKAN `parseFloat(x) || null`, yang salah mengubah 0 menjadi null. */
-function parseMesinNum(raw: string): number | null {
-  const t = raw.trim().replace(",", ".");
-  if (t === "") return null;
-  const n = parseFloat(t);
-  return Number.isNaN(n) ? null : n;
-}
+import { DEFAULT_CORAK_SHORTCUTS, DEFAULT_KETERANGAN_SHORTCUTS } from "../domain/types";
+import {
+  AddIcon,
+  BookOpenIcon,
+  CloseIcon,
+  DatabaseIcon,
+  DeleteIcon,
+  DownloadIcon,
+  InfoIcon,
+  MonitorIcon,
+  MoonIcon,
+  ResetIcon,
+  SunIcon,
+  TagIcon,
+  TextureIcon,
+  UploadIcon,
+  WarningIcon,
+} from "./Icons";
+import { AboutDialog } from "./AboutDialog";
 
 export function SettingsScreen({ onClose, onOpenHelp }: { onClose: () => void; onOpenHelp: () => void }) {
-  const { state, setMesin, resetMesin, setThemeMode, exportJson, importJson } = useDoffStore();
+  const {
+    state,
+    resetDb,
+    setThemeMode,
+    exportJson,
+    importJson,
+    addKeteranganShortcut,
+    removeKeteranganShortcut,
+    resetKeteranganShortcuts,
+    addCorakShortcut,
+    removeCorakShortcut,
+    resetCorakShortcuts,
+  } = useDoffStore();
   const { showToast, showConfirm } = useUiStore();
-  const [search, setSearch] = useState("");
-  const [showAll, setShowAll] = useState(false);
-  const [activeMcNo, setActiveMcNo] = useState<string | null>(null);
-  const [form, setForm] = useState<MesinData | null>(null);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const [newShortcut, setNewShortcut] = useState("");
+  const [newCorakShortcut, setNewCorakShortcut] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Grup per tipe mesin (urutan tetap) — bahasa ikon/warna yang sama dengan RadarCard,
-  // supaya "mesin jenis apa ini" terbaca sama di semua layar. Pencarian cocok nomor
-  // mesin saja (Master Blueprint v9.2 §4/§8), bukan corak lagi.
-  const groupedEntries = useMemo(() => {
-    const filtered = Object.entries(state.db).filter(([k, v]) => {
-      if (!showAll && (v.corak === "" || v.corak === "-")) return false;
-      if (search && !k.includes(search)) return false;
-      return true;
-    });
-    return TIPE_LIST.map((tipe) => ({
-      tipe,
-      rows: filtered.filter(([, v]) => v.tipe === tipe).sort((a, b) => (parseInt(a[0], 10) || 0) - (parseInt(b[0], 10) || 0)),
-    })).filter((g) => g.rows.length > 0);
-  }, [state.db, search, showAll]);
+  const shortcuts = state.keteranganShortcuts ?? DEFAULT_KETERANGAN_SHORTCUTS;
+  const corakShortcuts = state.corakShortcuts ?? DEFAULT_CORAK_SHORTCUTS;
 
-  const unconfigured = useMemo(() => {
-    const n = search.trim();
-    if (!/^\d{1,3}$/.test(n)) return null;
-    const mesin = state.db[n];
-    if (mesin && (mesin.corak === "" || mesin.corak === "-")) return [n, mesin] as const;
-    return null;
-  }, [search, state.db]);
-
-  function loadFrom(mcNo: string, mesin: MesinData) {
-    setActiveMcNo(mcNo);
-    setForm({ ...mesin });
+  function handleAddShortcut() {
+    const trimmed = newShortcut.trim().toUpperCase();
+    if (!trimmed) return;
+    if (shortcuts.includes(trimmed)) {
+      showToast(`Shortcut "${trimmed}" sudah ada di daftar`);
+      return;
+    }
+    addKeteranganShortcut(trimmed);
+    setNewShortcut("");
+    showToast(`Shortcut "${trimmed}" ditambahkan ✓`);
   }
 
-  function jumpToSearch() {
-    const mesin = state.db[search];
-    if (mesin) loadFrom(search, mesin);
-  }
-
-  function handleSave() {
-    if (!activeMcNo || !form) return;
-    const corak = form.corak.trim() || "-";
-    setMesin(activeMcNo, { ...form, corak });
-    showToast(`Mc ${activeMcNo} disimpan ✓`);
-    setActiveMcNo(null);
-    setForm(null);
-    setSearch("");
-  }
-
-  function handleReset() {
-    if (!activeMcNo) return;
-    showConfirm(`Reset Mc ${activeMcNo} ke default? Corak, target yard, dan pengaturan lain akan dihapus.`, () => {
-      resetMesin(activeMcNo);
-      showToast(`Mc ${activeMcNo} direset ke default`);
-      setActiveMcNo(null);
-      setForm(null);
-    });
+  function handleAddCorakShortcut() {
+    const trimmed = newCorakShortcut.trim().toUpperCase();
+    if (!trimmed) return;
+    if (corakShortcuts.includes(trimmed)) {
+      showToast(`Shortcut corak "${trimmed}" sudah ada di daftar`);
+      return;
+    }
+    addCorakShortcut(trimmed);
+    setNewCorakShortcut("");
+    showToast(`Shortcut corak "${trimmed}" ditambahkan ✓`);
   }
 
   function handleExport() {
@@ -107,6 +94,13 @@ export function SettingsScreen({ onClose, onOpenHelp }: { onClose: () => void; o
     reader.readAsText(file);
   }
 
+  function handleResetAllDb() {
+    showConfirm("Reset semua data ke default? Estimasi & riwayat akan hilang.", () => {
+      resetDb();
+      showToast("Data direset ke default");
+    });
+  }
+
   return (
     <div className="overlay">
       <div className="overlay-header">
@@ -115,249 +109,375 @@ export function SettingsScreen({ onClose, onOpenHelp }: { onClose: () => void; o
           <CloseIcon />
         </button>
       </div>
-      <div className="overlay-body" style={{ paddingBottom: 92 }}>
-        <div className="field-label">Tema Aplikasi</div>
-        <div style={{ display: "flex", gap: 8 }}>
-          {(["SYSTEM", "DARK", "LIGHT"] as ThemeMode[]).map((m) => (
-            <button
-              key={m}
-              className={`chip-btn${state.themeMode === m ? " active" : ""}`}
-              onClick={() => setThemeMode(m)}
-            >
-              {m === "SYSTEM" ? "Sistem" : m === "DARK" ? "Gelap" : "Terang"}
-            </button>
-          ))}
-        </div>
 
-        <div style={{ height: 4 }} />
-        <WovenDivider />
-
-        <div className="field-label">Cadangan Data</div>
-        <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: -6 }}>
-          Cadangkan seluruh data (mesin, estimasi, riwayat doff, tema) ke file, atau pulihkan dari file cadangan.
-        </div>
-        <div className="btn-row">
-          <button className="btn" onClick={handleExport}>
-            Cadangkan
-          </button>
-          <button className="btn" style={{ color: "var(--cyan-500)" }} onClick={() => fileInputRef.current?.click()}>
-            Pulihkan
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="application/json,.json"
-            style={{ display: "none" }}
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleImportFile(file);
-              e.target.value = "";
-            }}
-          />
-        </div>
-
-        <WovenDivider />
-
-        <div className="field-label">Panduan Penggunaan</div>
-        <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: -6 }}>
-          Pelajari cara input mesin dan latihan gestur kartu.
-        </div>
-        <button className="btn" onClick={onOpenHelp}>
-          📖 Panduan Penggunaan
-        </button>
-
-        <WovenDivider />
-
-        <div className="field-label">Database Mesin</div>
-        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--text-secondary)" }}>
-          <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
-          Tampilkan semua (termasuk corak "-")
-        </label>
-
-        {unconfigured && (
-          <button
-            className="btn"
-            style={{ color: "var(--cyan-500)", borderColor: "var(--cyan-500)" }}
-            onClick={() => loadFrom(unconfigured[0], unconfigured[1])}
-          >
-            Konfigurasi Mc {unconfigured[0]} (belum diatur)
-          </button>
-        )}
-
-        {groupedEntries.length === 0 && <div className="empty-state">Tidak ditemukan</div>}
-        {groupedEntries.map(({ tipe, rows }) => (
-          <div key={tipe}>
-            <div className="mesin-group-head" style={{ color: TIPE_COLOR[tipe] }}>
-              <MesinTipeIcon tipe={tipe} size={14} />
-              <span>{tipe}</span>
-              <span className="count">{rows.length}</span>
+      <div className="overlay-body" style={{ paddingBottom: 32 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {/* Card: Tema Aplikasi */}
+          <div className="settings-section-card">
+            <div className="settings-section-header">
+              <SunIcon size={16} />
+              <span>Tema Tampilan</span>
             </div>
-            {rows.map(([k, v]) => (
-              <div className="machine-list-item" key={k} onClick={() => loadFrom(k, v)} role="button">
-                <span style={{ width: 32, fontWeight: 700 }}>{k}</span>
-                <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.corak}</span>
-                {v.targetYard != null && <span style={{ fontSize: 11, color: "var(--text-faint)" }}>{v.targetYard}y</span>}
-                <button>Edit</button>
+            <div className="settings-section-desc">Pilih tema antarmuka yang nyaman untuk operasional kerja.</div>
+            <div className="settings-theme-selector">
+              <button
+                className={`settings-theme-btn${state.themeMode === "SYSTEM" ? " active" : ""}`}
+                onClick={() => setThemeMode("SYSTEM")}
+              >
+                <MonitorIcon size={15} />
+                <span>Sistem</span>
+              </button>
+              <button
+                className={`settings-theme-btn${state.themeMode === "DARK" ? " active" : ""}`}
+                onClick={() => setThemeMode("DARK")}
+              >
+                <MoonIcon size={15} />
+                <span>Gelap</span>
+              </button>
+              <button
+                className={`settings-theme-btn${state.themeMode === "LIGHT" ? " active" : ""}`}
+                onClick={() => setThemeMode("LIGHT")}
+              >
+                <SunIcon size={15} />
+                <span>Terang</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Card: Shortcut Keterangan Doffing */}
+          <div className="settings-section-card">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div className="settings-section-header" style={{ margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ padding: 6, borderRadius: 6, background: "rgba(6, 182, 212, 0.15)", color: "var(--cyan-400)", display: "flex" }}>
+                  <TagIcon size={16} />
+                </div>
+                <span>Shortcut Keterangan</span>
+                <span className="meta-tag" style={{ marginLeft: 4 }}>
+                  {shortcuts.length} shortcut
+                </span>
               </div>
-            ))}
+              {shortcuts.length > 0 && (
+                <button
+                  type="button"
+                  className="btn-link"
+                  style={{ fontSize: 12, color: "var(--red-400)", display: "inline-flex", alignItems: "center", gap: 3 }}
+                  onClick={() => {
+                    showConfirm("Hapus semua daftar shortcut keterangan?", () => {
+                      resetKeteranganShortcuts();
+                      showToast("Daftar shortcut keterangan dikosongkan ✓");
+                    });
+                  }}
+                >
+                  <DeleteIcon size={12} />
+                  <span>Hapus Semua</span>
+                </button>
+              )}
+            </div>
+            <div className="settings-section-desc" style={{ marginTop: 8 }}>
+              Tombol cepat keterangan untuk pencatatan Doffing (cth: HB, P.LP, P.SN, GANTI BEAM).
+            </div>
+
+            {shortcuts.length === 0 ? (
+              <div
+                style={{
+                  border: "1px dashed var(--border-subtle)",
+                  borderRadius: 8,
+                  padding: "12px 14px",
+                  margin: "8px 0",
+                  textAlign: "center",
+                  fontSize: 12,
+                  color: "var(--text-faint)",
+                  background: "var(--bg-elevated)",
+                }}
+              >
+                Belum ada shortcut keterangan. Tambahkan teks di bawah untuk membuat tombol cepat.
+              </div>
+            ) : (
+              <div className="chip-row-wrap" style={{ marginTop: 8, marginBottom: 4 }}>
+                {shortcuts.map((code) => (
+                  <div
+                    key={code}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      background: "var(--bg-elevated-2)",
+                      border: "1px solid var(--border-subtle)",
+                      borderRadius: 6,
+                      padding: "3px 6px 3px 10px",
+                      gap: 6,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <span>{code}</span>
+                    <button
+                      type="button"
+                      aria-label={`Hapus shortcut ${code}`}
+                      title={`Hapus shortcut ${code}`}
+                      onClick={() => {
+                        removeKeteranganShortcut(code);
+                        showToast(`Shortcut "${code}" dihapus`);
+                      }}
+                      style={{
+                        background: "transparent",
+                        color: "var(--text-faint)",
+                        border: "none",
+                        borderRadius: "50%",
+                        width: 18,
+                        height: 18,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                        padding: 0,
+                        fontSize: 12,
+                        lineHeight: 1,
+                        transition: "color 0.15s, background 0.15s",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.color = "#ef4444";
+                        e.currentTarget.style.background = "rgba(239, 68, 68, 0.15)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.color = "var(--text-faint)";
+                        e.currentTarget.style.background = "transparent";
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+              <input
+                className="field-input"
+                style={{ flex: 1, padding: "8px 12px", fontSize: 13 }}
+                placeholder="Tambah keterangan baru (cth: GANTI BEAM)"
+                value={newShortcut}
+                onChange={(e) => setNewShortcut(e.target.value.toUpperCase())}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddShortcut();
+                  }
+                }}
+              />
+              <button
+                className="btn primary"
+                style={{ padding: "8px 16px", fontSize: 13, display: "inline-flex", alignItems: "center", gap: 4 }}
+                disabled={!newShortcut.trim()}
+                onClick={handleAddShortcut}
+              >
+                <AddIcon size={14} />
+                <span>Tambah</span>
+              </button>
+            </div>
           </div>
-        ))}
-      </div>
 
-      {/* Bar konsol mengambang — cari & lompat ke satu mesin sekaligus (Master Blueprint
-          v9.2 §8), menggantikan search bar biasa di atas. */}
-      <div className="mesin-console floating-card">
-        <div className="console-row">
-          <input
-            className="console-mcno-input"
-            value={search}
-            onChange={(e) => setSearch(e.target.value.replace(/\D/g, "").slice(0, 3))}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") jumpToSearch();
-            }}
-            placeholder="Cari / edit nomor mesin"
-            inputMode="numeric"
-            autoComplete="off"
-          />
-          <button
-            className="console-icon-btn"
-            style={{
-              background: search.trim() !== "" && state.db[search] ? "var(--cyan-600)" : "var(--bg-elevated-2)",
-              color: search.trim() !== "" && state.db[search] ? "#fff" : "var(--text-faint)",
-            }}
-            disabled={search.trim() === "" || !state.db[search]}
-            aria-label={`Edit Mc ${search}`}
-            onClick={jumpToSearch}
-          >
-            <EditIcon size={18} />
-          </button>
-        </div>
-      </div>
+          {/* Card: Shortcut Kode Corak */}
+          <div className="settings-section-card">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div className="settings-section-header" style={{ margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ padding: 6, borderRadius: 6, background: "rgba(16, 185, 129, 0.15)", color: "var(--emerald-400)", display: "flex" }}>
+                  <TextureIcon size={16} />
+                </div>
+                <span>Shortcut Kode Corak</span>
+                <span className="meta-tag" style={{ marginLeft: 4 }}>
+                  {corakShortcuts.length} shortcut
+                </span>
+              </div>
+              {corakShortcuts.length > 0 && (
+                <button
+                  type="button"
+                  className="btn-link"
+                  style={{ fontSize: 12, color: "var(--red-400)", display: "inline-flex", alignItems: "center", gap: 3 }}
+                  onClick={() => {
+                    showConfirm("Hapus semua daftar shortcut kode corak?", () => {
+                      resetCorakShortcuts();
+                      showToast("Daftar shortcut corak dikosongkan ✓");
+                    });
+                  }}
+                >
+                  <DeleteIcon size={12} />
+                  <span>Hapus Semua</span>
+                </button>
+              )}
+            </div>
+            <div className="settings-section-desc" style={{ marginTop: 8 }}>
+              Tombol cepat kode corak/kain untuk formulir mesin dan penggantian corak (cth: 4500, 4505, 5000, RAYON-30).
+            </div>
 
-      {activeMcNo && form && (
-        <MesinEditDialog
-          key={activeMcNo}
-          mcNo={activeMcNo}
-          form={form}
-          onChange={setForm}
-          onClose={() => {
-            setActiveMcNo(null);
-            setForm(null);
-          }}
-          onSave={handleSave}
-          onReset={handleReset}
-        />
-      )}
-    </div>
-  );
-}
+            {corakShortcuts.length === 0 ? (
+              <div
+                style={{
+                  border: "1px dashed var(--border-subtle)",
+                  borderRadius: 8,
+                  padding: "12px 14px",
+                  margin: "8px 0",
+                  textAlign: "center",
+                  fontSize: 12,
+                  color: "var(--text-faint)",
+                  background: "var(--bg-elevated)",
+                }}
+              >
+                Belum ada shortcut kode corak. Tambahkan kode corak di bawah untuk membuat tombol cepat.
+              </div>
+            ) : (
+              <div className="chip-row-wrap" style={{ marginTop: 8, marginBottom: 4 }}>
+                {corakShortcuts.map((code) => (
+                  <div
+                    key={code}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      background: "var(--bg-elevated-2)",
+                      border: "1px solid var(--border-subtle)",
+                      borderRadius: 6,
+                      padding: "3px 6px 3px 10px",
+                      gap: 6,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <span>{code}</span>
+                    <button
+                      type="button"
+                      aria-label={`Hapus shortcut corak ${code}`}
+                      title={`Hapus shortcut corak ${code}`}
+                      onClick={() => {
+                        removeCorakShortcut(code);
+                        showToast(`Shortcut corak "${code}" dihapus`);
+                      }}
+                      style={{
+                        background: "transparent",
+                        color: "var(--text-faint)",
+                        border: "none",
+                        borderRadius: "50%",
+                        width: 18,
+                        height: 18,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                        padding: 0,
+                        fontSize: 12,
+                        lineHeight: 1,
+                        transition: "color 0.15s, background 0.15s",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.color = "#ef4444";
+                        e.currentTarget.style.background = "rgba(239, 68, 68, 0.15)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.color = "var(--text-faint)";
+                        e.currentTarget.style.background = "transparent";
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
 
-function MesinEditDialog({
-  mcNo,
-  form,
-  onChange,
-  onClose,
-  onSave,
-  onReset,
-}: {
-  mcNo: string;
-  form: MesinData;
-  onChange: (f: MesinData) => void;
-  onClose: () => void;
-  onSave: () => void;
-  onReset: () => void;
-}) {
-  // State teks MENTAH untuk field angka (seperti targetYardText/speedText/koreksiText di
-  // MesinEditPanel.kt) — supaya pengguna bisa mengetik desimal ("0.158" / "0,158") tanpa titik/
-  // koma-nya kebuang saat diketik ulang dari nilai numerik. Di-seed sekali dari form saat mount
-  // (dialog di-remount per mcNo lewat key parent), lalu jadi sumber kebenaran field teks.
-  const [targetYardText, setTargetYardText] = useState(form.targetYard != null ? formatYard(form.targetYard) : "");
-  const [speedText, setSpeedText] = useState(form.speed != null ? formatYard(form.speed) : "");
-  const [koreksiText, setKoreksiText] = useState(form.koreksi != null ? formatYard(form.koreksi) : "");
+            <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+              <input
+                className="field-input"
+                style={{ flex: 1, padding: "8px 12px", fontSize: 13 }}
+                placeholder="Tambah kode corak baru (cth: 4520 / RAYON)"
+                value={newCorakShortcut}
+                onChange={(e) => setNewCorakShortcut(e.target.value.toUpperCase())}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddCorakShortcut();
+                  }
+                }}
+              />
+              <button
+                className="btn primary"
+                style={{ padding: "8px 16px", fontSize: 13, display: "inline-flex", alignItems: "center", gap: 4 }}
+                disabled={!newCorakShortcut.trim()}
+                onClick={handleAddCorakShortcut}
+              >
+                <AddIcon size={14} />
+                <span>Tambah</span>
+              </button>
+            </div>
+          </div>
 
-  return (
-    <div className="dialog-backdrop" onClick={onClose}>
-      <div className="dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 400 }}>
-        <div style={{ fontWeight: 800, fontSize: 20, marginBottom: 16 }}>Mc {mcNo}</div>
-
-        <div className="field-label">Tipe Mesin</div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
-          {TIPE_LIST.map((t) => (
-            <button
-              key={t}
-              className={`chip-btn${form.tipe === t ? " active" : ""}`}
-              onClick={() => onChange({ ...form, tipe: t })}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
-
-        <div className="field-label">Corak</div>
-        <input
-          className="field-input"
-          inputMode="numeric"
-          value={form.corak}
-          onChange={(e) => onChange({ ...form, corak: e.target.value })}
-        />
-
-        <div style={{ height: 12 }} />
-        <div className="field-grid">
-          <div>
-            <div className="field-label">Target Yard</div>
+          {/* Card: Cadangan Data */}
+          <div className="settings-section-card">
+            <div className="settings-section-header">
+              <DatabaseIcon size={16} />
+              <span>Cadangan &amp; Pemulihan</span>
+            </div>
+            <div className="settings-section-desc">
+              Simpan seluruh data database mesin, estimasi aktif, dan riwayat shift ke file JSON cadangan.
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <button className="settings-action-btn primary" onClick={handleExport}>
+                <DownloadIcon size={16} />
+                <span>Cadangkan</span>
+              </button>
+              <button className="settings-action-btn" onClick={() => fileInputRef.current?.click()}>
+                <UploadIcon size={16} />
+                <span>Pulihkan</span>
+              </button>
+            </div>
             <input
-              className="field-input"
-              inputMode="decimal"
-              placeholder="opsional"
-              value={targetYardText}
+              ref={fileInputRef}
+              type="file"
+              accept="application/json,.json"
+              style={{ display: "none" }}
               onChange={(e) => {
-                setTargetYardText(e.target.value);
-                onChange({ ...form, targetYard: parseMesinNum(e.target.value) });
+                const file = e.target.files?.[0];
+                if (file) handleImportFile(file);
+                e.target.value = "";
               }}
             />
           </div>
-          <div>
-            <div className="field-label">Speed (D405)</div>
-            <input
-              className="field-input"
-              inputMode="decimal"
-              placeholder="opsional"
-              value={speedText}
-              onChange={(e) => {
-                setSpeedText(e.target.value);
-                onChange({ ...form, speed: parseMesinNum(e.target.value) });
-              }}
-            />
+
+          {/* Card: Zona Reset */}
+          <div className="settings-section-card">
+            <div className="settings-section-header danger">
+              <WarningIcon size={16} />
+              <span>Reset Data</span>
+            </div>
+            <div className="settings-section-desc">
+              Mengembalikan pengaturan database mesin ke bawaan pabrik dan menghapus seluruh riwayat shift.
+            </div>
+            <button className="settings-action-btn danger" onClick={handleResetAllDb}>
+              <ResetIcon size={16} />
+              <span>Reset Semua ke Default</span>
+            </button>
           </div>
-        </div>
 
-        <div style={{ height: 12 }} />
-        <div className="field-label">Koreksi Menit (D408)</div>
-        <input
-          className="field-input"
-          inputMode="decimal"
-          placeholder="opsional"
-          value={koreksiText}
-          onChange={(e) => {
-            setKoreksiText(e.target.value);
-            onChange({ ...form, koreksi: parseMesinNum(e.target.value) });
-          }}
-        />
-
-        <div className="actions" style={{ marginTop: 20, justifyContent: "space-between" }}>
-          <button className="cancel" onClick={onReset} style={{ color: "var(--red-500)" }}>
-            Reset
-          </button>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button className="cancel" onClick={onClose}>
-              Batal
-            </button>
-            <button className="confirm" style={{ background: "var(--cyan-600)" }} onClick={onSave}>
-              Simpan
-            </button>
+          {/* Card: Bantuan & Info */}
+          <div className="settings-section-card">
+            <div className="settings-section-header">
+              <InfoIcon size={16} />
+              <span>Bantuan &amp; Informasi</span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <button className="settings-action-btn" onClick={onOpenHelp}>
+                <BookOpenIcon size={16} />
+                <span>Panduan</span>
+              </button>
+              <button className="settings-action-btn" onClick={() => setAboutOpen(true)}>
+                <InfoIcon size={16} />
+                <span>Tentang</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
+
+      {aboutOpen && <AboutDialog onClose={() => setAboutOpen(false)} />}
     </div>
   );
 }

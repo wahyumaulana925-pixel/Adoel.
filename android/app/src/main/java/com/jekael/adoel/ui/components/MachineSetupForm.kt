@@ -28,6 +28,8 @@ internal fun MachineSetupForm(
     onSave: (corak: String, targetYard: Double?, tipe: MesinTipe, koreksi: Double?, speed: Double?) -> Unit,
     onCancel: () -> Unit,
     showToast: ((String) -> Unit)? = null,
+    corakShortcuts: List<String>? = null,
+    onAddCorakShortcut: (String) -> Unit = {},
 ) {
     val colors = LocalAppColors.current
     var tipe by remember { mutableStateOf(initial.tipe) }
@@ -64,6 +66,13 @@ internal fun MachineSetupForm(
         textStyle = AppType.FieldText.copy(color = colors.textPrimary),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         singleLine = true,
+    )
+    CorakShortcutPicker(
+        value = corak,
+        onSelect = { corak = it },
+        shortcuts = corakShortcuts,
+        onAddShortcut = onAddCorakShortcut,
+        showToast = showToast,
     )
     Spacer(Modifier.height(Dimens.Space12))
     FieldLabel("Target Yard")

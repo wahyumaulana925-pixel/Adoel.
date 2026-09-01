@@ -7,11 +7,28 @@ import { VitePWA } from "vite-plugin-pwa";
 // bukan dari subpath repo seperti GitHub Pages — base "/" sudah benar untuk itu.
 export default defineConfig({
   base: "/",
+  server: {
+    host: "0.0.0.0",
+    port: 3000,
+    allowedHosts: true,
+  },
+  build: {
+    outDir: "../dist",
+    emptyOutDir: true,
+  },
   plugins: [
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.svg", "icons/icon-192.png", "icons/icon-512.png"],
+      injectRegister: "auto",
+      includeAssets: [
+        "favicon.svg",
+        "apple-touch-icon.png",
+        "apple-touch-icon-precomposed.png",
+        "icons/icon-192.png",
+        "icons/icon-512.png",
+        "icons/apple-touch-icon.png",
+      ],
       manifest: {
         name: "Adoel — Jadwal Doffing",
         short_name: "Adoel",
@@ -22,13 +39,18 @@ export default defineConfig({
         start_url: "/",
         scope: "/",
         icons: [
-          { src: "icons/icon-192.png", sizes: "192x192", type: "image/png" },
-          { src: "icons/icon-512.png", sizes: "512x512", type: "image/png" },
+          { src: "icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+          { src: "icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "maskable" },
+          { src: "icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
           { src: "icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
         ],
       },
       workbox: {
-        globPatterns: ["**/*.{js,css,html,svg,png,ico}"],
+        globPatterns: ["**/*.{js,css,html,svg,png,ico,woff,woff2}"],
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true,
+        navigateFallback: "index.html",
       },
     }),
   ],

@@ -12,6 +12,7 @@ data class MesinData(
     val targetYard: Double? = null,
     val speed: Double? = null,
     val koreksi: Double? = null,
+    val isActive: Boolean = true,
 )
 
 data class Estimasi(
@@ -50,6 +51,9 @@ data class ShiftRecord(
     val estimasiRemaining: Map<String, Estimasi> = emptyMap(),
 )
 
+val DEFAULT_KETERANGAN_SHORTCUTS = emptyList<String>()
+val DEFAULT_CORAK_SHORTCUTS = emptyList<String>()
+
 data class DoffState(
     val db: Map<String, MesinData> = emptyMap(),
     val estimasi: Map<String, Estimasi> = emptyMap(),
@@ -62,6 +66,8 @@ data class DoffState(
     // field don't suddenly get the first-run tutorial — it's only explicitly set false in
     // DoffRepository.parseState()'s genuinely-fresh-install fallback (no persisted state at all).
     val onboardingSeen: Boolean = true,
+    val keteranganShortcuts: List<String>? = null,
+    val corakShortcuts: List<String>? = null,
 )
 
 fun getRepresentativeEpochMin(shift: ShiftRecord): Long {

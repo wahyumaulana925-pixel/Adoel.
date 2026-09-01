@@ -15,6 +15,21 @@ export function sortedByNearest(estimasi: Record<string, Estimasi>): Estimasi[] 
   return Object.values(estimasi).sort((a, b) => a.estAbsMin - b.estAbsMin);
 }
 
+/** Mencari nomor mesin lain yang estimasi doff-nya berdekatan (selisih <= thresholdMin, default 10 menit)
+ * dari mesin target — port 1:1 dari findClashingMachines di EstimasiUtils.kt Android. */
+export function findClashingMachines(
+  targetMcNo: string,
+  allEstimasi: Estimasi[] | Record<string, Estimasi>,
+  thresholdMin = 10,
+): string[] {
+  const list = Array.isArray(allEstimasi) ? allEstimasi : Object.values(allEstimasi);
+  const target = list.find((e) => e.mcNo === targetMcNo);
+  if (!target) return [];
+  return list
+    .filter((e) => e.mcNo !== targetMcNo && Math.abs(e.estAbsMin - target.estAbsMin) <= thresholdMin)
+    .map((e) => e.mcNo);
+}
+
 /** Sisa menit efektif — kalau sedang dijeda, waktu dibekukan di titik jeda (tidak
  * terus berkurang mengikuti jam berjalan) sampai dilanjutkan lagi. */
 export function effectiveRemaining(e: Estimasi, nowAbs: number): number {

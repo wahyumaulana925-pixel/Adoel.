@@ -43,6 +43,9 @@ fun QuickEditCorakDialog(
     targetYard: Double?,
     onDismiss: () -> Unit,
     onSave: (corak: String, targetYard: Double?) -> Unit,
+    corakShortcuts: List<String>? = null,
+    onAddCorakShortcut: (String) -> Unit = {},
+    showToast: ((String) -> Unit)? = null,
 ) {
     val colors = LocalAppColors.current
     var corakInput by remember(mcNo) { mutableStateOf(if (corak == "-") "" else corak) }
@@ -66,6 +69,13 @@ fun QuickEditCorakDialog(
             textStyle = AppType.FieldText.copy(color = colors.textPrimary),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             singleLine = true,
+        )
+        CorakShortcutPicker(
+            value = corakInput,
+            onSelect = { corakInput = it },
+            shortcuts = corakShortcuts,
+            onAddShortcut = onAddCorakShortcut,
+            showToast = showToast,
         )
 
         Spacer(Modifier.height(Dimens.Space16))

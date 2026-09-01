@@ -36,6 +36,8 @@ function fullState(): DoffState {
     ],
     nextShiftId: 4,
     onboardingSeen: false,
+    keteranganShortcuts: ["HB", "P.LP", "P.SN", "P.OH", "P.EL", "P.Sel"],
+    corakShortcuts: ["4500", "5000"],
   };
 }
 
@@ -53,6 +55,8 @@ describe("parseBackupJson", () => {
     expect(p.nextShiftId).toBe(1);
     expect(p.onboardingSeen).toBe(true);
     expect(p.db["29"].targetYard).toBe(303);
+    expect(p.keteranganShortcuts).toEqual([]);
+    expect(p.corakShortcuts).toEqual([]);
   });
 
   it("id aktual duplikat di-reassign, bukan dibuang", () => {

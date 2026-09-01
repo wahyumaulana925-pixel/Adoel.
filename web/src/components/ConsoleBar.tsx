@@ -29,36 +29,58 @@ export function ConsoleBar({
     }
   }
 
+  const hasInput = mcNoInput.trim() !== "";
+
   return (
     <div className="console-bar floating-card">
-      <div className="console-hint">Ketik nomor mesin, lalu ketuk jam (estimasi) atau gunting (doffing)</div>
       <div className="console-row">
-        <ConsoleIconButton icon={<UndoIcon size={18} />} label="Undo" enabled={canUndo} accent="var(--violet-500)" onClick={onUndo} />
-        <ConsoleIconButton icon={<RedoIcon size={18} />} label="Redo" enabled={canRedo} accent="var(--violet-500)" onClick={onRedo} />
+        <ConsoleIconButton
+          icon={<UndoIcon size={18} />}
+          label="Undo"
+          title="Kembalikan aksi sebelumnya (Undo)"
+          enabled={canUndo}
+          accent="var(--amber-500)"
+          onClick={onUndo}
+        />
+        <ConsoleIconButton
+          icon={<RedoIcon size={18} />}
+          label="Redo"
+          title="Ulangi aksi (Redo)"
+          enabled={canRedo}
+          accent="var(--amber-500)"
+          onClick={onRedo}
+        />
+
         <input
-          className="console-mcno-input"
+          className={`console-mcno-input${hasInput ? " has-value" : ""}`}
           value={mcNoInput}
-          onChange={(e) => setMcNoInput(e.target.value.replace(/\D/g, "").slice(0, 3))}
+          onChange={(e) => setMcNoInput(e.target.value.replace(/\D/g, "").slice(0, 4))}
           onKeyDown={(e) => {
             if (e.key === "Enter") submit(onEstimasiClick);
           }}
-          placeholder="Nomor mesin"
+          placeholder="No. Mc"
           inputMode="numeric"
           autoComplete="off"
+          aria-label="Nomor mesin"
         />
+
         <ConsoleIconButton
           icon={<ScheduleIcon size={20} />}
           label="Estimasi"
-          enabled={mcNoInput.trim() !== ""}
+          title="Buat estimasi waktu doffing baru"
+          enabled={hasInput}
           accent="var(--cyan-600)"
           onClick={() => submit(onEstimasiClick)}
+          pulse={hasInput}
         />
         <ConsoleIconButton
           icon={<ScissorsIcon size={20} />}
           label="Doffing"
-          enabled={mcNoInput.trim() !== ""}
+          title="Catat doffing aktual sekarang"
+          enabled={hasInput}
           accent="var(--emerald-500)"
           onClick={() => submit(onDoffingClick)}
+          pulse={hasInput}
         />
       </div>
     </div>
@@ -68,25 +90,34 @@ export function ConsoleBar({
 function ConsoleIconButton({
   icon,
   label,
+  title,
   enabled,
   accent,
+  pulse = false,
   onClick,
 }: {
   icon: ReactNode;
   label: string;
+  title?: string;
   enabled: boolean;
   accent: string;
+  pulse?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
-      className="console-icon-btn"
-      style={{ background: enabled ? accent : "var(--bg-elevated-2)", color: enabled ? "#fff" : "var(--text-faint)" }}
+      className={`console-icon-btn${enabled ? " enabled" : ""}${pulse ? " ready-pulse" : ""}`}
+      style={{
+        background: enabled ? accent : "var(--bg-elevated-2)",
+        color: enabled ? "#fff" : "var(--text-faint)",
+      }}
       disabled={!enabled}
       aria-label={label}
+      title={title ?? label}
       onClick={onClick}
     >
       {icon}
     </button>
   );
 }
+

@@ -51,6 +51,10 @@ fun GuidedDoffingSheet(
     onSubmitDoffing: (value: String) -> Unit,
     onQuickUpdate: (corak: String, targetYard: Double?, tipe: MesinTipe, koreksi: Double?, speed: Double?) -> Unit,
     showToast: (String) -> Unit = {},
+    corakShortcuts: List<String>? = null,
+    keteranganShortcuts: List<String>? = null,
+    onAddCorakShortcut: (String) -> Unit = {},
+    onAddKeteranganShortcut: (String) -> Unit = {},
 ) {
     val colors = LocalAppColors.current
     var activeMesin by remember(mcNo) { mutableStateOf(mesin) }
@@ -75,6 +79,8 @@ fun GuidedDoffingSheet(
                 },
                 onCancel = onDismiss,
                 showToast = showToast,
+                corakShortcuts = corakShortcuts,
+                onAddCorakShortcut = onAddCorakShortcut,
             )
             GuidedDoffingStep.CHOOSE -> ChooseStep(
                 onPickNormal = { step = GuidedDoffingStep.NORMAL },
@@ -91,6 +97,9 @@ fun GuidedDoffingSheet(
                 standardYard = standardYard,
                 onBack = { step = GuidedDoffingStep.CHOOSE },
                 onConfirm = { cmd -> onSubmitDoffing("$mcNo $cmd") },
+                keteranganShortcuts = keteranganShortcuts,
+                onAddKeteranganShortcut = onAddKeteranganShortcut,
+                showToast = showToast,
             )
         }
     }
@@ -102,8 +111,17 @@ private fun SetupStep(
     onSave: (corak: String, targetYard: Double?, tipe: MesinTipe, koreksi: Double?, speed: Double?) -> Unit,
     onCancel: () -> Unit,
     showToast: (String) -> Unit,
+    corakShortcuts: List<String>?,
+    onAddCorakShortcut: (String) -> Unit,
 ) {
-    MachineSetupForm(initial = initial, onSave = onSave, onCancel = onCancel, showToast = showToast)
+    MachineSetupForm(
+        initial = initial,
+        onSave = onSave,
+        onCancel = onCancel,
+        showToast = showToast,
+        corakShortcuts = corakShortcuts,
+        onAddCorakShortcut = onAddCorakShortcut,
+    )
 }
 
 @Composable
@@ -224,7 +242,14 @@ private fun YardDeltaField(standardYard: Double?, yardInput: String, onYardInput
  * (not [YardDeltaField]'s prefill+buttons) since in practice only HB ever needs a "+" delta —
  * one toggle button covers that instead of a whole row of tap targets most codes never use. */
 @Composable
-private fun KeteranganStep(standardYard: Double?, onBack: () -> Unit, onConfirm: (String) -> Unit) {
+private fun KeteranganStep(
+    standardYard: Double?,
+    onBack: () -> Unit,
+    onConfirm: (String) -> Unit,
+    keteranganShortcuts: List<String>?,
+    onAddKeteranganShortcut: (String) -> Unit,
+    showToast: (String) -> Unit,
+) {
     val colors = LocalAppColors.current
     var ket by remember { mutableStateOf("") }
     var yardInput by remember { mutableStateOf("") }
@@ -233,17 +258,22 @@ private fun KeteranganStep(standardYard: Double?, onBack: () -> Unit, onConfirm:
     }
 
     FieldLabel("Keterangan")
-    FlowRowChips(codes = KETERANGAN_CODES, selected = ket.takeIf { it in KETERANGAN_CODES }, onSelect = { ket = it })
-    Spacer(Modifier.height(Dimens.Space8))
     OutlinedTextField(
         value = ket,
         onValueChange = { ket = it.uppercase() },
         modifier = Modifier.fillMaxWidth(),
-        placeholder = { Text("Ketik keterangan lain jika tidak ada di atas", color = colors.textFaint) },
+        placeholder = { Text("Ketik keterangan (HB, P.LP, dll)", color = colors.textFaint) },
         colors = outlinedFieldColors(),
         shape = RoundedCornerShape(Dimens.RadiusControl),
         textStyle = AppType.FieldText.copy(color = colors.textPrimary),
         singleLine = true,
+    )
+    KeteranganShortcutPicker(
+        value = ket,
+        onSelect = { ket = it },
+        shortcuts = keteranganShortcuts,
+        onAddShortcut = onAddKeteranganShortcut,
+        showToast = showToast,
     )
 
     Spacer(Modifier.height(14.dp))

@@ -20,7 +20,7 @@ export function prosesBarisKondisiMesin(state: DoffState, ln: string, now: numbe
   const parts = ln.trim().split(/\s+/);
   if (parts.length < 2) return { result: { ok: false, msg: "Kurang data" }, newState: state };
   const mcNo = parts[0];
-  if (!/^\d{1,3}$/.test(mcNo)) return { result: { ok: false, msg: "Nomor mesin tidak valid" }, newState: state };
+  if (!/^\d{1,4}$/.test(mcNo)) return { result: { ok: false, msg: "Nomor mesin tidak valid" }, newState: state };
   const mesin = state.db[mcNo];
   if (!mesin) return { result: { ok: false, msg: `Mc ${mcNo} tidak ditemukan` }, newState: state };
   if (!mesin.corak || mesin.corak.trim() === "" || mesin.corak.trim() === "-") {
@@ -91,7 +91,7 @@ export function prosesBarisUmum(state: DoffState, ln: string): CommandOutcome {
   const parts = ln.trim().split(/\s+/).filter((p) => p.length > 0);
   if (parts.length === 0) return { result: { ok: false, msg: "Kosong" }, newState: state };
   const mcNo = parts[0];
-  if (!/^\d{1,3}$/.test(mcNo)) return { result: { ok: false, msg: "Nomor mesin tidak valid" }, newState: state };
+  if (!/^\d{1,4}$/.test(mcNo)) return { result: { ok: false, msg: "Nomor mesin tidak valid" }, newState: state };
   const mesin = state.db[mcNo];
   if (!mesin) return { result: { ok: false, msg: `Mc ${mcNo} tidak ditemukan` }, newState: state };
 

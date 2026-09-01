@@ -1,18 +1,29 @@
-import { useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { absMinToTimeStr, formatDeltaMin, formatYard } from "../domain/format";
 import { effectiveRemaining, urgencyLevel, type UrgencyLevel } from "../domain/estimasiUtils";
 import { TIPE_COLOR } from "../domain/mesinVisual";
 import type { Estimasi, MesinData } from "../domain/types";
 import { WaveProgressBar } from "./WaveProgressBar";
-import { MesinTipeIcon, PauseIcon, PlayIcon, DeleteIcon, CheckIcon, ScissorsIcon } from "./Icons";
+import {
+  MesinTipeIcon,
+  PauseIcon,
+  PlayIcon,
+  DeleteIcon,
+  ScissorsIcon,
+  SparklesIcon,
+  ScheduleIcon,
+  WarningIcon,
+  TextureIcon,
+  CloseIcon,
+  ShiftExchangeIcon,
+  TagIcon,
+} from "./Icons";
 
 const REMINDER_LEAD_MIN = 5;
 const SWIPE_THRESHOLD_PX = 88;
 const SWIPE_MAX_PX = 140;
 const LONG_PRESS_MS = 450;
 const DRAG_INTENT_PX = 8;
-
-type CardFace = "FRONT" | "ACTIONS" | "PAUSED";
 
 const URGENCY_STYLE: Record<UrgencyLevel, { accent: string; bar: string; text: string; pulse: boolean }> = {
   CALM: { accent: "var(--cyan-500)", bar: "var(--cyan-500)", text: "var(--cyan-400)", pulse: false },
@@ -21,14 +32,15 @@ const URGENCY_STYLE: Record<UrgencyLevel, { accent: string; bar: string; text: s
   OVERDUE: { accent: "var(--red-500)", bar: "var(--red-500)", text: "var(--red-400, #f87171)", pulse: true },
 };
 
-/** Kartu radar — tekan-tahan membalik ke Jeda/Hapus, swipe kanan = doff normal, swipe kiri =
- * doff dengan keterangan Matching, tap zona nomor mesin/corak = ubah corak+yard, tap zona
- * waktu = ubah estimasi. Port 1:1 dari RadarCard.kt (aplikasi Android) — motion disederhanakan
- * ke transisi CSS (bukan frame-by-frame Compose), tapi struktur gestur & muka kartu sama. */
+/** Kartu radar — sentuh & tahan memunculkan menu aksi Jeda/Hapus di atas kartu,
+ * kartu dijeda tampil langsung di bagian depan dengan tombol Lanjutkan instan,
+ * swipe kanan = doff normal, swipe kiri = doff matching, tap zona nomor = ubah corak+yard,
+ * tap zona waktu = ubah estimasi. */
 export function RadarCard({
   est,
   mesin,
   nowAbs,
+  clashingMcNos = [],
   onDoff,
   onDoffMatching,
   onHapus,
@@ -41,6 +53,7 @@ export function RadarCard({
   est: Estimasi;
   mesin: MesinData | null;
   nowAbs: number;
+  clashingMcNos?: string[];
   onDoff: () => void;
   onDoffMatching: () => void;
   onHapus: () => void;
@@ -51,27 +64,31 @@ export function RadarCard({
   shiftHandover?: boolean;
 }) {
   const remaining = effectiveRemaining(est, nowAbs);
+  const isPaused = est.pausedAtAbsMin !== null && est.pausedAtAbsMin !== undefined;
   const level = urgencyLevel(remaining);
-  const style = URGENCY_STYLE[level];
+  const style = isPaused
+    ? { accent: "var(--amber-500)", bar: "var(--amber-500)", text: "var(--amber-400)", pulse: false }
+    : URGENCY_STYLE[level];
   const totalDur = est.estAbsMin - est.startAbsMin;
-  const elapsed = est.pausedAtAbsMin == null ? nowAbs - est.startAbsMin : est.pausedAtAbsMin - est.startAbsMin;
+  const elapsed = isPaused ? est.pausedAtAbsMin! - est.startAbsMin : nowAbs - est.startAbsMin;
   const progress = totalDur > 0 ? Math.min(1, Math.max(0, elapsed / totalDur)) : 0;
   const corak = est.corakOverride ?? mesin?.corak ?? "—";
   const standardYard = est.yardOverride ?? mesin?.targetYard ?? null;
   const corakLine = standardYard != null ? `${corak} · ${formatYard(standardYard)}y` : corak;
-  const showDot = remaining <= 5;
-  const swipeEnabled = remaining <= REMINDER_LEAD_MIN;
+  const showDot = !isPaused && remaining <= 5;
+  const swipeEnabled = !isPaused && remaining <= REMINDER_LEAD_MIN;
 
-  const isPaused = est.pausedAtAbsMin !== null;
-  const [showActionsFace, setShowActionsFace] = useState(false);
-  const face: CardFace = isPaused ? "PAUSED" : showActionsFace ? "ACTIONS" : "FRONT";
-
+  const [showActionsOverlay, setShowActionsOverlay] = useState(false);
   const [offsetX, setOffsetX] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [charging, setCharging] = useState(false);
   const [completing, setCompleting] = useState<"NORMAL" | "MATCHING" | null>(null);
   const dragStartX = useRef<number | null>(null);
+  const dragStartY = useRef<number | null>(null);
+  const pointerIdRef = useRef<number | null>(null);
+  const cardElementRef = useRef<HTMLDivElement | null>(null);
   const wasDrag = useRef(false);
+  const isScrollingY = useRef(false);
   const longPressTimer = useRef<number | null>(null);
 
   function clearLongPress() {
@@ -81,46 +98,103 @@ export function RadarCard({
     }
   }
 
-  // Target ini khusus pengguna iOS (Safari/PWA) — navigator.vibrate() tidak pernah
-  // tersedia di WebKit, jadi umpan balik tekan-tahan & swipe di bawah ini sengaja
-  // 100% visual (charge overlay, panel reveal, animasi perayaan), bukan bergantung
-  // getaran seperti versi Android.
-  function handlePointerDown(e: ReactPointerEvent) {
-    if (completing || face !== "FRONT") return;
+  function handlePointerDown(e: ReactPointerEvent<HTMLDivElement>) {
+    if (completing || showActionsOverlay) return;
+    if (e.button !== 0 && e.pointerType === "mouse") return;
+
     dragStartX.current = e.clientX;
+    dragStartY.current = e.clientY;
+    pointerIdRef.current = e.pointerId;
+    cardElementRef.current = e.currentTarget;
     wasDrag.current = false;
+    isScrollingY.current = false;
     setCharging(true);
+
+    clearLongPress();
     longPressTimer.current = window.setTimeout(() => {
       longPressTimer.current = null;
-      if (!wasDrag.current) {
+      if (!wasDrag.current && !isScrollingY.current) {
         setCharging(false);
-        setShowActionsFace(true);
+        try {
+          if (typeof navigator !== "undefined" && navigator.vibrate) {
+            navigator.vibrate(35);
+          }
+        } catch {
+          // ignore
+        }
+        setShowActionsOverlay(true);
         setOffsetX(0);
         setDragging(false);
         dragStartX.current = null;
+        dragStartY.current = null;
       }
     }, LONG_PRESS_MS);
   }
 
-  function handlePointerMove(e: ReactPointerEvent) {
-    if (dragStartX.current === null || completing || face !== "FRONT") return;
+  function handlePointerMove(e: ReactPointerEvent<HTMLDivElement>) {
+    if (dragStartX.current === null || dragStartY.current === null || completing || showActionsOverlay) return;
     const dx = e.clientX - dragStartX.current;
-    if (Math.abs(dx) > DRAG_INTENT_PX) {
+    const dy = e.clientY - dragStartY.current;
+    const absX = Math.abs(dx);
+    const absY = Math.abs(dy);
+
+    // Micro-wobble: gerakan mikro (< 10px) saat menahan jari jangan membatalkan tekan-tahan
+    if (absX <= DRAG_INTENT_PX && absY <= DRAG_INTENT_PX) {
+      return;
+    }
+
+    // Jika gerakan vertikal lebih besar, anggap pengguna sedang scroll daftar
+    if (absY > absX && absY > DRAG_INTENT_PX) {
+      isScrollingY.current = true;
+      clearLongPress();
+      setCharging(false);
+      setDragging(false);
+      setOffsetX(0);
+      return;
+    }
+
+    // Jika gerakan horizontal lebih dominan: ini adalah swipe kartu
+    if (absX > absY && absX > DRAG_INTENT_PX) {
       wasDrag.current = true;
       clearLongPress();
       setCharging(false);
-    }
-    if (swipeEnabled && wasDrag.current) {
-      setDragging(true);
-      setOffsetX(Math.max(-SWIPE_MAX_PX, Math.min(SWIPE_MAX_PX, dx)));
+
+      if (swipeEnabled) {
+        // Tangkap pointer agar Chrome di ponsel tidak memutus event stream dengan pointercancel
+        if (cardElementRef.current && pointerIdRef.current !== null) {
+          try {
+            if (!cardElementRef.current.hasPointerCapture(pointerIdRef.current)) {
+              cardElementRef.current.setPointerCapture(pointerIdRef.current);
+            }
+          } catch {
+            // ignore
+          }
+        }
+        setDragging(true);
+        setOffsetX(Math.max(-SWIPE_MAX_PX, Math.min(SWIPE_MAX_PX, dx)));
+      }
     }
   }
 
-  function endDrag() {
+  function endDrag(_e?: ReactPointerEvent<HTMLDivElement>) {
     clearLongPress();
     setCharging(false);
+
+    if (cardElementRef.current && pointerIdRef.current !== null) {
+      try {
+        if (cardElementRef.current.hasPointerCapture(pointerIdRef.current)) {
+          cardElementRef.current.releasePointerCapture(pointerIdRef.current);
+        }
+      } catch {
+        // ignore
+      }
+    }
+
     dragStartX.current = null;
+    dragStartY.current = null;
+    pointerIdRef.current = null;
     setDragging(false);
+
     if (Math.abs(offsetX) >= SWIPE_THRESHOLD_PX) {
       triggerDoff(offsetX > 0 ? "NORMAL" : "MATCHING");
     } else {
@@ -135,22 +209,120 @@ export function RadarCard({
     window.setTimeout(() => {
       if (kind === "NORMAL") onDoff();
       else onDoffMatching();
-    }, 340);
+    }, 950);
   }
 
   function handleZoneClick(action: () => void) {
-    if (wasDrag.current || face !== "FRONT") return;
+    if (wasDrag.current || showActionsOverlay) return;
     action();
   }
 
   const revealSide: "right" | "left" | null = offsetX > 4 ? "right" : offsetX < -4 ? "left" : null;
   const revealOpacity = Math.min(1, Math.abs(offsetX) / SWIPE_THRESHOLD_PX);
 
+  // Jika kartu sedang dijeda, tampilkan kartu langsung di bagian depan dengan styling khusus
+  if (isPaused) {
+    return (
+      <div
+        className="radar-card-outer radar-card-paused-outer"
+        style={{ ["--urgency-accent" as any]: "var(--amber-500)" }}
+        onContextMenu={(e) => e.preventDefault()}
+      >
+        <div className="radar-card-front radar-card-paused" onContextMenu={(e) => e.preventDefault()}>
+          <div className="radar-card-accent" style={{ background: "var(--amber-500)" }} />
+          <div className="radar-card-body">
+            <div className="radar-card-main" onClick={() => handleZoneClick(onQuickEdit)} role="button">
+              <div className="radar-card-title-row">
+                <span className="radar-card-mcno" style={{ fontSize: est.mcNo.length >= 3 ? 23 : 27 }}>
+                  {est.mcNo}
+                </span>
+                {mesin && (
+                  <span className="radar-card-tipe-icon" style={{ color: TIPE_COLOR[mesin.tipe] }}>
+                    <MesinTipeIcon tipe={mesin.tipe} size={12} />
+                  </span>
+                )}
+                <span className="radar-card-tipe-label" style={{ color: mesin ? TIPE_COLOR[mesin.tipe] : "var(--text-faint)" }}>
+                  {mesin?.tipe ?? "?"}
+                </span>
+                <span className="radar-paused-badge">
+                  <PauseIcon size={11} />
+                  <span>DIJEDA</span>
+                </span>
+              </div>
+
+              <div className="radar-card-corak" style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <TextureIcon size={11} />
+                <span>{corakLine}</span>
+              </div>
+
+              <div className="radar-paused-status-line">
+                <span>Dibekukan pada sisa:</span>
+                <strong style={{ color: "var(--amber-400)" }}>{formatDeltaMin(remaining)}</strong>
+              </div>
+            </div>
+
+            {/* Aksi langsung di bagian depan kartu dijeda */}
+            <div className="radar-paused-actions">
+              <button
+                type="button"
+                className="radar-resume-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onLanjutkan();
+                }}
+                aria-label={`Lanjutkan mesin ${est.mcNo}`}
+              >
+                <PlayIcon size={16} />
+                <span>Lanjutkan</span>
+              </button>
+              <button
+                type="button"
+                className="radar-paused-delete-icon-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onHapus();
+                }}
+                title="Hapus estimasi"
+                aria-label={`Hapus estimasi Mc ${est.mcNo}`}
+              >
+                <DeleteIcon size={16} />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="radar-card-outer" style={{ ["--urgency-accent" as any]: style.accent }}>
+    <div
+      className="radar-card-outer"
+      style={{ ["--urgency-accent" as any]: style.accent }}
+      onContextMenu={(e) => e.preventDefault()}
+    >
       {revealSide && !completing && (
         <div className={`radar-card-swipe-bg ${revealSide}`} style={{ opacity: revealOpacity }}>
-          {revealSide === "right" ? <CheckIcon size={22} /> : <ScissorsIcon size={22} />}
+          {revealSide === "right" ? (
+            <div className="radar-swipe-hint-content right">
+              <div className="radar-swipe-hint-icon">
+                <ScissorsIcon size={22} />
+              </div>
+              <div className="radar-swipe-hint-text">
+                <div className="radar-swipe-hint-title">Doffing Normal</div>
+                <div className="radar-swipe-hint-desc">Target yard selesai</div>
+              </div>
+            </div>
+          ) : (
+            <div className="radar-swipe-hint-content left">
+              <div className="radar-swipe-hint-text right-align">
+                <div className="radar-swipe-hint-title">Doffing Matching</div>
+                <div className="radar-swipe-hint-desc">Sampel beam baru · Uji kualitas</div>
+              </div>
+              <div className="radar-swipe-hint-icon matching">
+                <SparklesIcon size={22} />
+              </div>
+            </div>
+          )}
         </div>
       )}
       <div
@@ -168,62 +340,143 @@ export function RadarCard({
         onPointerMove={handlePointerMove}
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
+        onContextMenu={(e) => e.preventDefault()}
       >
-        <div className={`radar-card-flipper${face !== "FRONT" ? " flipped" : ""}`}>
-          <div className={`radar-card-face radar-card-front${level === "OVERDUE" ? " overdue" : ""}${charging ? " charging" : ""}`}>
-            <div className="radar-card-charge-overlay" />
-            <div className="radar-card-accent" />
-            <div className="radar-card-body">
-              <div className="radar-card-main" onClick={() => handleZoneClick(onQuickEdit)} role="button">
-                <div className="radar-card-title-row">
-                  <span className="radar-card-mcno">{est.mcNo}</span>
-                  {mesin && (
-                    <span className="radar-card-tipe-icon" style={{ color: TIPE_COLOR[mesin.tipe] }}>
-                      <MesinTipeIcon tipe={mesin.tipe} size={12} />
-                    </span>
-                  )}
-                  <span className="radar-card-tipe-label" style={{ color: mesin ? TIPE_COLOR[mesin.tipe] : "var(--text-faint)" }}>
-                    {mesin?.tipe ?? "?"}
+        <div
+          className={`radar-card-front${level === "OVERDUE" ? " overdue" : ""}${charging ? " charging" : ""}`}
+          onContextMenu={(e) => e.preventDefault()}
+        >
+          {/* Visual indikator saat aksi sentuh & tahan sedang berlangsung */}
+          {charging && <div className="radar-card-charge-bar" />}
+          <div className="radar-card-charge-overlay" />
+          <div className="radar-card-accent" />
+          <div className="radar-card-body">
+            <div className="radar-card-main" onClick={() => handleZoneClick(onQuickEdit)} role="button">
+              <div className="radar-card-title-row">
+                <span
+                  className="radar-card-mcno"
+                  style={{ fontSize: est.mcNo.length >= 3 ? 23 : 27 }}
+                >
+                  {est.mcNo}
+                </span>
+                {mesin && (
+                  <span className="radar-card-tipe-icon" style={{ color: TIPE_COLOR[mesin.tipe] }}>
+                    <MesinTipeIcon tipe={mesin.tipe} size={12} />
                   </span>
-                  {shiftHandover && <span className="shift-badge">⏭️ OPERAN SHIFT</span>}
-                </div>
-                <div className="radar-card-corak">{corakLine}</div>
-                <WaveProgressBar fraction={progress} trackColor="var(--bg-elevated-2)" fillColor={style.bar} height={3} />
+                )}
+                <span className="radar-card-tipe-label" style={{ color: mesin ? TIPE_COLOR[mesin.tipe] : "var(--text-faint)" }}>
+                  {mesin?.tipe ?? "?"}
+                </span>
+                {level === "SOON" && (
+                  <span className="radar-card-urgency-icon" style={{ color: "var(--amber-400)" }}>
+                    <ScheduleIcon size={12} />
+                  </span>
+                )}
+                {level === "IMMINENT" && (
+                  <span className="radar-card-urgency-icon" style={{ color: "var(--amber-500)" }}>
+                    <WarningIcon size={12} />
+                  </span>
+                )}
+                {level === "OVERDUE" && (
+                  <span className="radar-card-urgency-icon" style={{ color: "var(--red-400)" }}>
+                    <WarningIcon size={12} filled />
+                  </span>
+                )}
+                {clashingMcNos.length > 0 && (
+                  <span className="radar-clash-badge" title={`Bentrok waktu dengan Mc ${clashingMcNos.join(", ")}`}>
+                    <WarningIcon size={10} filled />
+                    <span>Bentrok Mc {clashingMcNos.join(", ")}</span>
+                  </span>
+                )}
+                {shiftHandover && (
+                  <span className="shift-badge">
+                    <ShiftExchangeIcon size={10} />
+                    <span>OPERAN SHIFT</span>
+                  </span>
+                )}
               </div>
-              <div className="radar-card-time" onClick={() => handleZoneClick(onEditWaktu)} role="button">
-                {showDot && <span className={`ping-dot${remaining < 0 ? " danger" : ""}`} />}
-                <div className="radar-card-time-text">
-                  <div className="abs" style={{ color: style.text }}>
-                    {absMinToTimeStr(est.estAbsMin)}
-                  </div>
-                  <div className="rel" style={{ color: remaining < 0 ? "var(--red-500)" : style.text }}>
-                    {formatDeltaMin(remaining)}
-                  </div>
+
+              <div className="radar-card-corak">
+                <TextureIcon size={11} />
+                <span>{corakLine}</span>
+              </div>
+
+              <WaveProgressBar fraction={progress} trackColor="var(--bg-elevated-2)" fillColor={style.bar} height={3} />
+            </div>
+
+            <div className="radar-card-time" onClick={() => handleZoneClick(onEditWaktu)} role="button">
+              {showDot && <span className={`ping-dot${remaining < 0 ? " danger" : ""}`} />}
+              <div className="radar-card-time-text">
+                <div className="abs" style={{ color: style.text }}>
+                  {absMinToTimeStr(est.estAbsMin)}
+                </div>
+                <div className="rel" style={{ color: remaining < 0 ? "var(--red-500)" : style.text }}>
+                  {formatDeltaMin(remaining)}
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="radar-card-face radar-card-back">
-            {face === "ACTIONS" && (
-              <div className="card-actions-face" onClick={() => setShowActionsFace(false)}>
-                <CardFaceButton icon={<PauseIcon size={20} />} label="Jeda" accent="var(--amber-500)" onClick={onJeda} />
-                <CardFaceButton icon={<DeleteIcon size={20} />} label="Hapus" accent="var(--red-500)" onClick={onHapus} />
+          {/* Quick Action Overlay saat sentuh & tahan selesai */}
+          {showActionsOverlay && (
+            <div className="radar-actions-overlay" onClick={(e) => e.stopPropagation()}>
+              <div className="radar-actions-overlay-head">
+                <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <TagIcon size={13} />
+                  <span className="radar-actions-overlay-title">Opsi Mesin {est.mcNo}</span>
+                </div>
+                <button
+                  type="button"
+                  className="radar-actions-close-btn"
+                  onClick={() => setShowActionsOverlay(false)}
+                  aria-label="Tutup menu aksi"
+                >
+                  <CloseIcon size={16} />
+                </button>
               </div>
-            )}
-            {face === "PAUSED" && (
-              <div className="card-paused-face">
-                <div className="paused-label">Mc {est.mcNo} sedang dijeda</div>
-                <CardFaceButton icon={<PlayIcon size={20} />} label="Lanjutkan" accent="var(--emerald-500)" onClick={onLanjutkan} />
+              <div className="radar-actions-overlay-btns">
+                <button
+                  type="button"
+                  className="radar-action-chip jeda"
+                  onClick={() => {
+                    setShowActionsOverlay(false);
+                    onJeda();
+                  }}
+                >
+                  <PauseIcon size={16} />
+                  <span>Jeda Mesin</span>
+                </button>
+                <button
+                  type="button"
+                  className="radar-action-chip hapus"
+                  onClick={() => {
+                    setShowActionsOverlay(false);
+                    onHapus();
+                  }}
+                >
+                  <DeleteIcon size={16} />
+                  <span>Hapus Estimasi</span>
+                </button>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
+
       {completing && (
         <div className={`radar-card-celebrate ${completing === "MATCHING" ? "matching" : "normal"}`}>
-          <div className="radar-card-celebrate-icon">
-            {completing === "MATCHING" ? <ScissorsIcon size={26} /> : <CheckIcon size={26} />}
+          <div className="radar-card-celebrate-content">
+            <div className="radar-card-celebrate-icon">
+              {completing === "MATCHING" ? <SparklesIcon size={24} /> : <ScissorsIcon size={24} />}
+            </div>
+            <div className="radar-card-celebrate-text">
+              <span className="radar-card-celebrate-title">
+                {completing === "MATCHING" ? "Doffing Matching (Sampel)" : "Doffing Normal"}
+              </span>
+              <span className="radar-card-celebrate-subtitle">
+                {completing === "MATCHING" ? "Tercatat untuk cek kualitas beam" : "Tercatat selesai target yard"}
+              </span>
+            </div>
           </div>
         </div>
       )}
@@ -231,30 +484,3 @@ export function RadarCard({
   );
 }
 
-function CardFaceButton({
-  icon,
-  label,
-  accent,
-  onClick,
-}: {
-  icon: ReactNode;
-  label: string;
-  accent: string;
-  onClick: () => void;
-}) {
-  return (
-    <div className="card-face-btn">
-      <button
-        style={{ background: accent }}
-        onClick={(e) => {
-          e.stopPropagation();
-          onClick();
-        }}
-        aria-label={label}
-      >
-        {icon}
-      </button>
-      <span style={{ color: accent }}>{label}</span>
-    </div>
-  );
-}

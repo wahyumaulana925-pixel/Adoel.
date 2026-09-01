@@ -5,41 +5,37 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentPaste
+import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.google.zxing.BarcodeFormat
+import com.google.zxing.EncodeHintType
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import com.journeyapps.barcodescanner.BarcodeEncoder
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 import com.jekael.adoel.BarcodeScanActivity
 import com.jekael.adoel.data.DoffRepository
-import com.jekael.adoel.ui.theme.AppType
-import com.jekael.adoel.ui.theme.Cyan600
-import com.jekael.adoel.ui.theme.Dimens
-import com.jekael.adoel.ui.theme.LocalAppColors
+import com.jekael.adoel.ui.theme.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -48,22 +44,59 @@ import kotlinx.coroutines.withContext
 fun SyncDialog(onClose: () -> Unit) {
     val context = LocalContext.current
     val colors = LocalAppColors.current
+    val clipboardManager = LocalClipboardManager.current
     val repository = remember(context) { DoffRepository.getInstance(context) }
     val scope = rememberCoroutineScope()
-    var tab by remember { mutableStateOf(0) }
+
+    // 0 = Terima / Scan, 1 = Kirim
+    var tabIndex by remember { mutableStateOf(0) }
+    var qrType by remember { mutableStateOf("HANDOVER") } // "HANDOVER" or "MASTER_DB"
+    var dbScope by remember { mutableStateOf("CUSTOMIZED_ONLY") } // "CUSTOMIZED_ONLY", "RANGE_1_30", "RANGE_31_60"
+
     var qrBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var rawQrString by remember { mutableStateOf("") }
+    var pastedText by remember { mutableStateOf("") }
+    var isCopied by remember { mutableStateOf(false) }
+
+    // Update QR Bitmap whenever Kirim tab, qrType, or dbScope changes
+    LaunchedEffect(tabIndex, qrType, dbScope) {
+        if (tabIndex == 1) {
+            withContext(Dispatchers.IO) {
+                val raw = if (qrType == "HANDOVER") {
+                    repository.prepareHandoverData()
+                } else {
+                    repository.prepareMasterDbData(dbScope)
+                }
+                rawQrString = raw
+                qrBitmap = createQrBitmap(raw)
+            }
+        }
+    }
 
     val scanLauncher = rememberLauncherForActivityResult(ScanContract()) { result ->
         val contents = result.contents ?: return@rememberLauncherForActivityResult
         scope.launch {
-            val imported = runCatching {
-                withContext(Dispatchers.IO) { repository.processScannedQr(contents, context) }
-            }.getOrNull()
-            Toast.makeText(
-                context,
-                if (imported != null) "Sinkronisasi berhasil" else "QR Sync tidak valid",
-                Toast.LENGTH_SHORT,
-            ).show()
+            val (imported, msg) = withContext(Dispatchers.IO) {
+                repository.processScannedQr(contents, context)
+            }
+            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+            if (imported != null) {
+                onClose()
+            }
+        }
+    }
+
+    fun handleProcessText(input: String) {
+        val trimmed = input.trim()
+        if (trimmed.isEmpty()) return
+        scope.launch {
+            val (imported, msg) = withContext(Dispatchers.IO) {
+                repository.processScannedQr(trimmed, context)
+            }
+            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+            if (imported != null) {
+                onClose()
+            }
         }
     }
 
@@ -72,12 +105,55 @@ fun SyncDialog(onClose: () -> Unit) {
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(Dimens.Space12),
         ) {
-            Text("QR Sync", style = AppType.DialogTitle.copy(color = colors.textPrimary))
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Dimens.Space8),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(Cyan500.copy(alpha = 0.15f), RoundedCornerShape(8.dp)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.QrCodeScanner,
+                            contentDescription = null,
+                            tint = Cyan400,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                    Column {
+                        Text(
+                            text = "QR Sync Mesin",
+                            style = TextStyle(fontSize = 17.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary),
+                        )
+                        Text(
+                            text = "Sinkronisasi data mesin & estimasi",
+                            style = TextStyle(fontSize = 11.sp, color = colors.textMuted),
+                        )
+                    }
+                }
+                IconButton(onClick = onClose) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Tutup",
+                        tint = colors.textSecondary,
+                    )
+                }
+            }
+
+            // Tab switcher: Terima vs Kirim
             SlidingToggle(
-                labelLeft = "Kirim",
-                labelRight = "Scan",
-                selectedIndex = tab,
-                onSelect = { tab = it; qrBitmap = null },
+                labelLeft = "Terima / Scan",
+                labelRight = "Kirim",
+                selectedIndex = tabIndex,
+                onSelect = { tabIndex = it },
                 containerColor = colors.bgElevated2,
                 activeColorLeft = Cyan600,
                 activeColorRight = Cyan600,
@@ -87,64 +163,278 @@ fun SyncDialog(onClose: () -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
                 accessibilityLabel = "Mode QR Sync",
             )
-            if (tab == 0) {
-                Text("Pilih data yang ingin dikirim", style = AppType.BodySmall.copy(color = colors.textSecondary))
-                SyncButton("Bagikan Operan") {
-                    scope.launch {
-                        qrBitmap = runCatching {
-                            withContext(Dispatchers.IO) { createQrBitmap(repository.prepareHandoverData()) }
-                        }.getOrNull()
-                    }
+
+            if (tabIndex == 1) {
+                // KIRIM MODE
+                Text(
+                    text = "Pilih data yang ingin dikirim:",
+                    style = TextStyle(fontSize = 12.sp, color = colors.textMuted),
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(Dimens.Space8),
+                ) {
+                    ChipBtn(
+                        label = "Oper Shift",
+                        active = qrType == "HANDOVER",
+                        onClick = { qrType = "HANDOVER" },
+                        modifier = Modifier.weight(1f),
+                    )
+                    ChipBtn(
+                        label = "Daftar Mesin",
+                        active = qrType == "MASTER_DB",
+                        onClick = { qrType = "MASTER_DB" },
+                        modifier = Modifier.weight(1f),
+                    )
                 }
-                SyncButton("Bagikan Daftar Mesin") {
-                    scope.launch {
-                        qrBitmap = runCatching {
-                            withContext(Dispatchers.IO) { createQrBitmap(repository.prepareMasterDbData()) }
-                        }.getOrNull()
-                    }
-                }
-                qrBitmap?.let { bitmap ->
-                    Spacer(Modifier.height(Dimens.Space4))
-                    Box(
-                        modifier = Modifier.fillMaxWidth().background(Color.White, RoundedCornerShape(Dimens.RadiusControl)).padding(16.dp),
-                        contentAlignment = Alignment.Center,
+
+                if (qrType == "MASTER_DB") {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(colors.bgElevated2, RoundedCornerShape(8.dp))
+                            .padding(4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(Dimens.Space4),
                     ) {
-                        Image(bitmap.asImageBitmap(), contentDescription = "QR Sync", modifier = Modifier.size(240.dp))
+                        ChipBtn(
+                            label = "Mesin Terisi",
+                            active = dbScope == "CUSTOMIZED_ONLY",
+                            onClick = { dbScope = "CUSTOMIZED_ONLY" },
+                            modifier = Modifier.weight(1f),
+                        )
+                        ChipBtn(
+                            label = "01–30 (P1)",
+                            active = dbScope == "RANGE_1_30",
+                            onClick = { dbScope = "RANGE_1_30" },
+                            modifier = Modifier.weight(1f),
+                        )
+                        ChipBtn(
+                            label = "31–60 (P2)",
+                            active = dbScope == "RANGE_31_60",
+                            onClick = { dbScope = "RANGE_31_60" },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(colors.bgElevated2, RoundedCornerShape(8.dp))
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                ) {
+                    Text(
+                        text = if (qrType == "HANDOVER") {
+                            "💡 Oper Shift Berikutnya: Hanya membagikan data estimasi untuk shift berikutnya dalam format super ringkas."
+                        } else {
+                            "💡 QR Ringkas & Renggang: Kode QR dioptimalkan agar modul titik besar dan mudah di-scan kamera ponsel."
+                        },
+                        style = TextStyle(fontSize = 11.sp, color = colors.textSecondary, lineHeight = 15.sp),
+                    )
+                }
+
+                // QR Preview Card
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color.White, RoundedCornerShape(Dimens.RadiusControl))
+                        .padding(12.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (qrBitmap != null) {
+                        Image(
+                            bitmap = qrBitmap!!.asImageBitmap(),
+                            contentDescription = "QR Code Sync",
+                            modifier = Modifier.size(220.dp),
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(220.dp)
+                                .background(Color(0xFFF3F4F6), RoundedCornerShape(8.dp)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text("Menyiapkan QR...", style = TextStyle(color = Color(0xFF666666), fontSize = 12.sp))
+                        }
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(Dimens.Space8),
+                ) {
+                    Button(
+                        onClick = {
+                            if (rawQrString.isNotEmpty()) {
+                                clipboardManager.setText(AnnotatedString(rawQrString))
+                                isCopied = true
+                                Toast.makeText(context, "Data QR disalin ke clipboard ✓", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(44.dp),
+                        shape = RoundedCornerShape(Dimens.RadiusControl),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = colors.bgElevated2,
+                            contentColor = colors.textPrimary,
+                        ),
+                    ) {
+                        Text(if (isCopied) "Tersalin ✓" else "Salin Data Teks")
+                    }
+
+                    Button(
+                        onClick = onClose,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(44.dp),
+                        shape = RoundedCornerShape(Dimens.RadiusControl),
+                        colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
+                    ) {
+                        Text("Selesai")
                     }
                 }
             } else {
-                Text("Arahkan kamera ke QR Sync dari perangkat lain", style = AppType.BodySmall.copy(color = colors.textSecondary))
-                SyncButton("Mulai Scan") {
-                    scanLauncher.launch(
-                        ScanOptions().apply {
-                            setCaptureActivity(BarcodeScanActivity::class.java)
-                            setDesiredBarcodeFormats(ScanOptions.QR_CODE)
-                            setPrompt("Scan QR Sync")
-                            setBeepEnabled(false)
-                        },
+                // TERIMA / SCAN MODE
+                Text(
+                    text = "Arahkan kamera ke kode QR perangkat lain atau tempel teks datanya:",
+                    style = TextStyle(fontSize = 12.sp, color = colors.textMuted),
+                )
+
+                Button(
+                    onClick = {
+                        scanLauncher.launch(
+                            ScanOptions().apply {
+                                setCaptureActivity(BarcodeScanActivity::class.java)
+                                setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                                setPrompt("Arahkan ke QR Sync Adoel")
+                                setBeepEnabled(false)
+                            },
+                        )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    shape = RoundedCornerShape(Dimens.RadiusControl),
+                    colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.QrCodeScanner,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(Modifier.width(Dimens.Space8))
+                    Text("Buka Kamera Pemindai")
+                }
+
+                // ATAU separator
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = Dimens.Space4),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Dimens.Space8),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(1.dp)
+                            .background(colors.border),
+                    )
+                    Text(
+                        text = "ATAU",
+                        style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, color = colors.textMuted),
+                    )
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(1.dp)
+                            .background(colors.border),
                     )
                 }
+
+                // Text paste input
+                Column(verticalArrangement = Arrangement.spacedBy(Dimens.Space6)) {
+                    Text(
+                        text = "Masukkan / Tempel Teks QR Sync:",
+                        style = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = colors.textMuted),
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(Dimens.Space6),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        OutlinedTextField(
+                            value = pastedText,
+                            onValueChange = { pastedText = it },
+                            placeholder = { Text("Tempel data JSON/teks QR...", style = TextStyle(fontSize = 13.sp, color = colors.textMuted)) },
+                            singleLine = true,
+                            colors = outlinedFieldColors(),
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(8.dp),
+                            textStyle = TextStyle(fontSize = 13.sp, color = colors.textPrimary),
+                        )
+
+                        IconButton(
+                            onClick = {
+                                val clip = clipboardManager.getText()?.text
+                                if (!clip.isNullOrBlank()) {
+                                    pastedText = clip.trim()
+                                    Toast.makeText(context, "Teks ditempel dari clipboard ✓", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    Toast.makeText(context, "Clipboard kosong", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            modifier = Modifier
+                                .size(48.dp)
+                                .background(colors.bgElevated2, RoundedCornerShape(8.dp))
+                                .border(1.dp, colors.border, RoundedCornerShape(8.dp)),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ContentPaste,
+                                contentDescription = "Tempel Clipboard",
+                                tint = colors.textPrimary,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+
+                        Button(
+                            onClick = { handleProcessText(pastedText) },
+                            enabled = pastedText.isNotBlank(),
+                            modifier = Modifier.height(48.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
+                        ) {
+                            Text("Impor")
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(Dimens.Space8))
+
+                Button(
+                    onClick = onClose,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp),
+                    shape = RoundedCornerShape(Dimens.RadiusControl),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colors.bgElevated2,
+                        contentColor = colors.textSecondary,
+                    ),
+                ) {
+                    Text("Batal")
+                }
             }
-            Button(
-                onClick = onClose,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(Dimens.RadiusControl),
-                colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
-            ) { Text("Tutup") }
         }
     }
 }
 
-@Composable
-private fun SyncButton(label: String, onClick: () -> Unit) {
-    Button(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth().height(52.dp),
-        shape = RoundedCornerShape(Dimens.RadiusControl),
-        colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
-    ) { Text(label) }
-}
-
 private fun createQrBitmap(data: String): Bitmap? = runCatching {
-    BarcodeEncoder().encodeBitmap(data, BarcodeFormat.QR_CODE, 800, 800)
+    val hints = mapOf(
+        EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.L,
+        EncodeHintType.MARGIN to 2,
+    )
+    BarcodeEncoder().encodeBitmap(data, BarcodeFormat.QR_CODE, 600, 600, hints)
 }.getOrNull()

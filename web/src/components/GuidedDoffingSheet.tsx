@@ -1,8 +1,18 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { formatYard } from "../domain/format";
-import type { Estimasi, MesinData } from "../domain/types";
-
-const KETERANGAN_CODES = ["HB", "P.LP", "P.SN", "P.OH", "P.EL", "P.Sel"];
+import { DEFAULT_KETERANGAN_SHORTCUTS, type Estimasi, type MesinData, type MesinTipe } from "../domain/types";
+import { useDoffStore } from "../store/DoffStore";
+import { MachineSetupForm } from "./MachineSetupForm";
+import { KeteranganShortcutPicker } from "./ShortcutPicker";
+import {
+  ArrowBackIcon,
+  CheckIcon,
+  CloseIcon,
+  RulerIcon,
+  ScissorsIcon,
+  SparklesIcon,
+  TagIcon,
+} from "./Icons";
 
 type Step = "SETUP" | "CHOOSE" | "NORMAL" | "KETERANGAN";
 
@@ -25,21 +35,28 @@ export function GuidedDoffingSheet({
   estimasi: Estimasi | null;
   onDismiss: () => void;
   onSubmitDoffing: (value: string) => void;
-  onQuickUpdate: (corak: string, targetYard: number | null) => void;
+  onQuickUpdate: (corak: string, targetYard: number | null, tipe: MesinTipe, koreksi: number | null, speed: number | null) => void;
 }) {
-  const needsSetup = !mesin || mesin.corak.trim() === "" || mesin.corak.trim() === "-";
+  const [activeMesin, setActiveMesin] = useState<MesinData | null>(mesin);
+  const needsSetup = !activeMesin || activeMesin.corak.trim() === "" || activeMesin.corak.trim() === "-";
   const [step, setStep] = useState<Step>(needsSetup ? "SETUP" : "CHOOSE");
-  const standardYard = estimasi?.yardOverride ?? mesin?.targetYard ?? null;
+  const standardYard = estimasi?.yardOverride ?? activeMesin?.targetYard ?? null;
 
   return (
     <div className="dialog-backdrop" onClick={onDismiss}>
-      <div className="dialog" onClick={(e) => e.stopPropagation()}>
-        <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 16 }}>Catat Doffing — Mc {mcNo}</div>
+      <div className="dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420, maxHeight: "90vh", overflowY: "auto" }}>
+        <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
+          <ScissorsIcon size={18} />
+          <span>Catat Doffing — Mc {mcNo}</span>
+        </div>
 
         {step === "SETUP" && (
-          <SetupStep
-            onSave={(corak, targetYard) => {
-              onQuickUpdate(corak, targetYard);
+          <MachineSetupForm
+            initial={activeMesin ?? { tipe: "TAPPET", corak: "", targetYard: null, speed: null, koreksi: null }}
+            onSave={(corak, targetYard, tipe, koreksi, speed) => {
+              const updated: MesinData = { tipe, corak, targetYard, speed, koreksi };
+              setActiveMesin(updated);
+              onQuickUpdate(corak, targetYard, tipe, koreksi, speed);
               setStep("CHOOSE");
             }}
             onCancel={onDismiss}
@@ -72,50 +89,6 @@ export function GuidedDoffingSheet({
   );
 }
 
-function SetupStep({ onSave, onCancel }: { onSave: (corak: string, targetYard: number | null) => void; onCancel: () => void }) {
-  const [corakInput, setCorakInput] = useState("");
-  const [targetYardInput, setTargetYardInput] = useState("");
-
-  return (
-    <>
-      <div className="field-label">Masukkan Corak Baru</div>
-      <input
-        className="field-input"
-        placeholder="cth: 34758"
-        inputMode="numeric"
-        value={corakInput}
-        onChange={(e) => setCorakInput(e.target.value.toUpperCase())}
-      />
-      <div style={{ height: 12 }} />
-      <div className="field-label">Target Yard (Opsional)</div>
-      <input
-        className="field-input"
-        placeholder="cth: 303"
-        inputMode="decimal"
-        value={targetYardInput}
-        onChange={(e) => setTargetYardInput(e.target.value)}
-      />
-      <div className="actions" style={{ marginTop: 20 }}>
-        <button className="cancel" onClick={onCancel}>
-          Batal
-        </button>
-        <button
-          className="confirm"
-          style={{ background: "var(--cyan-600)" }}
-          disabled={corakInput.trim() === ""}
-          onClick={() => {
-            if (corakInput.trim() === "") return;
-            const yard = targetYardInput.trim() === "" ? null : parseFloat(targetYardInput.trim().replace(",", "."));
-            onSave(corakInput.trim(), yard != null && !Number.isNaN(yard) ? yard : null);
-          }}
-        >
-          Simpan &amp; Lanjut
-        </button>
-      </div>
-    </>
-  );
-}
-
 function ChooseStep({
   onPickNormal,
   onPickMatching,
@@ -127,28 +100,47 @@ function ChooseStep({
   onPickKeterangan: () => void;
   onCancel: () => void;
 }) {
+  const { state } = useDoffStore();
+  const shortcuts = state.keteranganShortcuts ?? DEFAULT_KETERANGAN_SHORTCUTS;
+  const shortcutsPreview = shortcuts.slice(0, 5).join(", ") + (shortcuts.length > 5 ? ", ..." : "");
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <BigChoiceButton label="Doffing normal" subtitle="Selesai sesuai target yard" onClick={onPickNormal} />
-      <BigChoiceButton label="Doffing matching" subtitle="Potong sampel / cek kualitas beam baru" onClick={onPickMatching} accent="var(--orange-400)" />
       <BigChoiceButton
+        icon={<ScissorsIcon size={18} />}
+        label="Doffing normal"
+        subtitle="Selesai sesuai target yard"
+        onClick={onPickNormal}
+      />
+      <BigChoiceButton
+        icon={<SparklesIcon size={18} />}
+        label="Doffing matching"
+        subtitle="Potong sampel / cek kualitas beam baru"
+        onClick={onPickMatching}
+        accent="var(--orange-400)"
+      />
+      <BigChoiceButton
+        icon={<TagIcon size={18} />}
         label="Ada keterangan"
-        subtitle="HB, P.LP, P.SN, P.OH, P.EL, P.Sel, atau lainnya"
+        subtitle={shortcutsPreview || "HB, P.LP, P.SN, P.OH, P.EL, P.Sel..."}
         onClick={onPickKeterangan}
       />
-      <button className="btn" style={{ marginTop: 6 }} onClick={onCancel}>
-        Batal
+      <button className="btn" style={{ marginTop: 6, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5 }} onClick={onCancel}>
+        <CloseIcon size={14} />
+        <span>Batal</span>
       </button>
     </div>
   );
 }
 
 function BigChoiceButton({
+  icon,
   label,
   subtitle,
   onClick,
   accent = "var(--cyan-600)",
 }: {
+  icon?: ReactNode;
   label: string;
   subtitle: string;
   onClick: () => void;
@@ -156,8 +148,9 @@ function BigChoiceButton({
 }) {
   return (
     <button className="big-choice-btn" onClick={onClick}>
-      <div className="label" style={{ color: accent }}>
-        {label}
+      <div className="label" style={{ color: accent, display: "flex", alignItems: "center", gap: 6 }}>
+        {icon}
+        <span>{label}</span>
       </div>
       <div className="subtitle">{subtitle}</div>
     </button>
@@ -179,16 +172,18 @@ function NormalYardStep({
     <>
       <YardDeltaField standardYard={standardYard} yardInput={yardInput} onYardInputChange={setYardInput} />
       <div className="actions" style={{ marginTop: 20 }}>
-        <button className="cancel" onClick={onBack}>
-          Kembali
+        <button className="cancel" onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+          <ArrowBackIcon size={14} />
+          <span>Kembali</span>
         </button>
         <button
           className="confirm"
-          style={{ background: "var(--cyan-600)" }}
+          style={{ background: "var(--cyan-600)", display: "inline-flex", alignItems: "center", gap: 5 }}
           disabled={yardInput.trim() === ""}
           onClick={() => yardInput.trim() !== "" && onConfirm(yardInput.trim())}
         >
-          Simpan
+          <CheckIcon size={14} />
+          <span>Simpan</span>
         </button>
       </div>
     </>
@@ -211,7 +206,10 @@ function YardDeltaField({
 
   return (
     <>
-      <div className="field-label">Yard aktual</div>
+      <div className="field-label" style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <RulerIcon size={13} />
+        <span>Yard aktual</span>
+      </div>
       <input
         className="field-input"
         placeholder={standardYard != null ? `Standar: ${formatYard(standardYard)}y` : undefined}
@@ -248,24 +246,23 @@ function KeteranganStep({
 
   return (
     <>
-      <div className="field-label">Keterangan</div>
-      <div className="chip-row-wrap">
-        {KETERANGAN_CODES.map((code) => (
-          <button key={code} className={`chip-btn${ket === code ? " active" : ""}`} onClick={() => setKet(code)}>
-            {code}
-          </button>
-        ))}
+      <div className="field-label" style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <TagIcon size={13} />
+        <span>Keterangan Doffing</span>
       </div>
-      <div style={{ height: 8 }} />
       <input
         className="field-input"
-        placeholder="Ketik keterangan lain jika tidak ada di atas"
+        placeholder="Pilih dari shortcut di bawah atau ketik keterangan bebas"
         value={ket}
         onChange={(e) => setKet(e.target.value.toUpperCase())}
       />
+      <KeteranganShortcutPicker value={ket} onSelect={setKet} />
 
       <div style={{ height: 14 }} />
-      <div className="field-label">Yard aktual (opsional)</div>
+      <div className="field-label" style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <RulerIcon size={13} />
+        <span>Yard aktual (opsional)</span>
+      </div>
       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
         <input
           className="field-input"
@@ -281,21 +278,24 @@ function KeteranganStep({
       </div>
 
       <div className="actions" style={{ marginTop: 20 }}>
-        <button className="cancel" onClick={onBack}>
-          Kembali
+        <button className="cancel" onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+          <ArrowBackIcon size={14} />
+          <span>Kembali</span>
         </button>
         <button
           className="confirm"
-          style={{ background: "var(--cyan-600)" }}
+          style={{ background: "var(--cyan-600)", display: "inline-flex", alignItems: "center", gap: 5 }}
           disabled={ket.trim() === ""}
           onClick={() => {
             const cmd = [ket.trim(), yardInput.trim()].filter((s) => s.length > 0).join(" ");
             if (cmd.trim() !== "") onConfirm(cmd);
           }}
         >
-          Simpan
+          <CheckIcon size={14} />
+          <span>Simpan</span>
         </button>
       </div>
     </>
   );
 }
+

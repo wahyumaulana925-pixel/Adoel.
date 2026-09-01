@@ -40,6 +40,12 @@ internal fun SettingsDrawer(
     onSetThemeMode: (ThemeMode) -> Unit,
     onExportJson: () -> String,
     onImport: (String) -> Unit,
+    onAddKeteranganShortcut: (String) -> Unit = {},
+    onRemoveKeteranganShortcut: (String) -> Unit = {},
+    onResetKeteranganShortcuts: () -> Unit = {},
+    onAddCorakShortcut: (String) -> Unit = {},
+    onRemoveCorakShortcut: (String) -> Unit = {},
+    onResetCorakShortcuts: () -> Unit = {},
     showToast: (String) -> Unit,
     showConfirm: (String, () -> Unit) -> Unit,
 ) {
@@ -110,8 +116,33 @@ internal fun SettingsDrawer(
                 label = "settingsTabContent",
             ) { t ->
                 when (t) {
-                    SettingsTab.MESIN -> MesinTab(state, headerHeight, onSetMesin, onResetMesin, showToast, showConfirm)
-                    SettingsTab.DATA -> DataTab(state, headerHeight, onResetDb, onSetThemeMode, onExportJson, onImport, { helpOpen = true }, { aboutOpen = true }, showToast, showConfirm)
+                    SettingsTab.MESIN -> MesinTab(
+                        state = state,
+                        headerHeight = headerHeight,
+                        onSetMesin = onSetMesin,
+                        onResetMesin = onResetMesin,
+                        showToast = showToast,
+                        showConfirm = showConfirm,
+                        onAddCorakShortcut = onAddCorakShortcut,
+                    )
+                    SettingsTab.DATA -> DataTab(
+                        state = state,
+                        headerHeight = headerHeight,
+                        onResetDb = onResetDb,
+                        onSetThemeMode = onSetThemeMode,
+                        onExportJson = onExportJson,
+                        onImport = onImport,
+                        onAddKeteranganShortcut = onAddKeteranganShortcut,
+                        onRemoveKeteranganShortcut = onRemoveKeteranganShortcut,
+                        onResetKeteranganShortcuts = onResetKeteranganShortcuts,
+                        onAddCorakShortcut = onAddCorakShortcut,
+                        onRemoveCorakShortcut = onRemoveCorakShortcut,
+                        onResetCorakShortcuts = onResetCorakShortcuts,
+                        onOpenHelp = { helpOpen = true },
+                        onOpenAbout = { aboutOpen = true },
+                        showToast = showToast,
+                        showConfirm = showConfirm,
+                    )
                 }
             }
 

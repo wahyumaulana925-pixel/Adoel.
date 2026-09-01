@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useDoffStore } from "../store/DoffStore";
 import { useUiStore } from "../store/UiStore";
 import { formatYard } from "../domain/format";
+import { CheckIcon, CloseIcon, EditIcon, RulerIcon, TextureIcon } from "./Icons";
+import { CorakShortcutPicker } from "./CorakShortcutPicker";
 
 /** Jalur cepat untuk 2 field yang paling sering berubah di lantai produksi — corak
  * & target yard — dijangkau lewat tap kartu radar, tanpa perlu buka Pengaturan >
@@ -33,11 +35,21 @@ export function QuickEditDialog({ mcNo, onClose }: { mcNo: string; onClose: () =
   return (
     <div className="dialog-backdrop" onClick={onClose}>
       <div className="dialog" onClick={(e) => e.stopPropagation()}>
-        <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 16 }}>Ganti Cepat — Mc {mcNo}</div>
-        <div className="field-label">Corak</div>
-        <input className="field-input" inputMode="numeric" value={corak} onChange={(e) => setCorak(e.target.value)} />
+        <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
+          <EditIcon size={18} />
+          <span>Ganti Cepat — Mc {mcNo}</span>
+        </div>
+        <div className="field-label" style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <TextureIcon size={13} />
+          <span>Corak</span>
+        </div>
+        <input className="field-input" value={corak} onChange={(e) => setCorak(e.target.value.toUpperCase())} />
+        <CorakShortcutPicker value={corak} onSelect={setCorak} />
         <div style={{ height: 12 }} />
-        <div className="field-label">Target Yard</div>
+        <div className="field-label" style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <RulerIcon size={13} />
+          <span>Target Yard</span>
+        </div>
         <input
           className="field-input"
           placeholder="opsional"
@@ -46,14 +58,21 @@ export function QuickEditDialog({ mcNo, onClose }: { mcNo: string; onClose: () =
           onChange={(e) => setTargetYard(e.target.value)}
         />
         <div className="actions" style={{ marginTop: 18 }}>
-          <button className="cancel" onClick={onClose}>
-            Batal
+          <button className="cancel" onClick={onClose} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+            <CloseIcon size={14} />
+            <span>Batal</span>
           </button>
-          <button className="confirm" style={{ background: "var(--cyan-600)" }} onClick={handleSave}>
-            Simpan
+          <button
+            className="confirm"
+            style={{ background: "var(--cyan-600)", display: "inline-flex", alignItems: "center", gap: 5 }}
+            onClick={handleSave}
+          >
+            <CheckIcon size={14} />
+            <span>Simpan</span>
           </button>
         </div>
       </div>
     </div>
   );
 }
+

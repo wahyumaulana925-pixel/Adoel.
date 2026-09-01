@@ -1,12 +1,18 @@
 package com.jekael.adoel.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jekael.adoel.BuildConfig
@@ -16,20 +22,87 @@ import com.jekael.adoel.ui.theme.*
 internal fun AboutDialog(onClose: () -> Unit) {
     val colors = LocalAppColors.current
     FloatingEditDialog(onDismissRequest = onClose) {
-        Text("Tentang", style = AppType.DialogTitle.copy(color = colors.textPrimary))
-        Spacer(Modifier.height(Dimens.Space16))
-        Text("Adoel.", style = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Black, color = colors.textPrimary))
-        Spacer(Modifier.height(Dimens.Space4))
-        Text(
-            "Versi ${BuildConfig.VERSION_NAME} (build ${BuildConfig.VERSION_CODE})",
-            style = AppType.BodySmall.copy(color = colors.textSecondary),
-        )
-        Spacer(Modifier.height(Dimens.Space20))
-        Button(
-            onClick = onClose,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(Dimens.RadiusControl),
-            colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
-        ) { Text("Tutup", fontWeight = FontWeight.SemiBold) }
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = Dimens.Space4),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                IconButton(
+                    onClick = onClose,
+                    modifier = Modifier.size(32.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Tutup",
+                        tint = colors.textMuted,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+
+            Text(
+                "Adoel.",
+                style = TextStyle(
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = (-0.5).sp,
+                    color = colors.textPrimary,
+                ),
+            )
+            Spacer(Modifier.height(Dimens.Space4))
+            Text(
+                "Aplikasi Estimasi Doff & Manajemen Mesin Tenun",
+                style = AppType.Caption.copy(color = colors.textFaint, fontSize = 12.sp),
+                textAlign = TextAlign.Center,
+            )
+
+            Spacer(Modifier.height(Dimens.Space16))
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(colors.bgElevated2)
+                    .padding(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    "Versi ${BuildConfig.VERSION_NAME} (build ${BuildConfig.VERSION_CODE}) · Android Edition",
+                    style = AppType.Caption.copy(
+                        color = colors.textSecondary,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 12.sp,
+                    ),
+                    textAlign = TextAlign.Center,
+                )
+                Text(
+                    "Mendukung sinkronisasi QR dua arah dengan versi Web",
+                    style = AppType.Caption.copy(
+                        color = colors.textFaint,
+                        fontSize = 11.sp,
+                    ),
+                    textAlign = TextAlign.Center,
+                )
+            }
+
+            Spacer(Modifier.height(Dimens.Space20))
+
+            Button(
+                onClick = onClose,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(Dimens.RadiusControl),
+                colors = ButtonDefaults.buttonColors(containerColor = Cyan600),
+            ) {
+                Text("Tutup", fontWeight = FontWeight.SemiBold)
+            }
+        }
     }
 }

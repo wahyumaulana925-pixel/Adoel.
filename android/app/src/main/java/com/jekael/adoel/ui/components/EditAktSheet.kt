@@ -49,6 +49,11 @@ fun EditAktSheet(
     onDelete: () -> Unit,
     onInvalidYard: () -> Unit = {},
     onInvalidJam: () -> Unit = {},
+    corakShortcuts: List<String>? = null,
+    keteranganShortcuts: List<String>? = null,
+    onAddCorakShortcut: (String) -> Unit = {},
+    onAddKeteranganShortcut: (String) -> Unit = {},
+    showToast: ((String) -> Unit)? = null,
 ) {
     val corakDefault = entry.corakOverride ?: mesin?.corak ?: ""
     val colors = LocalAppColors.current
@@ -135,6 +140,13 @@ fun EditAktSheet(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
                 singleLine = true,
             )
+            CorakShortcutPicker(
+                value = corakInput,
+                onSelect = { corakInput = it },
+                shortcuts = corakShortcuts,
+                onAddShortcut = onAddCorakShortcut,
+                showToast = showToast,
+            )
 
             Spacer(Modifier.height(Dimens.Space16))
 
@@ -169,6 +181,13 @@ fun EditAktSheet(
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { doSave() }),
                 singleLine = true,
+            )
+            KeteranganShortcutPicker(
+                value = ketInput,
+                onSelect = { ketInput = it },
+                shortcuts = keteranganShortcuts,
+                onAddShortcut = onAddKeteranganShortcut,
+                showToast = showToast,
             )
 
             Spacer(Modifier.height(Dimens.Space20))

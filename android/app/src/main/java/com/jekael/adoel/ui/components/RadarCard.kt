@@ -125,6 +125,7 @@ fun RadarCard(
     modifier: Modifier = Modifier,
     entranceDelayMs: Long = 0L,
     clashingMcNos: List<String> = emptyList(),
+    shiftHandover: Boolean = false,
 ) {
     // Frozen while paused (see Estimasi.pausedAtAbsMin/effectiveRemaining) so a long Jeda doesn't
     // quietly count itself into OVERDUE against wall-clock time.
@@ -364,6 +365,7 @@ fun RadarCard(
                         }
                         if (isPaused) {
                             add(CustomAccessibilityAction("Lanjutkan mesin ${est.mcNo}") { onLanjutkan(); true })
+                            add(CustomAccessibilityAction("Hapus estimasi Mc ${est.mcNo}") { onHapus(); true })
                         } else {
                             add(CustomAccessibilityAction("Jeda mesin ${est.mcNo}") { onJeda(); true })
                             add(CustomAccessibilityAction("Hapus estimasi Mc ${est.mcNo}") { onHapus(); true })
@@ -529,6 +531,19 @@ fun RadarCard(
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
+                    if (shiftHandover) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = "⏭️ OPERAN SHIFT",
+                            style = AppType.Caption.copy(color = Amber400, fontWeight = FontWeight.Bold),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(Amber500.copy(alpha = 0.16f))
+                                .padding(horizontal = 6.dp, vertical = 3.dp),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                     Spacer(Modifier.height(6.dp))
                     LinearProgressBar(
                         fraction = progress,
@@ -611,6 +626,7 @@ fun RadarCard(
                         mesin = mesin,
                         frozenRemaining = remaining,
                         onLanjutkan = onLanjutkan,
+                        onHapus = onHapus,
                     )
                     CardFace.FRONT -> Unit // unreachable — flipRotation only passes 90° once face != FRONT
                 }
@@ -712,6 +728,7 @@ private fun CardPausedFace(
     mesin: MesinData?,
     frozenRemaining: Long,
     onLanjutkan: () -> Unit,
+    onHapus: () -> Unit,
 ) {
     val colors = LocalAppColors.current
     Column(
@@ -725,7 +742,7 @@ private fun CardPausedFace(
             }
             .padding(horizontal = Dimens.Space16),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(Dimens.Space12),
+        verticalArrangement = Arrangement.spacedBy(Dimens.Space8),
     ) {
         Text(
             text = "Mc $mcNo sedang dijeda",
@@ -734,7 +751,13 @@ private fun CardPausedFace(
         val yard = mesin?.targetYard?.let { " · ${formatYard(it)}y" } ?: ""
         Text("${mesin?.corak ?: "—"}$yard", style = AppType.Caption.copy(color = colors.textFaint))
         Text("Sisa ${formatDeltaMin(frozenRemaining)}", style = AppType.LabelBold.copy(color = colors.textMuted))
-        CardFaceButton(icon = Icons.Outlined.PlayArrow, label = "Lanjutkan", accent = Emerald500, onClick = onLanjutkan)
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(24.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            CardFaceButton(icon = Icons.Outlined.PlayArrow, label = "Lanjutkan", accent = Emerald500, onClick = onLanjutkan)
+            CardFaceButton(icon = Icons.Outlined.Delete, label = "Hapus", accent = Red500, onClick = onHapus)
+        }
     }
 }
 

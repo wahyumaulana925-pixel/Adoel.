@@ -1,4 +1,10 @@
-import type { AktualEntry, DoffState, MesinTipe } from "./types";
+import {
+  DEFAULT_CORAK_SHORTCUTS,
+  DEFAULT_KETERANGAN_SHORTCUTS,
+  type AktualEntry,
+  type DoffState,
+  type MesinTipe,
+} from "./types";
 import { buildDefaultDb } from "./defaultDb";
 
 const STORAGE_KEY = "adoel_state_v2";
@@ -27,12 +33,14 @@ export function parseBackupJson(json: string): DoffState | null {
   const db: DoffState["db"] = {};
   for (const [mcNo, v] of Object.entries(rawDb as Record<string, any>)) {
     const tipe: MesinTipe = VALID_TIPE.includes(v?.tipe) ? v.tipe : "TAPPET";
+    const isActive = typeof v?.isActive === "boolean" ? v.isActive : undefined;
     db[mcNo] = {
       tipe,
       corak: typeof v?.corak === "string" ? v.corak : "-",
       targetYard: typeof v?.targetYard === "number" ? v.targetYard : null,
       speed: typeof v?.speed === "number" ? v.speed : null,
       koreksi: typeof v?.koreksi === "number" ? v.koreksi : null,
+      ...(isActive !== undefined ? { isActive } : {}),
     };
   }
 
@@ -76,6 +84,14 @@ export function parseBackupJson(json: string): DoffState | null {
   const maxAktualId = aktual.reduce((m, a) => Math.max(m, a.id), 0);
   const nextId = Math.max(Number(serial.nextId) || 0, maxAktualId + 1);
 
+  const rawShortcuts = Array.isArray(serial.keteranganShortcuts)
+    ? (serial.keteranganShortcuts as string[]).map((s) => String(s).trim()).filter((s) => s.length > 0)
+    : [];
+
+  const rawCorakShortcuts = Array.isArray(serial.corakShortcuts)
+    ? (serial.corakShortcuts as string[]).map((s) => String(s).trim().toUpperCase()).filter((s) => s.length > 0)
+    : [];
+
   return {
     db,
     estimasi,
@@ -85,6 +101,8 @@ export function parseBackupJson(json: string): DoffState | null {
     history,
     nextShiftId: Number(serial.nextShiftId) || 1,
     onboardingSeen: typeof serial.onboardingSeen === "boolean" ? serial.onboardingSeen : true,
+    keteranganShortcuts: rawShortcuts,
+    corakShortcuts: rawCorakShortcuts,
   };
 }
 
@@ -134,6 +152,8 @@ export function loadState(): DoffState {
     history: [],
     nextShiftId: 1,
     onboardingSeen: false,
+    keteranganShortcuts: DEFAULT_KETERANGAN_SHORTCUTS,
+    corakShortcuts: DEFAULT_CORAK_SHORTCUTS,
   };
 }
 
