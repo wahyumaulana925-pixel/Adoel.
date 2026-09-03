@@ -83,7 +83,11 @@ class AppColors(
     val bannerWarnFg: Color,
     val criticalPulseTarget: Color,
     val isDark: Boolean,
-)
+) {
+    /** Alias for [bgElevated] — ShortcutPicker/OnboardingDialog reach for this name; kept as a
+     * synonym rather than a distinct third tier so it doesn't need its own light/dark values. */
+    val bgElevated1: Color get() = bgElevated
+}
 
 private val DarkAppColors = AppColors(
     isDark = true,

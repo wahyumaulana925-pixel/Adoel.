@@ -3,6 +3,9 @@
   --bg-elevated: #18181b;
   --bg-elevated-2: #27272a;
   --border: #3f3f46;
+  /* Alias for --border — ShortcutPicker/SettingsScreen reach for this name; kept as a synonym
+     rather than a distinct shade so it doesn't need its own light/dark value. */
+  --border-subtle: var(--border);
   --text-primary: #fafafa;
   --text-secondary: #d4d4d8;
   --text-muted: #a1a1aa;
@@ -35,6 +38,7 @@
   --bg-elevated: #ffffff;
   --bg-elevated-2: #f4f4f5;
   --border: #e4e4e7;
+  --border-subtle: var(--border);
   --text-primary: #18181b;
   --text-secondary: #3f3f46;
   --text-muted: #71717a;
